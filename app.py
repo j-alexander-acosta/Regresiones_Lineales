@@ -173,8 +173,117 @@ if df is not None and len(df) >= 2:
         st.subheader("Datos y Cálculos")
         st.dataframe(df_results, use_container_width=True, height=350)
     
+    # --- FÓRMULAS Y CÁLCULOS DETALLADOS ---
     st.markdown("---")
-    st.header("3. Exportar Informes")
+    st.subheader("📚 Fórmulas y Cálculos Detallados")
+    with st.expander("Ver paso a paso todas las fórmulas de la regresión"):
+        n = len(df)
+        x_mean = np.mean(df["X"])
+        y_mean = np.mean(df["Y"])
+        Sxx = np.sum((df["X"] - x_mean)**2)
+        Syy = np.sum((df["Y"] - y_mean)**2)
+        Sxy = np.sum((df["X"] - x_mean)*(df["Y"] - y_mean))
+        
+        SSE = np.sum(df_results["Residuo (Error)"]**2)
+        MSE = SSE / (n - 2) if n > 2 else 0
+        sigma = np.sqrt(MSE) if n > 2 else 0
+        
+        SE_m = sigma / np.sqrt(Sxx) if Sxx != 0 else 0
+        SE_b = sigma * np.sqrt(1/n + (x_mean**2)/Sxx) if Sxx != 0 else 0
+        r_corr = Sxy / np.sqrt(Sxx * Syy) if (Sxx * Syy) > 0 else 0
+        
+        f_col1, f_col2 = st.columns(2)
+        
+        with f_col1:
+            st.markdown("**1. Definiciones Básicas**")
+            st.markdown("- **Número de observaciones (n):**")
+            st.latex(rf"n = {n}")
+            st.markdown("- **Promedio $\bar{{x}}$ y Promedio $\bar{{y}}$:**")
+            st.latex(rf"\bar{{x}} = \frac{{1}}{{n}} \sum x_i = {x_mean:.4f}")
+            st.latex(rf"\bar{{y}} = \frac{{1}}{{n}} \sum y_i = {y_mean:.4f}")
+            
+            st.markdown("**2. Variables Core**")
+            st.markdown("- **Variable $S_{{xx}}$:**")
+            st.latex(rf"S_{{xx}} = \sum (x_i - \bar{{x}})^2 = {Sxx:.4f}")
+            st.markdown("- **Variable $S_{{yy}}$:**")
+            st.latex(rf"S_{{yy}} = \sum (y_i - \bar{{y}})^2 = {Syy:.4f}")
+            st.markdown("- **Variable $S_{{xy}}$ (covarianza):**")
+            st.latex(rf"S_{{xy}} = \sum (x_i - \bar{{x}})(y_i - \bar{{y}}) = {Sxy:.4f}")
+            
+            st.markdown("**3. Coeficientes del Modelo**")
+            st.markdown("- **Pendiente (m):**")
+            st.latex(rf"m = \frac{{S_{{xy}}}}{{S_{{xx}}}} = {m_opt:.4f}")
+            st.markdown("- **Intersección (b):**")
+            st.latex(rf"b = \bar{{y}} - m\bar{{x}} = {b_opt:.4f}")
+            st.markdown("- **Coeficiente de Correlación (r):**")
+            st.latex(rf"r = \frac{{S_{{xy}}}}{{\sqrt{{S_{{xx}} S_{{yy}}}}}} = {r_corr:.4f}")
+            
+        with f_col2:
+            st.markdown("**4. Errores y Varianza**")
+            st.markdown("- **Valores Predichos y Residuos:**")
+            st.latex(rf"\hat{{y}}_i = m x_i + b \quad ; \quad e_i = y_i - \hat{{y}}_i")
+            st.markdown("- **Error Cuadrático Medio (MSE) y Varianza del Error ($\sigma^2$):**")
+            st.latex(rf"MSE = \sigma^2 = \frac{{\sum e_i^2}}{{n-2}} = {MSE:.4f}")
+            st.markdown("- **Error Estándar de la Regresión (Syx):**")
+            st.latex(rf"Syx = \sigma = \sqrt{{\frac{{\sum e_i^2}}{{n-2}}}} = {sigma:.4f}")
+            
+            st.markdown("**5. Errores Estándar**")
+            st.markdown("- **Error Estándar de la Pendiente (Sb):**")
+            st.latex(rf"SE_m = \frac{{\sigma}}{{\sqrt{{S_{{xx}}}}}} = {SE_m:.4f}")
+            st.markdown("- **Error Estándar de la Intersección (Sa):**")
+            st.latex(rf"SE_b = \sigma \sqrt{{\frac{{1}}{{n}} + \frac{{\bar{{x}}^2}}{{S_{{xx}}}}}} = {SE_b:.4f}")
+            
+            st.markdown("**6. Evaluación General**")
+            st.markdown("- **Coeficiente de Determinación ($R^2$):**")
+            st.latex(rf"R^2 = 1 - \frac{{SSE}}{{S_{{yy}}}} = {r2:.4f}")
+
+    with st.expander("Ver fórmulas de Regresión Ortogonal Generalizada (GOR)"):
+        st.markdown("Cálculos para Regresión Ortogonal (basados en la imagen proporcionada):")
+        eta = 1.0 # Valor fijo basado en la imagen (Eta = 1)
+        
+        if Sxy != 0:
+            beta1_num = (Syy - Sxx) + np.sqrt((Syy - Sxx)**2 + 4 * Sxy**2)
+            beta1_den = 2 * Sxy
+            beta1 = beta1_num / beta1_den
+        else:
+            beta1 = 0
+            
+        beta0 = y_mean - beta1 * x_mean
+        
+        # Calcular proyecciones ortogonales (Y_t) sobre la recta GOR
+        X_t = (df["X"] + beta1 * df["Y"] - beta0 * beta1) / (1 + beta1**2)
+        Y_t = beta0 + beta1 * X_t
+        Y_t_mean = np.mean(Y_t)
+        
+        # GOR Propuesto
+        num_c1 = np.sum((df["X"] - x_mean) * (Y_t - Y_t_mean))
+        den_c1 = Sxx
+        c1 = num_c1 / den_c1 if den_c1 != 0 else 0
+        c2 = Y_t_mean - c1 * x_mean
+        
+        gor_col1, gor_col2 = st.columns(2)
+        
+        with gor_col1:
+            st.markdown("**1. Parámetro Eta y GOR Convencional**")
+            st.markdown("- **Eta (Lambda):**")
+            st.latex(rf"\eta = \lambda = {eta}")
+            
+            st.markdown("- **Pendiente GOR Convencional ($\hat{{\beta}}_1$):**")
+            st.latex(rf"\hat{{\beta}}_1 = \frac{{(S_{{yy}} - S_{{xx}}) + \sqrt{{(S_{{yy}} - S_{{xx}})^2 + 4S_{{xy}}^2}}}}{{2S_{{xy}}}} = {beta1:.4f}")
+            
+            st.markdown("- **Intersección GOR Convencional ($\hat{{\beta}}_0$):**")
+            st.latex(rf"\hat{{\beta}}_0 = \bar{{Y}} - \hat{{\beta}}_1 \bar{{X}} = {beta0:.4f}")
+            
+        with gor_col2:
+            st.markdown("**2. GOR Propuesto**")
+            st.markdown("- **Pendiente GOR Propuesto ($c_1$):**")
+            st.latex(rf"c_1 = \frac{{\sum (X_{{obs,i}} - \bar{{X}}_{{obs}})(Y_{{t,i}} - \bar{{Y}}_t)}}{{\sum (X_{{obs,i}} - \bar{{X}}_{{obs}})^2}} = {c1:.4f}")
+            
+            st.markdown("- **Intersección GOR Propuesto ($c_2$):**")
+            st.latex(rf"c_2 = \bar{{Y}}_t - c_1 \bar{{X}}_{{obs}} = {c2:.4f}")
+
+    st.markdown("---")
+    st.header("4. Exportar Informes")
     
     col_out1, col_out2 = st.columns(2)
     

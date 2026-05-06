@@ -102,10 +102,38 @@ if df is not None and len(df) >= 2:
         y_pred = m * df["X"].values + b
         r2 = r2_score(Y, y_pred)
     
+    st.sidebar.markdown("---")
+    st.sidebar.header("3. Parámetros GOR")
+    eta = st.sidebar.number_input("Valor de Eta (λ):", value=1.0, step=0.1, format="%.4f")
+
     # Calcular Residuos
     df_results = df.copy()
     df_results["Predicción (Y_hat)"] = y_pred
     df_results["Residuo (Error)"] = df_results["Y"] - df_results["Predicción (Y_hat)"]
+    
+    # --- CÁLCULOS GLOBALES PARA GOR Y MÉTRICAS ---
+    n = len(df)
+    x_mean = np.mean(df["X"])
+    y_mean = np.mean(df["Y"])
+    Sxx = np.sum((df["X"] - x_mean)**2)
+    Syy = np.sum((df["Y"] - y_mean)**2)
+    Sxy = np.sum((df["X"] - x_mean)*(df["Y"] - y_mean))
+    
+    if Sxy != 0:
+        beta1_num = (Syy - eta * Sxx) + np.sqrt((Syy - eta * Sxx)**2 + 4 * eta * Sxy**2)
+        beta1_den = 2 * Sxy
+        beta1 = beta1_num / beta1_den
+    else:
+        beta1 = 0
+        
+    beta0 = y_mean - beta1 * x_mean
+    
+    X_t = (eta * df["X"] + beta1 * (df["Y"] - beta0)) / (eta + beta1**2)
+    Y_t = beta0 + beta1 * X_t
+    Y_t_mean = np.mean(Y_t)
+    
+    df_results["Proy. Ortogonal X (X_t)"] = X_t
+    df_results["Proy. Ortogonal Y (Y_t)"] = Y_t
     
     # --- VISUALIZACIÓN DE RESULTADOS ---
     col1, col2, col3 = st.columns(3)
@@ -133,57 +161,48 @@ if df is not None and len(df) >= 2:
     
     st.markdown("---")
 
-    col_plot, col_data = st.columns([3, 2])
-    
     # Gráfica
-    with col_plot:
-        st.subheader("Gráfica de Dispersión y Tendencia")
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.scatterplot(x="X", y="Y", data=df_results, ax=ax, color='#1f77b4', s=60, label="Datos Reales")
-        
-        # Puntos de la línea
-        x_vals = np.linspace(df["X"].min(), df["X"].max(), 100)
-        y_vals = m * x_vals + b
-        
-        ax.plot(x_vals, y_vals, color='#ff7f0e', linewidth=2, label=f"Tendencia: Y = {m:.2f}X {b:+.2f}")
-        
-        # Opcional: mostrar residuos
-        for i in range(len(df_results)):
-            ax.plot([df_results["X"].iloc[i], df_results["X"].iloc[i]], 
-                    [df_results["Y"].iloc[i], df_results["Predicción (Y_hat)"].iloc[i]], 
-                    color='gray', linestyle='--', alpha=0.5)
+    st.subheader("Gráfica de Dispersión y Tendencia")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.scatterplot(x="X", y="Y", data=df_results, ax=ax, color='#1f77b4', s=60, label="Datos Reales")
+    
+    # Puntos de la línea
+    x_vals = np.linspace(df["X"].min(), df["X"].max(), 100)
+    y_vals = m * x_vals + b
+    
+    ax.plot(x_vals, y_vals, color='#ff7f0e', linewidth=2, label=f"Tendencia: Y = {m:.2f}X {b:+.2f}")
+    
+    # Opcional: mostrar residuos
+    for i in range(len(df_results)):
+        ax.plot([df_results["X"].iloc[i], df_results["X"].iloc[i]], 
+                [df_results["Y"].iloc[i], df_results["Predicción (Y_hat)"].iloc[i]], 
+                color='gray', linestyle='--', alpha=0.5)
 
-        ax.set_title("Análisis de Regresión Lineal", fontsize=14, pad=10)
-        ax.set_xlabel("Variable Independiente (X)")
-        ax.set_ylabel("Variable Dependiente (Y)")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        sns.despine()
-        
-        st.pyplot(fig)
-        
-        # Guardar gráfico en memoria para PDF
-        img_buffer = io.BytesIO()
-        fig.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
-        img_buffer.seek(0)
-        img_bytes = img_buffer.getvalue()
+    ax.set_title("Análisis de Regresión Lineal", fontsize=14, pad=10)
+    ax.set_xlabel("Variable Independiente (X)")
+    ax.set_ylabel("Variable Dependiente (Y)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    sns.despine()
+    
+    st.pyplot(fig)
+    
+    # Guardar gráfico en memoria para PDF
+    img_buffer = io.BytesIO()
+    fig.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
+    img_buffer.seek(0)
+    img_bytes = img_buffer.getvalue()
 
+    st.markdown("---")
+    
     # Tabla de Resultados
-    with col_data:
-        st.subheader("Datos y Cálculos")
-        st.dataframe(df_results, use_container_width=True, height=350)
+    st.subheader("Datos y Cálculos")
+    st.dataframe(df_results, use_container_width=True)
     
     # --- FÓRMULAS Y CÁLCULOS DETALLADOS ---
     st.markdown("---")
     st.subheader("📚 Fórmulas y Cálculos Detallados")
     with st.expander("Ver paso a paso todas las fórmulas de la regresión"):
-        n = len(df)
-        x_mean = np.mean(df["X"])
-        y_mean = np.mean(df["Y"])
-        Sxx = np.sum((df["X"] - x_mean)**2)
-        Syy = np.sum((df["Y"] - y_mean)**2)
-        Sxy = np.sum((df["X"] - x_mean)*(df["Y"] - y_mean))
-        
         SSE = np.sum(df_results["Residuo (Error)"]**2)
         MSE = SSE / (n - 2) if n > 2 else 0
         sigma = np.sqrt(MSE) if n > 2 else 0
@@ -238,22 +257,7 @@ if df is not None and len(df) >= 2:
             st.latex(rf"R^2 = 1 - \frac{{SSE}}{{S_{{yy}}}} = {r2:.4f}")
 
     with st.expander("Ver fórmulas de Regresión Ortogonal Generalizada (GOR)"):
-        st.markdown("Cálculos para Regresión Ortogonal (basados en la imagen proporcionada):")
-        eta = 1.0 # Valor fijo basado en la imagen (Eta = 1)
-        
-        if Sxy != 0:
-            beta1_num = (Syy - Sxx) + np.sqrt((Syy - Sxx)**2 + 4 * Sxy**2)
-            beta1_den = 2 * Sxy
-            beta1 = beta1_num / beta1_den
-        else:
-            beta1 = 0
-            
-        beta0 = y_mean - beta1 * x_mean
-        
-        # Calcular proyecciones ortogonales (Y_t) sobre la recta GOR
-        X_t = (df["X"] + beta1 * df["Y"] - beta0 * beta1) / (1 + beta1**2)
-        Y_t = beta0 + beta1 * X_t
-        Y_t_mean = np.mean(Y_t)
+        st.markdown("Cálculos para Regresión Ortogonal Generalizada:")
         
         # GOR Propuesto
         num_c1 = np.sum((df["X"] - x_mean) * (Y_t - Y_t_mean))
@@ -266,13 +270,19 @@ if df is not None and len(df) >= 2:
         with gor_col1:
             st.markdown("**1. Parámetro Eta y GOR Convencional**")
             st.markdown("- **Eta (Lambda):**")
-            st.latex(rf"\eta = \lambda = {eta}")
+            st.latex(rf"\eta = \lambda = {eta:.4f}")
             
             st.markdown("- **Pendiente GOR Convencional ($\hat{{\beta}}_1$):**")
-            st.latex(rf"\hat{{\beta}}_1 = \frac{{(S_{{yy}} - S_{{xx}}) + \sqrt{{(S_{{yy}} - S_{{xx}})^2 + 4S_{{xy}}^2}}}}{{2S_{{xy}}}} = {beta1:.4f}")
+            st.latex(rf"\hat{{\beta}}_1 = \frac{{(S_{{yy}} - \eta S_{{xx}}) + \sqrt{{(S_{{yy}} - \eta S_{{xx}})^2 + 4\eta S_{{xy}}^2}}}}{{2S_{{xy}}}} = {beta1:.4f}")
             
             st.markdown("- **Intersección GOR Convencional ($\hat{{\beta}}_0$):**")
             st.latex(rf"\hat{{\beta}}_0 = \bar{{Y}} - \hat{{\beta}}_1 \bar{{X}} = {beta0:.4f}")
+            
+            st.markdown("- **Proyección Ortogonal en X ($X_t$):**")
+            st.latex(r"X_t = \frac{\hat{\beta}_1(Y_{obs} - \hat{\beta}_0) + \eta X_{obs}}{\eta + \hat{\beta}_1^2}")
+            
+            st.markdown("- **Proyección Ortogonal en Y ($Y_t$):**")
+            st.latex(r"Y_t = \hat{\beta}_0 + \hat{\beta}_1 X_t")
             
         with gor_col2:
             st.markdown("**2. GOR Propuesto**")

@@ -40,7 +40,9 @@ Esta es una herramienta interactiva construida con Python y [Streamlit](https://
 
 ## 💻 Instalación y Uso Local
 
-Para correr este proyecto de manera local, asegúrate de tener Python 3 instalado y sigue estos pasos desde tu terminal:
+Para correr este proyecto de manera local, asegúrate de tener [Python 3](https://www.python.org/downloads/) y [Git](https://git-scm.com/) instalados. Sigue estos pasos dependiendo de tu sistema operativo:
+
+### 🍎 En macOS y 🐧 Linux
 
 1. **Clona el Repositorio**:
     ```bash
@@ -48,18 +50,52 @@ Para correr este proyecto de manera local, asegúrate de tener Python 3 instalad
     cd Regresiones_Lineales
     ```
 
-2. **Instala las dependencias**:
-    Asegúrate de instalar los módulos y utilidades especificadas utilizando `pip`.
+2. **Crea y activa un entorno virtual (Recomendado)**:
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+
+3. **Instala las dependencias**:
     ```bash
     pip install -r requirements.txt
     ```
 
-3. **Ejecuta el Servidor de Streamlit**:
+4. **Ejecuta el Servidor de Streamlit**:
     ```bash
     streamlit run app.py
     ```
 
-4. **Comienza a trabajar:** Automáticamente se abrirá tu navegador web en la dirección local `http://localhost:8501`.
+### 🪟 En Windows
+
+1. **Clona el Repositorio**:
+    Abre tu terminal (Símbolo del sistema o PowerShell) y ejecuta:
+    ```cmd
+    git clone https://github.com/j-alexander-acosta/Regresiones_Lineales.git
+    cd Regresiones_Lineales
+    ```
+
+2. **Crea y activa un entorno virtual (Recomendado)**:
+    ```cmd
+    python -m venv venv
+    venv\Scripts\activate
+    ```
+    *(Nota: Si recibes un error de ejecución de scripts en PowerShell, ejecuta primero `Set-ExecutionPolicy Unrestricted -Scope CurrentUser`)*
+
+3. **Instala las dependencias**:
+    ```cmd
+    pip install -r requirements.txt
+    ```
+
+4. **Ejecuta el Servidor de Streamlit**:
+    ```cmd
+    streamlit run app.py
+    ```
+
+---
+
+### 🚀 Comienza a trabajar
+Automáticamente se abrirá tu navegador web en la dirección local `http://localhost:8501`. Si no se abre por sí solo, puedes acceder manualmente a ese enlace.
 
 ---
 

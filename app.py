@@ -347,3 +347,13 @@ if df is not None and len(df) >= 2:
 
 else:
     st.info("👈 Por favor, ingresa o sube datos con al menos 2 puntos para comenzar el análisis comparativo.")
+
+# --- FOOTER ---
+st.markdown("---")
+st.markdown(
+    "<p style='text-align: center; color: gray; font-size: 14px;'>"
+    "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+    "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+    "</p>", 
+    unsafe_allow_html=True
+)

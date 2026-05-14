@@ -44,7 +44,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("📈 Análisis de Regresión Lineal: Comparación de Métodos")
-st.markdown("Herramienta para comparar Regresión Lineal Simple (LSR), Regresión Ortogonal Convencional (GOR) y GOR Propuesto.")
+st.markdown("Herramienta para comparar Regresión Lineal Estándar (SLR), Regresión Ortogonal Generalizada (GOR) Convencional y GOR Propuesto.")
 
 # --- BARRA LATERAL: ENTRADA DE DATOS ---
 st.sidebar.header("1. Entrada de Datos")
@@ -54,8 +54,11 @@ df = None
 
 if data_source == "Ingreso Manual":
     st.sidebar.markdown("Edita la tabla inferior para agregar tus puntos (X, Y):")
-    # Tabla base
-    default_data = pd.DataFrame({"X": [1.0, 2.0, 3.0, 4.0, 5.0], "Y": [2.1, 3.9, 6.2, 8.0, 10.1]})
+    # Tabla base con magnitudes sísmicas simuladas (similares al artículo)
+    default_data = pd.DataFrame({
+        "X": [4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0, 6.1, 6.2],
+        "Y": [4.7, 4.6, 5.1, 5.2, 5.0, 5.4, 5.3, 5.5, 5.4, 5.6, 5.8, 5.9, 5.7, 6.1, 6.0, 6.2, 6.4, 6.3, 6.6]
+    })
     df = st.sidebar.data_editor(default_data, num_rows="dynamic", use_container_width=True)
 else:
     uploaded_file = st.sidebar.file_uploader("Sube tu archivo (.csv, .xlsx)", type=["csv", "xlsx"])
@@ -78,7 +81,7 @@ else:
 if df is not None and len(df) >= 2:
     st.sidebar.markdown("---")
     st.sidebar.header("2. Parámetros Globales")
-    eta = st.sidebar.number_input("Valor de Eta (λ) para GOR:", value=1.0, step=0.1, format="%.4f")
+    eta = st.sidebar.number_input("Valor de Eta (λ) para GOR:", value=0.2000, step=0.1, format="%.4f")
 
     # --- SECCIÓN DE CÁLCULOS GLOBALES (OCULTA) ---
     X = df["X"].values
@@ -91,12 +94,12 @@ if df is not None and len(df) >= 2:
     Syy = np.sum((Y - y_mean)**2)
     Sxy = np.sum((X - x_mean)*(Y - y_mean))
 
-    # 1. LSR (Simple Linear Regression)
+    # 1. SLR (Standard Linear Regression)
     model = LinearRegression()
     model.fit(X.reshape(-1, 1), Y)
-    m_lsr = float(model.coef_[0])
-    b_lsr = float(model.intercept_)
-    y_pred_lsr = m_lsr * X + b_lsr
+    m_slr = float(model.coef_[0])
+    b_slr = float(model.intercept_)
+    y_pred_slr = m_slr * X + b_slr
 
     # 2. GOR Convencional (Das et al.)
     if Sxy != 0:
@@ -123,18 +126,18 @@ if df is not None and len(df) >= 2:
 
     # Construir DataFrame de Resultados
     df_results = df.copy()
-    df_results["Y_hat (LSR)"] = y_pred_lsr
-    df_results["Residuo (LSR)"] = Y - y_pred_lsr
+    df_results["Y_est (SLR)"] = y_pred_slr
+    df_results["Residuo (SLR)"] = Y - y_pred_slr
     
-    df_results["Y_hat (GOR Conv)"] = y_pred_gor
+    df_results["Y_est (GOR Conv)"] = y_pred_gor
     df_results["Residuo (GOR Conv)"] = Y - y_pred_gor
     df_results["X_t (GOR)"] = X_t
     df_results["Y_t (GOR)"] = Y_t
     
-    df_results["Y_hat (GOR Prop)"] = y_pred_prop
+    df_results["Y_est (GOR Prop)"] = y_pred_prop
     df_results["Residuo (GOR Prop)"] = Y - y_pred_prop
 
-    # Función para calcular Error Estándar y R2
+    # Función para calcular Error Estándar, R2 y RMSE
     def calc_metrics(y_pred, m):
         sse = np.sum((Y - y_pred)**2)
         mse = sse / (n - 2) if n > 2 else 0
@@ -143,19 +146,20 @@ if df is not None and len(df) >= 2:
         se_m = sigma / np.sqrt(Sxx) if Sxx != 0 else 0
         se_b = sigma * np.sqrt(1/n + (x_mean**2)/Sxx) if Sxx != 0 else 0
         r2 = 1 - (sse / Syy) if Syy != 0 else 0
-        return se_m, se_b, r2
+        rmse = np.sqrt(np.mean((Y - y_pred)**2))
+        return se_m, se_b, r2, rmse
 
-    se_m_lsr, se_b_lsr, r2_lsr = calc_metrics(y_pred_lsr, m_lsr)
-    se_m_gor, se_b_gor, r2_gor = calc_metrics(y_pred_gor, m_gor)
-    se_m_prop, se_b_prop, r2_prop = calc_metrics(y_pred_prop, m_prop)
+    se_m_slr, se_b_slr, r2_slr, rmse_slr = calc_metrics(y_pred_slr, m_slr)
+    se_m_gor, se_b_gor, r2_gor, rmse_gor = calc_metrics(y_pred_gor, m_gor)
+    se_m_prop, se_b_prop, r2_prop, rmse_prop = calc_metrics(y_pred_prop, m_prop)
 
     # --- DASHBOARD E INTERFAZ PRINCIPAL ---
     tab1, tab2, tab3 = st.tabs(["📊 Análisis Comparativo", "📋 Datos y Proyecciones", "📚 Explicación de Fórmulas"])
 
     with tab1:
         # Métrica Principal
-        diff_pendiente = abs(m_lsr - m_prop) / abs(m_lsr) * 100 if m_lsr != 0 else 0
-        st.info(f"**Métrica Principal:** La diferencia de pendiente entre LSR y GOR Propuesto es del **{diff_pendiente:.2f}%**.")
+        diff_pendiente = abs(m_slr - m_prop) / abs(m_slr) * 100 if m_slr != 0 else 0
+        st.info(f"**Métrica Principal:** La diferencia de pendiente entre SLR y GOR Propuesto es del **{diff_pendiente:.2f}%**.")
 
         # Gráfico Dinámico con Plotly
         st.subheader("Gráfico Dinámico de Regresiones")
@@ -173,9 +177,9 @@ if df is not None and len(df) >= 2:
         x_line = np.linspace(min(X), max(X), 100)
         
         fig_plotly.add_trace(plgo.Scatter(
-            x=x_line, y=m_lsr * x_line + b_lsr, mode='lines', name='LSR (OLS)',
+            x=x_line, y=m_slr * x_line + b_slr, mode='lines', name='SLR',
             line=dict(color='blue', width=2),
-            hovertemplate='X: %{x:.2f}<br>Y (LSR): %{y:.2f}<extra></extra>'
+            hovertemplate='X: %{x:.2f}<br>Y (SLR): %{y:.2f}<extra></extra>'
         ))
         
         fig_plotly.add_trace(plgo.Scatter(
@@ -204,13 +208,14 @@ if df is not None and len(df) >= 2:
         st.subheader("Tabla de Parámetros")
         
         comp_data = {
-            "Método": ["LSR (OLS)", "GOR Convencional", "GOR Propuesto"],
-            "Ecuación": [f"Y = {m_lsr:.4f}X {b_lsr:+.4f}", f"Y = {m_gor:.4f}X {b_gor:+.4f}", f"Y = {m_prop:.4f}X {b_prop:+.4f}"],
-            "Pendiente (m)": [m_lsr, m_gor, m_prop],
-            "Intercepción (b)": [b_lsr, b_gor, b_prop],
-            "Error Estándar (m)": [se_m_lsr, se_m_gor, se_m_prop],
-            "Error Estándar (b)": [se_b_lsr, se_b_gor, se_b_prop],
-            "R²": [r2_lsr, r2_gor, r2_prop]
+            "Método": ["SLR", "GOR Convencional", "GOR Propuesto"],
+            "Ecuación": [f"Y = {m_slr:.4f}X {b_slr:+.4f}", f"Y = {m_gor:.4f}X {b_gor:+.4f}", f"Y = {m_prop:.4f}X {b_prop:+.4f}"],
+            "Pendiente (m)": [m_slr, m_gor, m_prop],
+            "Intercepción (b)": [b_slr, b_gor, b_prop],
+            "Error Estándar (m)": [se_m_slr, se_m_gor, se_m_prop],
+            "Error Estándar (b)": [se_b_slr, se_b_gor, se_b_prop],
+            "RMSE": [rmse_slr, rmse_gor, rmse_prop],
+            "R²": [r2_slr, r2_gor, r2_prop]
         }
         df_comp = pd.DataFrame(comp_data)
         st.dataframe(df_comp.style.format({
@@ -218,12 +223,13 @@ if df is not None and len(df) >= 2:
             "Intercepción (b)": "{:.4f}",
             "Error Estándar (m)": "{:.4f}",
             "Error Estándar (b)": "{:.4f}",
+            "RMSE": "{:.4f}",
             "R²": "{:.4f}"
         }), use_container_width=True)
 
     with tab2:
         st.subheader("Datos Originales y Proyecciones")
-        st.markdown("Tabla detallada con cada dato original, sus predicciones ($\\hat{Y}$) y los residuos según cada modelo.")
+        st.markdown("Tabla detallada con cada dato original, sus predicciones ($Y_{est}$) y los residuos según cada modelo.")
         st.dataframe(df_results, use_container_width=True)
 
         st.markdown("---")
@@ -254,7 +260,7 @@ if df is not None and len(df) >= 2:
                 fig_pdf, ax_pdf = plt.subplots(figsize=(8, 5))
                 ax_pdf.scatter(X, Y, color='black', label='Datos')
                 x_vals = np.linspace(min(X), max(X), 100)
-                ax_pdf.plot(x_vals, m_lsr * x_vals + b_lsr, color='blue', label='LSR')
+                ax_pdf.plot(x_vals, m_slr * x_vals + b_slr, color='blue', label='SLR')
                 ax_pdf.plot(x_vals, m_gor * x_vals + b_gor, color='orange', linestyle='--', label='GOR Conv')
                 ax_pdf.plot(x_vals, m_prop * x_vals + b_prop, color='green', linestyle=':', label='GOR Prop')
                 ax_pdf.legend()
@@ -279,13 +285,13 @@ if df is not None and len(df) >= 2:
                 os.unlink(tmp_path)
                 
                 pdf.ln(5)
-                # Métricas Principales (LSR vs Propuesto)
+                # Métricas Principales (SLR vs Propuesto)
                 pdf.set_font('Arial', 'B', 12)
                 pdf.cell(0, 10, '1. Resumen de Modelos', 0, 1)
                 pdf.set_font('Arial', '', 10)
                 
                 for i, row in df_comp.iterrows():
-                    pdf.cell(0, 6, f"{row['Método']}: {row['Ecuación']} | R2: {row['R²']:.4f}", 0, 1)
+                    pdf.cell(0, 6, f"{row['Método']}: {row['Ecuación']} | RMSE: {row['RMSE']:.4f} | R2: {row['R²']:.4f}", 0, 1)
                 
                 return bytes(pdf.output())
 
@@ -308,21 +314,24 @@ if df is not None and len(df) >= 2:
         Los cálculos para la Regresión Ortogonal Generalizada siguen el procedimiento de *Das et al. (2018)*.
         """)
         
-        with st.expander("1. LSR (Regresión Lineal Simple)"):
-            st.latex(rf"m_{{LSR}} = \frac{{S_{{xy}}}}{{S_{{xx}}}} = {m_lsr:.4f}")
-            st.latex(rf"b_{{LSR}} = \bar{{Y}} - m_{{LSR}}\bar{{X}} = {b_lsr:.4f}")
+        with st.expander("1. SLR (Regresión Lineal Estándar)"):
+            st.latex(rf"m_{{SLR}} = \frac{{S_{{xy}}}}{{S_{{xx}}}} = {m_slr:.4f}")
+            st.latex(rf"b_{{SLR}} = \bar{{Y}} - m_{{SLR}}\bar{{X}} = {b_slr:.4f}")
             
         with st.expander("2. GOR Convencional"):
-            st.markdown("- **Parámetro Eta (Lambda):**")
-            st.latex(rf"\eta = \lambda = {eta:.4f}")
+            st.markdown("- **Parámetro de Varianza de Error ($\eta$):**")
+            st.latex(rf"\eta = {eta:.4f}")
             
             st.markdown("- **Pendiente GOR ($\hat{\beta}_1$):**")
             st.latex(rf"\hat{{\beta}}_1 = \frac{{(S_{{yy}} - \eta S_{{xx}}) + \sqrt{{(S_{{yy}} - \eta S_{{xx}})^2 + 4\eta S_{{xy}}^2}}}}{{2S_{{xy}}}} = {m_gor:.4f}")
             
             st.markdown("- **Intersección GOR ($\hat{\beta}_0$):**")
             st.latex(rf"\hat{{\beta}}_0 = \bar{{Y}} - \hat{{\beta}}_1 \bar{{X}} = {b_gor:.4f}")
+
+            st.markdown("- **Ecuación GOR Convencional (Eq 2):**")
+            st.latex(r"Y_t = \hat{\beta}_1 X_{obs} + \hat{\beta}_0")
             
-            st.markdown("- **Proyecciones Ortogonales Verdaderas ($X_t, Y_t$):**")
+            st.markdown("- **Proyecciones Ortogonales Verdaderas (Eq 6 y Eq 1):**")
             st.latex(r"X_t = \frac{\hat{\beta}_1(Y_{obs} - \hat{\beta}_0) + \eta X_{obs}}{\eta + \hat{\beta}_1^2}")
             st.latex(r"Y_t = \hat{\beta}_0 + \hat{\beta}_1 X_t")
             
@@ -332,6 +341,9 @@ if df is not None and len(df) >= 2:
             
             st.markdown("- **Intersección Propuesta ($c_2$):**")
             st.latex(rf"c_2 = \bar{{Y}}_t - c_1 \bar{{X}}_{{obs}} = {b_prop:.4f}")
+
+            st.markdown("- **Ecuación GOR Propuesto (Eq 11):**")
+            st.latex(r"Y_t = c_1 X_{obs} + c_2")
 
 else:
     st.info("👈 Por favor, ingresa o sube datos con al menos 2 puntos para comenzar el análisis comparativo.")

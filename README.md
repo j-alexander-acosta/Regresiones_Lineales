@@ -42,6 +42,10 @@ Esta es una herramienta interactiva construida con Python y [Streamlit](https://
 
 Para correr este proyecto de manera local, asegúrate de tener [Python 3](https://www.python.org/downloads/) y [Git](https://git-scm.com/) instalados. Sigue estos pasos dependiendo de tu sistema operativo:
 
+> [!TIP]
+> **¿No tienes Git instalado?** 
+> No te preocupes, puedes descargar el código fuente directamente en formato ZIP haciendo clic en el botón verde **Code** (en la esquina superior derecha de esta página en GitHub) y seleccionando **Download ZIP**, o bien a través de [este enlace de descarga directa](https://github.com/j-alexander-acosta/Regresiones_Lineales/archive/refs/heads/main.zip). Una vez descargado, descomprime el archivo `.zip` en tu computadora, abre la terminal/consola directamente dentro de esa carpeta y continúa con las instrucciones a partir del **Paso 2** (creación del entorno virtual).
+
 ### 🍎 En macOS y 🐧 Linux
 
 1. **Clona el Repositorio**:

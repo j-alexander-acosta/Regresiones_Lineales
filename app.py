@@ -24,6 +24,10 @@ st.markdown("""
         border-left: 5px solid #1f77b4;
         margin-bottom: 15px;
     }
+    /* Ocultar el botón de Deploy */
+    .stDeployButton, .stAppDeployButton {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 

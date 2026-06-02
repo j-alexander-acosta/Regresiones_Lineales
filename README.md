@@ -1,4 +1,4 @@
-# 📈 Análisis de Regresión Lineal: Comparación de Métodos / Linear Regression Analysis: Method Comparison
+# 📈 Análisis de Regresión Lineal y No Lineal: Comparación de Métodos / Linear and Non-Linear Regression Analysis: Method Comparison
 
 Selecciona tu idioma / Select your language:
 *   [🇪🇸 Español](#-español)
@@ -8,9 +8,9 @@ Selecciona tu idioma / Select your language:
 
 ## 🇪🇸 Español
 
-¡Bienvenido a la aplicación de **Comparación de Métodos de Regresión Lineal**! 
+¡Bienvenido a la plataforma interactiva de **Comparación de Métodos de Regresión Lineal y No Lineal**! 
 
-Esta es una herramienta interactiva construida con Python y [Streamlit](https://streamlit.io/) que te permite automatizar el análisis, proyectar y comparar simultáneamente múltiples métodos de regresión matemática. 
+Esta es una herramienta educativa y profesional construida con Python y [Streamlit](https://streamlit.io/) que te permite automatizar, proyectar y comparar simultáneamente múltiples métodos de regresión matemática, analizando críticamente el comportamiento de los modelos frente a hojas de cálculo tradicionales.
 
 ---
 
@@ -18,31 +18,43 @@ Esta es una herramienta interactiva construida con Python y [Streamlit](https://
 
 *   📊 **Entrada Única de Datos**:
     *   **Subida de Archivos**: Sube tus datos directamente en formatos `.csv` o `.xlsx`.
-    *   **Ingreso Manual**: Usa un editor interactivo para ingresar o corregir tus puntos (X, Y) manualmente. Los tres modelos procesan esta misma base para sus cálculos simultáneamente.
-*   🧮 **Comparación Simultánea de 3 Modelos**: 
-    1.  **LSR (Mínimos Cuadrados Ordinarios):** Minimizando errores verticales.
-    2.  **GOR Convencional:** Regresión Ortogonal Generalizada utilizando el procedimiento de *Das et al. (2018)*.
-    3.  **GOR Propuesto (Insesgado):** Implementando una corrección final mediante proyecciones ortogonales.
-*   📉 **Dashboard Interactivo (Plotly)**: Gráficos dinámicos donde puedes visualizar las tres líneas de tendencia y explorar individualmente cada predicción o residuo simplemente pasando el ratón por encima de los puntos.
-*   🗂️ **Interfaz Organizada por Pestañas**:
-    *   *Análisis Comparativo:* Gráficas dinámicas y una tabla de métricas clave (Pendiente, Intercepción, Error Estándar y $R^2$).
-    *   *Datos y Proyecciones:* Tabla que detalla los residuos calculados y las proyecciones ortogonales verdaderas ($X_t, Y_t$).
-    *   *Explicación de Fórmulas:* Visualización de todas las matemáticas y fórmulas subyacentes desarrolladas en LaTeX.
+    *   **Ingreso Manual**: Usa un editor interactivo para ingresar o corregir tus puntos (X, Y) dinámicamente. Todos los modelos procesan esta misma base simultáneamente.
+*   🧮 **Comparación Simultánea de Múltiples Modelos**: 
+    1.  **LSR (Mínimos Cuadrados Ordinarios):** Minimizando errores verticales en el eje Y.
+    2.  **GOR Convencional:** Regresión Ortogonal Generalizada utilizando el procedimiento de *Das et al. (2018)*, minimizando las distancias perpendiculares ponderadas por una relación de varianzas $\eta$.
+    3.  **GOR Propuesto (Insesgado):** Implementación del modelo linealizado insesgado propuesto por *Ranjit Das et al.* que optimiza el ajuste final a partir de las proyecciones ortogonales verdaderas.
+    4.  **Regresión No Lineal:** Ajustes por linealización que incluyen modelos **Exponencial** ($Y = a + b \cdot e^{cx}$), **Logarítmico** ($Y = a + b \cdot \ln(x)$), **Potencial** ($Y = a \cdot x^b$) y **Cuadrático** ($Y = ax^2 + bx + c$).
+    5.  **Power Law Model (Modelo de Ley de Potencia):** Ajuste del tipo $Y = a \cdot X^b$ mediante transformación logarítmica dual con análisis de aplicabilidad en fenómenos de escala (como la Ley de Omori o Gutenberg-Richter en sismología).
+    6.  **Función Potencia (Educativa):** Módulo especializado que ajusta $y = a \cdot x^b$ usando $\log_{10}$ y detalla de forma didáctica la diferencia entre el **despeje matemático correcto** ($b = m$) frente al **despeje incorrecto común** ($b = 10^m$).
+    7.  **Función Exponencial (Educativa):** Módulo enfocado en modelar $y = a \cdot e^{bx}$ aplicando el logaritmo natural ($\ln$) sobre la variable dependiente.
+*   📉 **Dashboard Interactivo y Visual (Plotly)**:
+    *   Gráficos dinámicos interactivos con tooltips y zoom en el espacio original de datos.
+    *   Gráficos adicionales en espacios linealizados para observar la calidad del ajuste de las transformaciones matemáticas.
+*   🗂️ **Interfaz Organizada por 8 Pestañas**:
+    *   *1. SLR (Mínimos Cuadrados):* Concepto, fórmulas detalladas en LaTeX y cálculo de errores estándar.
+    *   *2. GOR Convencional:* Parámetro de relación de varianzas ($\eta$), proyecciones ortogonales ($X_t, Y_t$) y desviación típica residual ortogonal.
+    *   *3. GOR Propuesto:* Innovación matemática de Ranjit Das para corrección de sesgos en el ajuste.
+    *   *4. Regresión No Lineal:* Análisis de transformaciones, tabla de sumatorias, calculadora de predicciones interactiva y comparación métrica contra SLR.
+    *   *5. Power Law Model:* Leyes de potencia aplicadas a la sismología y ciencias naturales con su calculadora interactiva.
+    *   *6. Función Potencia:* Comparación gráfica en el espacio original de la curva correcta vs. la curva con error de despeje (curva explosiva).
+    *   *7. Función Exponencial:* Ecuaciones de decaimiento y crecimiento linealizadas bajo base natural.
+    *   *8. Datos y Exportación:* Tabla de residuos unificada y controles de descarga.
 *   📄 **Exportación de Reportes**:
-    *   **Reportes PDF**: Genera un informe ejecutivo que incluye una renderización estática en alta calidad de la gráfica y un resumen detallado de las métricas.
-    *   **Reportes Excel**: Descarga tus predicciones, parámetros de los tres métodos y datos proyectados en un documento estructurado `.xlsx`.
+    *   **Reportes PDF**: Genera un reporte formal ejecutivo que incluye un gráfico estático consolidado (generado con Matplotlib) y un resumen analítico con las métricas y ecuaciones de todos los modelos ajustados.
+    *   **Reportes Excel**: Descarga tus predicciones, parámetros, residuos y datos proyectados para todos los modelos en un documento estructurado `.xlsx`.
 
 ---
 
 ### 🛠️ Tecnologías y Librerías
 
 *   **Python:** Lenguaje base de desarrollo.
-*   **Streamlit:** Framework para el desarrollo ágil de la interfaz web (UI).
-*   **Plotly:** Renderizado de gráficos interactivos, tooltips dinámicos y métricas visuales.
-*   **Pandas & NumPy:** Manipulación de estructuras de datos y cálculo numérico complejo.
-*   **Scikit-Learn:** Algoritmos óptimos subyacentes para el cálculo de la Regresión Lineal Simple.
-*   **Matplotlib:** Renderizado en segundo plano para la exportación optimizada de gráficos en PDF.
-*   **fpdf:** Generación estructural de los documentos PDF de reporte.
+*   **Streamlit:** Framework para el desarrollo de la interfaz de usuario web interactiva.
+*   **Plotly:** Renderizado de gráficos web interactivos con soporte tooltip dinámico.
+*   **Pandas & NumPy:** Manipulación de estructuras de datos y cálculo numérico matricial.
+*   **Scikit-Learn:** Ajustes matemáticos de regresiones lineales base.
+*   **Matplotlib & Seaborn:** Generación de gráficos estáticos optimizados para exportación.
+*   **fpdf2:** Generación estructurada de documentos PDF de reporte.
+*   **openpyxl:** Motor de escritura de hojas de cálculo Excel.
 
 ---
 
@@ -116,12 +128,13 @@ Automáticamente se abrirá tu navegador web en la dirección local `http://loca
 Desarrollado y mantenido por **Alexander Acosta** ([@j-alexander-acosta](https://github.com/j-alexander-acosta)).
 
 ---
+---
 
 ## 🇺🇸 English
 
-Welcome to the **Linear Regression Method Comparison** application! 
+Welcome to the interactive **Linear and Non-Linear Regression Method Comparison** platform!
 
-This is an interactive tool built with Python and [Streamlit](https://streamlit.io/) that allows you to automate analysis, project, and simultaneously compare multiple mathematical regression methods. 
+This is an educational and professional tool built with Python and [Streamlit](https://streamlit.io/) that allows you to automate, project, and simultaneously compare multiple mathematical regression methods, critically analyzing model behaviors against traditional spreadsheets.
 
 ---
 
@@ -129,31 +142,43 @@ This is an interactive tool built with Python and [Streamlit](https://streamlit.
 
 *   📊 **Single Data Input**:
     *   **File Upload**: Upload your data directly in `.csv` or `.xlsx` formats.
-    *   **Manual Entry**: Use an interactive editor to enter or correct your (X, Y) points manually. All three models process this same base for their calculations simultaneously.
-*   🧮 **Simultaneous 3-Model Comparison**: 
-    1.  **LSR (Ordinary Least Squares):** Minimizing vertical errors.
-    2.  **Conventional GOR:** Generalized Orthogonal Regression using the *Das et al. (2018)* procedure.
-    3.  **Proposed GOR (Unbiased):** Implementing a final correction using orthogonal projections.
-*   📉 **Interactive Dashboard (Plotly)**: Dynamic charts where you can visualize the three trend lines and individually explore each prediction or residue simply by hovering over the points.
-*   🗂️ **Tab-Organized Interface**:
-    *   *Comparative Analysis:* Dynamic charts and a table of key metrics (Slope, Intercept, Standard Error, and $R^2$).
-    *   *Data and Projections:* Table detailing calculated residuals and true orthogonal projections ($X_t, Y_t$).
-    *   *Formula Explanation:* Visualization of all underlying mathematics and formulas developed in LaTeX.
+    *   **Manual Entry**: Use an interactive editor to dynamically input or correct your (X, Y) points. All models process this same base simultaneously.
+*   🧮 **Simultaneous Multiple Model Comparison**: 
+    1.  **LSR (Ordinary Least Squares):** Minimizing vertical errors on the Y-axis.
+    2.  **Conventional GOR:** Generalized Orthogonal Regression using the *Das et al. (2018)* procedure, minimizing perpendicular distances weighted by a variance ratio $\eta$.
+    3.  **Proposed GOR (Unbiased):** Implementation of the unbiased linearized model proposed by *Ranjit Das et al.* which optimizes the final fit based on true orthogonal projections.
+    4.  **Non-Linear Regression:** Fitted using linearization techniques, including **Exponential** ($Y = a + b \cdot e^{cx}$), **Logarithmic** ($Y = a + b \cdot \ln(x)$), **Power** ($Y = a \cdot x^b$), and **Quadratic** ($Y = ax^2 + bx + c$) models.
+    5.  **Power Law Model:** Fitted as $Y = a \cdot X^b$ via dual logarithmic transformation with analysis of scaling applicability in natural sciences and seismology (such as Omori's Law or Gutenberg-Richter Law).
+    6.  **Power Function (Educational):** Specialized module that fits $y = a \cdot x^b$ using $\log_{10}$ and teaches the difference between the **correct mathematical parameters solving** ($b = m$) vs. the **common incorrect spreadsheet solving** ($b = 10^m$).
+    7.  **Exponential Function (Educational):** Dedicated module focused on modeling $y = a \cdot e^{bx}$ applying the natural logarithm ($\ln$) on the dependent variable.
+*   📉 **Interactive Dashboard (Plotly)**:
+    *   Dynamic interactive charts with tooltips and zoom capabilities in the original data space.
+    *   Additional charts in linearized spaces to observe the fit quality of mathematical transformations.
+*   🗂️ **Tab-Organized Interface (8 Tabs)**:
+    *   *1. SLR (Least Squares):* Concept, detailed LaTeX formulas, and coefficient standard error calculations.
+    *   *2. GOR Conventional:* Variance ratio parameter ($\eta$), orthogonal projections ($X_t, Y_t$), and typical residual orthogonal deviation.
+    *   *3. GOR Proposed:* Ranjit Das's mathematical innovation for bias correction.
+    *   *4. Non-Linear Regression:* Transformation analysis, sum tables, interactive prediction calculator, and comparison metrics against SLR.
+    *   *5. Power Law Model:* Power scaling laws applied to seismology and physics with an interactive prediction calculator.
+    *   *6. Power Function:* Visual comparison in the original space of the correct curve vs. the curve with parameter solving errors (exponentially explosive curve).
+    *   *7. Exponential Function:* Decay and growth equations linearized under natural base.
+    *   *8. Data & Export:* Unified residuals table and download controls.
 *   📄 **Report Exporting**:
-    *   **PDF Reports**: Generates an executive report that includes a high-quality static rendering of the chart and a detailed summary of metrics.
-    *   **Excel Reports**: Download your predictions, parameters of the three methods, and projected data in a structured `.xlsx` document.
+    *   **PDF Reports**: Generates a formal executive report including a consolidated static chart (built using Matplotlib) and an analytical summary of metrics and equations for all fitted models.
+    *   **Excel Reports**: Download predictions, parameters, residuals, and projected data for all models in a structured `.xlsx` document.
 
 ---
 
 ### 🛠️ Technologies and Libraries
 
 *   **Python:** Core development language.
-*   **Streamlit:** Framework for rapid web interface (UI) development.
-*   **Plotly:** Rendering of interactive charts, dynamic tooltips, and visual metrics.
-*   **Pandas & NumPy:** Data structure manipulation and complex numerical calculation.
-*   **Scikit-Learn:** Underlying optimal algorithms for Simple Linear Regression calculation.
-*   **Matplotlib:** Background rendering for optimized PDF chart export.
-*   **fpdf:** Structural generation of PDF report documents.
+*   **Streamlit:** Web framework for interactive user interface development.
+*   **Plotly:** Interactive web charts with dynamic tooltip support.
+*   **Pandas & NumPy:** Data structures and matrix mathematical calculations.
+*   **Scikit-Learn:** Core simple linear regression fittings.
+*   **Matplotlib & Seaborn:** Optimized static chart generation for reporting.
+*   **fpdf2:** Structural generation of PDF report documents.
+*   **openpyxl:** Excel spreadsheet writing engine.
 
 ---
 

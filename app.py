@@ -36,7 +36,7 @@ st.markdown("Herramienta orientada a estudiantes de ingeniería y sismología pa
 
 # --- BARRA LATERAL: ENTRADA DE DATOS ---
 st.sidebar.header("1. Entrada de Datos")
-data_source = st.sidebar.radio("Selecciona el origen de los datos:", ("Ingreso Manual", "Subir Archivo (CSV/Excel)"))
+data_source = st.sidebar.radio("Selecciona el origen de los datos:", ("Ingreso Manual", "Subir Archivo (.csv, .xlsx)"))
 
 df = None
 
@@ -499,12 +499,14 @@ if df is not None and len(df) >= 2:
     # --- MÓDULOS EDUCATIVOS ---
     st.header("📖 Módulos Educativos y Fundamentos Matemáticos")
     
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "1. SLR (Mínimos Cuadrados)", 
         "2. GOR Convencional", 
         "3. GOR Propuesto", 
         "4. Regresión No Lineal", 
         "5. Power Law Model",
+        "6. Función Potencia",
+        "7. Función Exponencial",
         "📥 Datos y Exportación"
     ])
 
@@ -733,7 +735,7 @@ if df is not None and len(df) >= 2:
                     "Y estima": y_pred_nl,
                     "Residuo": Y - y_pred_nl
                 })
-                st.markdown("**Tabla de Cálculos Intermedios (Estilo Excel):**")
+                st.markdown("**Tabla de Cálculos Intermedios:**")
                 st.dataframe(df_linearized.style.format({
                     "x": "{:g}",
                     "Y": "{:.2f}",
@@ -974,7 +976,7 @@ if df is not None and len(df) >= 2:
                 "(x*)^2": x_trans_power**2,
                 "Y est Power": y_pred_power
             })
-            st.markdown("**Tabla de Cálculos Intermedios (Estilo Excel):**")
+            st.markdown("**Tabla de Cálculos Intermedios:**")
             st.dataframe(df_power_linearized.style.format({
                 "x": "{:g}",
                 "Y": "{:.2f}",
@@ -1078,6 +1080,307 @@ if df is not None and len(df) >= 2:
                 st.info(f"**Resultado:** Para $X = {x_input:.4f}$, el valor de $Y$ estimado por el modelo de Ley de Potencia es **{y_pred_calc:.4f}**.")
 
     with tab6:
+        st.subheader("Módulo 6: Función Potencia")
+        st.markdown("""
+        Este módulo está diseñado específicamente para analizar el modelo de **Función Potencia ($y = a \cdot x^b$)** recreando el comportamiento de tus hojas de cálculo. 
+        Utiliza el conjunto de datos de la barra lateral para validar el proceso de linealización logarítmica dual y observar un análisis crítico de los resultados.
+        """)
+        
+        X_mod = df["X"].values
+        Y_mod = df["Y"].values
+
+        if np.any(X_mod <= 0) or np.any(Y_mod <= 0):
+            st.error("⚠️ El modelo Potencial requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10).")
+            st.info("Sugerencia: Ajusta tus datos de la barra lateral para cumplir con esta condición de dominio.")
+        else:
+            X_log = np.log10(X_mod)
+            Y_log = np.log10(Y_mod)
+            n_mod = len(X_mod)
+
+            X_log_mean = np.mean(X_log)
+            Y_log_mean = np.mean(Y_log)
+
+            S_xx_log = np.sum((X_log - X_log_mean)**2)
+            S_xy_log = np.sum((X_log - X_log_mean) * (Y_log - Y_log_mean))
+            S_yy_log = np.sum((Y_log - Y_log_mean)**2)
+
+            m_log = S_xy_log / S_xx_log if S_xx_log != 0 else 0.0
+            c_log = Y_log_mean - m_log * X_log_mean
+
+            r2_lin = (S_xy_log**2) / (S_xx_log * S_yy_log) if (S_xx_log * S_yy_log) != 0 else 0.0
+
+            a_correct = 10**c_log
+            b_correct = m_log
+
+            a_err = 10**c_log
+            b_err = 10**m_log
+
+            df_mod_calc = pd.DataFrame({
+                "x": X_mod,
+                "y": Y_mod,
+                "Log Y": Y_log,
+                "Log X": X_log
+            })
+
+            st.markdown("#### 📊 Tabla de Cálculos Intermedios (Base log10)")
+            st.dataframe(df_mod_calc.style.format({
+                "x": "{:g}",
+                "y": "{:g}",
+                "Log Y": "{:.5f}",
+                "Log X": "{:.5f}"
+            }), use_container_width=True)
+
+            col_coef1, col_coef2 = st.columns(2)
+            with col_coef1:
+                st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+                st.markdown("**Regresión Linealizada (Log-Log):**")
+                st.latex(rf"\log_{{10}}(y) = {m_log:.4f} \cdot \log_{{10}}(x) + {c_log:.4f}")
+                st.latex(rf"R^2 = {r2_lin:.4f}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with col_coef2:
+                st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+                st.markdown("**Parámetros Ajustados:**")
+                st.markdown(f"- **Log a** (Intercepción): `{c_log:.4f}`")
+                st.markdown(f"- **Log b** (Pendiente): `{m_log:.4f}`")
+                st.markdown(f"- **a** ($10^{{Log a}}$): `{a_correct:.4f}`")
+                st.markdown(f"- **b matemático (correcto, pendiente $m$):** `{b_correct:.4f}`")
+                st.markdown(f"- **b incorrecto ($10^{{m}}$):** `{b_err:.4f}`")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                fig_lin_power = plgo.Figure()
+                fig_lin_power.add_trace(plgo.Scatter(
+                    x=X_log, y=Y_log, mode='markers', name='Datos Transformados',
+                    marker=dict(color='#1f77b4', size=10, symbol='circle'),
+                    hovertemplate='Log X: %{x:.5f}<br>Log Y: %{y:.5f}<extra></extra>'
+                ))
+                x_log_line = np.linspace(min(X_log), max(X_log), 100)
+                y_log_line = m_log * x_log_line + c_log
+                fig_lin_power.add_trace(plgo.Scatter(
+                    x=x_log_line, y=y_log_line, mode='lines', name='Línea de Tendencia',
+                    line=dict(color='#ff7f0e', width=2, dash='dash'),
+                    hovertemplate='Log X: %{x:.5f}<br>Log Y Pred: %{y:.5f}<extra></extra>'
+                ))
+                fig_lin_power.update_layout(
+                    title=f"Gráfica en Espacio Linealizado<br>y = {m_log:.4f}x + {c_log:.4f} | R² = {r2_lin:.4f}",
+                    xaxis_title="Log X",
+                    yaxis_title="Log Y",
+                    template='plotly_white',
+                    showlegend=False,
+                    height=380,
+                    margin=dict(l=40, r=40, t=60, b=40)
+                )
+                st.plotly_chart(fig_lin_power, use_container_width=True)
+
+            with col_g2:
+                fig_orig_power = plgo.Figure()
+                fig_orig_power.add_trace(plgo.Scatter(
+                    x=X_mod, y=Y_mod, mode='markers', name='Datos Observados',
+                    marker=dict(color='black', size=10, symbol='circle'),
+                    hovertemplate='X: %{x}<br>Y: %{y}<extra></extra>'
+                ))
+
+                x_orig_line = np.linspace(min(X_mod), max(X_mod), 200)
+                y_orig_correct = a_correct * (x_orig_line ** b_correct)
+                
+                fig_orig_power.add_trace(plgo.Scatter(
+                    x=x_orig_line, y=y_orig_correct, mode='lines', name='Curva Correcta (Verde)',
+                    line=dict(color='green', width=2.5),
+                    hovertemplate='X: %{x:.2f}<br>Y (Correcto): %{y:.4f}<extra></extra>'
+                ))
+
+                try:
+                    y_orig_err = a_err * (x_orig_line ** b_err)
+                    if not np.any(np.isinf(y_orig_err)) and np.max(y_orig_err) < 1000000:
+                        fig_orig_power.add_trace(plgo.Scatter(
+                            x=x_orig_line, y=y_orig_err, mode='lines', name='Curva con Despeje Erróneo (Rojo)',
+                            line=dict(color='red', width=2.5, dash='dot'),
+                            hovertemplate='X: %{x:.2f}<br>Y (Despeje Erróneo): %{y:.4f}<extra></extra>'
+                        ))
+                except Exception:
+                    pass
+
+                fig_orig_power.update_layout(
+                    title="Ajuste en Espacio Original (X vs Y)",
+                    xaxis_title="X",
+                    yaxis_title="Y",
+                    template='plotly_white',
+                    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+                    height=380,
+                    margin=dict(l=40, r=40, t=60, b=40)
+                )
+                st.plotly_chart(fig_orig_power, use_container_width=True)
+
+            st.warning("💡 **Análisis Educativo y Crítico del Modelo Potencia:**")
+            st.markdown(f"""
+            Al linealizar el modelo potencial $y = a x^b$ mediante logaritmos base 10, obtenemos:
+            $$\log_{{10}}(y) = \log_{{10}}(a) + b \log_{{10}}(x)$$
+            Comparando esto con la ecuación de una recta $Y^* = m X^* + c$, identificamos que:
+            - La **intercepción ($c$)** representa $\log_{{10}}(a)$, por lo que recuperamos $a = 10^c$: $\log_{{10}}(a) = {c_log:.4f} \Rightarrow a = 10^{{{c_log:.4f}}} = {a_correct:.4f}$.
+            - La **pendiente ($m$)** representa **directamente** el exponente $b$, por lo que $b = m$. En la regresión, la pendiente es **{m_log:.4f}**, por lo que la ecuación matemática correcta es **$y = {a_correct:.4f} x^{{{b_correct:.4f}}}$**.
+
+            **⚠️ El error común de despeje:**
+            Un error frecuente al recuperar los parámetros consiste en aplicar la transformación exponencial a la pendiente de manera incorrecta: $b_{{\text{{err}}}} = 10^{{m}} = 10^{{{m_log:.4f}}} = {b_err:.4f}$.
+            Esto resulta en la ecuación distorsionada $y = {a_err:.4f} x^{{{b_err:.4f}}}$.
+            
+            Como puedes ver en la gráfica en el **Espacio Original**, la curva resultante del despeje erróneo (en color rojo punteado) crece de manera explosiva y no se ajusta en absoluto a los datos reales para valores mayores de X, mientras que la curva matemáticamente correcta (en color verde) pasa exactamente por los puntos experimentales. ¡Este es un excelente ejemplo de por qué es importante comprender la teoría de la linealización!
+            """)
+
+            st.markdown("### 📖 Formulación Matemática")
+            st.markdown(r"""
+            Para ajustar el modelo de ley de potencia $y = a x^b$:
+            1. **Transformación:** Aplicamos logaritmo en base 10 a ambas variables:
+               $$x_i^* = \log_{10}(x_i), \quad y_i^* = \log_{10}(y_i)$$
+            2. **Regresión lineal:** Ajustamos la recta $y_i^* = m x_i^* + c$ usando Mínimos Cuadrados Ordinarios:
+               $$m = \frac{n \sum (x_i^* y_i^*) - (\sum x_i^*)(\sum y_i^*)}{n \sum (x_i^*)^2 - (\sum x_i^*)^2}$$
+               $$c = \bar{y}^* - m \bar{x}^*$$
+            3. **Despeje de parámetros:**
+               $$a = 10^c, \quad b = m \quad \text{(Despeje Matemático Correcto)}$$
+               $$a = 10^c, \quad b = 10^m \quad \text{(Despeje Incorrecto Común)}$$
+            """)
+
+    with tab7:
+        st.subheader("Módulo 7: Función Exponencial")
+        st.markdown("""
+        Este módulo está diseñado específicamente para analizar el modelo de **Función Exponencial ($y = a \cdot e^{bx}$)** recreando el comportamiento de tus hojas de cálculo. 
+        Utiliza el conjunto de datos de la barra lateral para validar el proceso de linealización semi-logarítmica y observar un análisis crítico de los resultados.
+        """)
+        
+        X_mod = df["X"].values
+        Y_mod = df["Y"].values
+
+        if np.any(Y_mod <= 0):
+            st.error("⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln).")
+            st.info("Sugerencia: Ajusta tus datos de la barra lateral para cumplir con esta condición de dominio.")
+        else:
+            Y_log = np.log(Y_mod)
+            n_mod = len(X_mod)
+
+            X_mean = np.mean(X_mod)
+            Y_log_mean = np.mean(Y_log)
+
+            S_xx = np.sum((X_mod - X_mean)**2)
+            S_xy_log = np.sum((X_mod - X_mean) * (Y_log - Y_log_mean))
+            S_yy_log = np.sum((Y_log - Y_log_mean)**2)
+
+            b_coeff = S_xy_log / S_xx if S_xx != 0 else 0.0
+            ln_a = Y_log_mean - b_coeff * X_mean
+
+            r2_lin = (S_xy_log**2) / (S_xx * S_yy_log) if (S_xx * S_yy_log) != 0 else 0.0
+            a_coeff = np.exp(ln_a)
+
+            df_mod_calc = pd.DataFrame({
+                "x": X_mod,
+                "y": Y_mod,
+                "Ln Y": Y_log
+            })
+
+            st.markdown("#### 📊 Tabla de Cálculos Intermedios (Base logaritmo natural)")
+            st.dataframe(df_mod_calc.style.format({
+                "x": "{:g}",
+                "y": "{:g}",
+                "Ln Y": "{:.8f}"
+            }), use_container_width=True)
+
+            col_coef1, col_coef2 = st.columns(2)
+            with col_coef1:
+                st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+                st.markdown("**Regresión Linealizada (Semi-Log):**")
+                st.latex(rf"\ln(y) = {b_coeff:.4f} \cdot x + {ln_a:.4f}")
+                st.latex(rf"R^2 = {r2_lin:.4f}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with col_coef2:
+                st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+                st.markdown("**Parámetros Ajustados:**")
+                st.markdown(f"- **Ln(a)** (Intercepción): `{ln_a:.4f}`")
+                st.markdown(f"- **b** (Pendiente / Exponente): `{b_coeff:.4f}`")
+                st.markdown(f"- **A** (Coeficiente $a = e^{{Ln(a)}}$): `{a_coeff:.4f}`")
+                st.markdown(f"**Ecuación final:** $y = {a_coeff:.4f} \\cdot e^{{{b_coeff:.4f} x}}$")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                fig_lin_exp = plgo.Figure()
+                fig_lin_exp.add_trace(plgo.Scatter(
+                    x=X_mod, y=Y_log, mode='markers', name='Datos Transformados',
+                    marker=dict(color='#1f77b4', size=10, symbol='circle'),
+                    hovertemplate='X: %{x}<br>ln(Y): %{y:.5f}<extra></extra>'
+                ))
+                x_line = np.linspace(min(X_mod), max(X_mod), 100)
+                y_line = b_coeff * x_line + ln_a
+                fig_lin_exp.add_trace(plgo.Scatter(
+                    x=x_line, y=y_line, mode='lines', name='Línea de Tendencia',
+                    line=dict(color='#ff7f0e', width=2),
+                    hovertemplate='X: %{x:.2f}<br>ln(Y) Pred: %{y:.5f}<extra></extra>'
+                ))
+                fig_lin_exp.update_layout(
+                    title=f"Gráfica en Espacio Linealizado<br>y = {b_coeff:.4f}x + {ln_a:.4f} | R² = {r2_lin:.4f}",
+                    xaxis_title="x",
+                    yaxis_title="Ln Y",
+                    template='plotly_white',
+                    showlegend=False,
+                    height=380,
+                    margin=dict(l=40, r=40, t=60, b=40)
+                )
+                st.plotly_chart(fig_lin_exp, use_container_width=True)
+
+            with col_g2:
+                fig_orig_exp = plgo.Figure()
+                fig_orig_exp.add_trace(plgo.Scatter(
+                    x=X_mod, y=Y_mod, mode='markers', name='Datos Observados',
+                    marker=dict(color='black', size=10, symbol='circle'),
+                    hovertemplate='X: %{x}<br>Y: %{y}<extra></extra>'
+                ))
+
+                x_orig_line = np.linspace(min(X_mod), max(X_mod), 200)
+                y_orig_fit = a_coeff * np.exp(b_coeff * x_orig_line)
+
+                fig_orig_exp.add_trace(plgo.Scatter(
+                    x=x_orig_line, y=y_orig_fit, mode='lines', name='Curva Exponencial',
+                    line=dict(color='green', width=2.5),
+                    hovertemplate='X: %{x:.2f}<br>Y estima: %{y:.4f}<extra></extra>'
+                ))
+
+                fig_orig_exp.update_layout(
+                    title="Ajuste en Espacio Original (X vs Y)",
+                    xaxis_title="X",
+                    yaxis_title="Y",
+                    template='plotly_white',
+                    showlegend=False,
+                    height=380,
+                    margin=dict(l=40, r=40, t=60, b=40)
+                )
+                st.plotly_chart(fig_orig_exp, use_container_width=True)
+
+            st.info("💡 **Análisis Educativo y Crítico del Modelo Exponencial:**")
+            st.markdown(f"""
+            Al linealizar el modelo exponencial $y = a e^{{bx}}$ usando el logaritmo natural, obtenemos:
+            $$\ln(y) = \ln(a) + b x$$
+            Comparando esto con la ecuación de una recta $Y^* = b X + A$, observamos que:
+            - La **intercepción ($A$)** en el eje vertical es $\ln(a)$, de donde recuperamos el término $a = e^A$: $\ln(a) = {ln_a:.4f} \Rightarrow a = e^{{{ln_a:.4f}}} = {a_coeff:.4f}$.
+            - La **pendiente ($b$)** representa **directamente** el exponente en el factor de escala $e^{{bx}}$, que es **{b_coeff:.4f}**.
+            
+            Este cálculo resulta en la ecuación final ajustada:
+            $$y = {a_coeff:.4f} \cdot e^{{{b_coeff:.4f} x}}$$
+            La curva verde ajustada en el espacio original representa con precisión la tendencia de los datos experimentales sin experimentar desviaciones.
+            """)
+
+            st.markdown("### 📖 Formulación Matemática")
+            st.markdown(r"""
+            Para ajustar el modelo exponencial $y = a e^{bx}$:
+            1. **Transformación:** Aplicamos logaritmo natural únicamente a la variable dependiente $y$:
+               $$y_i^* = \ln(y_i)$$
+            2. **Regresión lineal:** Ajustamos la recta $y_i^* = b x_i + \ln(a)$ usando Mínimos Cuadrados Ordinarios:
+               $$b = \frac{n \sum (x_i y_i^*) - (\sum x_i)(\sum y_i^*)}{n \sum x_i^2 - (\sum x_i)^2}$$
+               $$\ln(a) = \bar{y}^* - b \bar{x}$$
+            3. **Despeje de parámetros:**
+               $$a = e^{\ln(a)}, \quad b = \text{pendiente}$$
+            """)
+
+    with tab8:
         st.subheader("Datos Originales y Proyecciones")
         st.markdown("Tabla detallada con cada dato original, sus predicciones y los residuos según cada modelo.")
         st.dataframe(df_results, use_container_width=True)

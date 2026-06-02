@@ -171,175 +171,334 @@ if df is not None and len(df) >= 2:
     r2_prop = 1 - (sse_prop / Syy) if Syy != 0 else 0
 
     # ==================================================
-    # MÓDULO 4: Regresión No Lineal
+    # MÓDULO 4: Regresión No Lineal (Cálculos Globales para Todos los Modelos)
     # ==================================================
-    nl_valid = True
-    nl_error_msg = ""
-    y_pred_nl = None
-    nl_equation = ""
-    a_nl, b_nl, c_nl = 0, 0, 0
-    A_nl = 0
+    
+    # 4.1 Modelo Exponencial con Asíntota (Y = a + b * e^(cx))
+    exp_asymp_valid = True
+    exp_asymp_error_msg = ""
+    a_nl_exp, b_nl_exp, c_nl_exp = 0.0, 0.0, 0.0
+    A_nl_exp = 0.0
     y_minus_a = None
     y_trans = None
     sum_x = 0.0
     sum_x2 = 0.0
     sum_y_trans = 0.0
     sum_x_y_trans = 0.0
-    r2_linearized = 0.0
+    r2_linearized_exp = 0.0
+    y_pred_nl_exp = None
+    sse_nl_exp = None
+    rmse_nl_exp = None
+    r2_nl_exp = None
+    nl_equation_exp = ""
 
-    if nl_model.startswith("Exponencial"):
-        try:
-            a_nl = a_val
-            min_y = np.min(Y)
-            if a_nl >= min_y:
-                nl_valid = False
-                nl_error_msg = f"La asíntota a ({a_nl:.4f}) debe ser estrictamente menor que el valor mínimo de Y ({min_y:.4f}) para calcular ln(y - a)."
-            else:
-                y_minus_a = Y - a_nl
-                y_trans = np.log(y_minus_a)
-                
-                sum_x = np.sum(X)
-                sum_x2 = np.sum(X**2)
-                sum_y_trans = np.sum(y_trans)
-                sum_x_y_trans = np.sum(X * y_trans)
-                
-                # Regresión lineal de y_trans vs X
-                den = n * sum_x2 - sum_x**2
-                if den != 0:
-                    c_nl = (n * sum_x_y_trans - sum_x * sum_y_trans) / den
-                    A_nl = (sum_y_trans - c_nl * sum_x) / n
-                else:
-                    c_nl = 0.0
-                    A_nl = np.mean(y_trans)
-                
-                b_nl = np.exp(A_nl)
-                
-                y_pred_nl = a_nl + b_nl * np.exp(c_nl * X)
-                
-                # Calcular R2 del modelo linealizado (ln(y-a) vs X)
-                y_trans_mean = np.mean(y_trans)
-                S_y_trans_y_trans = np.sum((y_trans - y_trans_mean)**2)
-                y_trans_pred = c_nl * X + A_nl
-                sse_linearized = np.sum((y_trans - y_trans_pred)**2)
-                r2_linearized = 1.0 - (sse_linearized / S_y_trans_y_trans) if S_y_trans_y_trans != 0 else 1.0
-                
-                # Ecuación formateada
-                sign_b = "+" if b_nl >= 0 else "-"
-                abs_b = abs(b_nl)
-                nl_equation = rf"y = {a_nl:.4f} {sign_b} {abs_b:.4f}e^{{{c_nl:.4f}x}}"
-        except Exception as e:
-            nl_valid = False
-            nl_error_msg = f"Error en los cálculos del modelo Exponencial: {e}"
-
-
-
-
-    elif nl_model.startswith("Logarítmico"):
-        if np.any(X <= 0):
-            nl_valid = False
-            nl_error_msg = "El modelo Logarítmico requiere que todos los valores de X sean estrictamente mayores a cero (X > 0) para calcular ln(X)."
+    try:
+        a_nl_exp = a_val
+        min_y = np.min(Y)
+        if a_nl_exp >= min_y:
+            exp_asymp_valid = False
+            exp_asymp_error_msg = f"La asíntota a ({a_nl_exp:.4f}) debe ser estrictamente menor que el valor mínimo de Y ({min_y:.4f}) para calcular ln(y - a)."
         else:
+            y_minus_a = Y - a_nl_exp
+            y_trans = np.log(y_minus_a)
+            
+            sum_x = np.sum(X)
+            sum_x2 = np.sum(X**2)
+            sum_y_trans = np.sum(y_trans)
+            sum_x_y_trans = np.sum(X * y_trans)
+            
+            den = n * sum_x2 - sum_x**2
+            if den != 0:
+                c_nl_exp = (n * sum_x_y_trans - sum_x * sum_y_trans) / den
+                A_nl_exp = (sum_y_trans - c_nl_exp * sum_x) / n
+            else:
+                c_nl_exp = 0.0
+                A_nl_exp = np.mean(y_trans)
+            
+            b_nl_exp = np.exp(A_nl_exp)
+            y_pred_nl_exp = a_nl_exp + b_nl_exp * np.exp(c_nl_exp * X)
+            
+            y_trans_mean = np.mean(y_trans)
+            S_y_trans_y_trans = np.sum((y_trans - y_trans_mean)**2)
+            y_trans_pred = c_nl_exp * X + A_nl_exp
+            sse_linearized_exp = np.sum((y_trans - y_trans_pred)**2)
+            r2_linearized_exp = 1.0 - (sse_linearized_exp / S_y_trans_y_trans) if S_y_trans_y_trans != 0 else 1.0
+            
+            sse_nl_exp = np.sum((Y - y_pred_nl_exp)**2)
+            rmse_nl_exp = np.sqrt(sse_nl_exp / n)
+            r2_nl_exp = 1 - (sse_nl_exp / Syy) if Syy != 0 else 0
+            
+            sign_b = "+" if b_nl_exp >= 0 else "-"
+            nl_equation_exp = rf"y = {a_nl_exp:.4f} {sign_b} {abs(b_nl_exp):.4f}e^{{{c_nl_exp:.4f}x}}"
+    except Exception as e:
+        exp_asymp_valid = False
+        exp_asymp_error_msg = f"Error en los cálculos del modelo Exponencial con Asíntota: {e}"
+
+    # 4.2 Modelo Logarítmico (Y = a + b * ln(x))
+    log_valid = True
+    log_error_msg = ""
+    a_nl_log, b_nl_log = 0.0, 0.0
+    y_pred_nl_log = None
+    sse_nl_log = None
+    rmse_nl_log = None
+    r2_nl_log = None
+    nl_equation_log = ""
+
+    if np.any(X <= 0):
+        log_valid = False
+        log_error_msg = "El modelo Logarítmico requiere que todos los valores de X sean estrictamente mayores a cero (X > 0) para calcular ln(X)."
+    else:
+        try:
             ln_X = np.log(X)
             ln_X_mean = np.mean(ln_X)
             S_lnX_lnX = np.sum((ln_X - ln_X_mean)**2)
             S_lnX_Y = np.sum((ln_X - ln_X_mean) * (Y - y_mean))
-            b_nl = S_lnX_Y / S_lnX_lnX if S_lnX_lnX != 0 else 0
-            a_nl = y_mean - b_nl * ln_X_mean
-            y_pred_nl = a_nl + b_nl * np.log(X)
-            nl_equation = rf"y = {a_nl:.4f} + {b_nl:.4f}\ln(x)"
+            b_nl_log = S_lnX_Y / S_lnX_lnX if S_lnX_lnX != 0 else 0
+            a_nl_log = y_mean - b_nl_log * ln_X_mean
+            y_pred_nl_log = a_nl_log + b_nl_log * np.log(X)
+            nl_equation_log = rf"y = {a_nl_log:.4f} + {b_nl_log:.4f}\ln(x)"
+            
+            sse_nl_log = np.sum((Y - y_pred_nl_log)**2)
+            rmse_nl_log = np.sqrt(sse_nl_log / n)
+            r2_nl_log = 1 - (sse_nl_log / Syy) if Syy != 0 else 0
+        except Exception as e:
+            log_valid = False
+            log_error_msg = f"Error en los cálculos del modelo Logarítmico: {e}"
 
-    elif nl_model.startswith("Potencial"):
-        if np.any(X <= 0) or np.any(Y <= 0):
-            nl_valid = False
-            nl_error_msg = "El modelo Potencial requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero (X > 0, Y > 0) para aplicar ln(X) y ln(Y)."
-        else:
+    # 4.3 Modelo Potencial / Power Law (Y = a * x^b) usando ln
+    pot_valid = True
+    pot_error_msg = ""
+    a_nl_pot, b_nl_pot = 0.0, 0.0
+    A_nl_pot = 0.0
+    y_pred_nl_pot = None
+    sse_nl_pot = None
+    rmse_nl_pot = None
+    r2_nl_pot = None
+    nl_equation_pot = ""
+
+    if np.any(X <= 0) or np.any(Y <= 0):
+        pot_valid = False
+        pot_error_msg = "El modelo Potencial requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero (X > 0, Y > 0) para aplicar ln(X) y ln(Y)."
+    else:
+        try:
             ln_X = np.log(X)
             ln_Y = np.log(Y)
             ln_X_mean = np.mean(ln_X)
             ln_Y_mean = np.mean(ln_Y)
             S_lnX_lnX = np.sum((ln_X - ln_X_mean)**2)
             S_lnX_lnY = np.sum((ln_X - ln_X_mean) * (ln_Y - ln_Y_mean))
-            b_nl = S_lnX_lnY / S_lnX_lnX if S_lnX_lnX != 0 else 0
-            A_nl = ln_Y_mean - b_nl * ln_X_mean
-            a_nl = np.exp(A_nl)
-            y_pred_nl = a_nl * (X ** b_nl)
-            nl_equation = rf"y = {a_nl:.4f}x^{{{b_nl:.4f}}}"
+            b_nl_pot = S_lnX_lnY / S_lnX_lnX if S_lnX_lnX != 0 else 0
+            A_nl_pot = ln_Y_mean - b_nl_pot * ln_X_mean
+            a_nl_pot = np.exp(A_nl_pot)
+            y_pred_nl_pot = a_nl_pot * (X ** b_nl_pot)
+            nl_equation_pot = rf"y = {a_nl_pot:.4f}x^{{{b_nl_pot:.4f}}}"
+            
+            sse_nl_pot = np.sum((Y - y_pred_nl_pot)**2)
+            rmse_nl_pot = np.sqrt(sse_nl_pot / n)
+            r2_nl_pot = 1 - (sse_nl_pot / Syy) if Syy != 0 else 0
+        except Exception as e:
+            pot_valid = False
+            pot_error_msg = f"Error en los cálculos del modelo Potencial: {e}"
 
-    elif nl_model.startswith("Cuadrático"):
-        if n < 3:
-            nl_valid = False
-            nl_error_msg = "El modelo Cuadrático requiere al menos 3 puntos de datos para calcular un ajuste único. Por favor, agrega más puntos en la barra lateral."
-        else:
-            coefs = np.polyfit(X, Y, 2)
-            a_nl, b_nl, c_nl = coefs[0], coefs[1], coefs[2]
-            y_pred_nl = a_nl * (X**2) + b_nl * X + c_nl
-            nl_equation = rf"y = {a_nl:.4f}x^2 + {b_nl:.4f}x + {c_nl:.4f}"
+    # 4.4 Modelo Cuadrático (Y = ax^2 + bx + c)
+    quad_valid = True
+    quad_error_msg = ""
+    a_nl_quad, b_nl_quad, c_nl_quad = 0.0, 0.0, 0.0
+    y_pred_nl_quad = None
+    sse_nl_quad = None
+    rmse_nl_quad = None
+    r2_nl_quad = None
+    nl_equation_quad = ""
 
-    if nl_valid:
-        sse_nl = np.sum((Y - y_pred_nl)**2)
-        rmse_nl = np.sqrt(sse_nl / n)
-        r2_nl = 1 - (sse_nl / Syy) if Syy != 0 else 0
-    else:
-        sse_nl = None
-        rmse_nl = None
-        r2_nl = None
-
-    # ==================================================
-    # MÓDULO 5: Power Law Model (Y = a * X^b)
-    # ==================================================
-    power_valid = True
-    power_error_msg = ""
-    y_pred_power = None
-    power_equation = ""
-    a_power, b_power = 0, 0
-    A_power = 0
-    x_trans_power = None
-    y_trans_power = None
-    sum_x_trans_power = 0.0
-    sum_x2_trans_power = 0.0
-    sum_y_trans_power = 0.0
-    sum_xy_trans_power = 0.0
-    r2_linearized_power = 0.0
-
-    if np.any(X <= 0) or np.any(Y <= 0):
-        power_valid = False
-        power_error_msg = "El modelo Power Law (Y = a * X^b) requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero para poder aplicar la transformación logarítmica dual ln(X) y ln(Y)."
+    if n < 3:
+        quad_valid = False
+        quad_error_msg = "El modelo Cuadrático requiere al menos 3 puntos de datos para calcular un ajuste único. Por favor, agrega más puntos en la barra lateral."
     else:
         try:
-            x_trans_power = np.log(X)
-            y_trans_power = np.log(Y)
+            coefs = np.polyfit(X, Y, 2)
+            a_nl_quad, b_nl_quad, c_nl_quad = coefs[0], coefs[1], coefs[2]
+            y_pred_nl_quad = a_nl_quad * (X**2) + b_nl_quad * X + c_nl_quad
+            nl_equation_quad = rf"y = {a_nl_quad:.4f}x^2 + {b_nl_quad:.4f}x + {c_nl_quad:.4f}"
             
-            sum_x_trans_power = np.sum(x_trans_power)
-            sum_x2_trans_power = np.sum(x_trans_power**2)
-            sum_y_trans_power = np.sum(y_trans_power)
-            sum_xy_trans_power = np.sum(x_trans_power * y_trans_power)
-            
-            den_power = n * sum_x2_trans_power - sum_x_trans_power**2
-            if den_power != 0:
-                b_power = (n * sum_xy_trans_power - sum_x_trans_power * sum_y_trans_power) / den_power
-                A_power = (sum_y_trans_power - b_power * sum_x_trans_power) / n
-            else:
-                b_power = 0.0
-                A_power = np.mean(y_trans_power)
-                
-            a_power = np.exp(A_power)
-            
-            y_pred_power = a_power * (X ** b_power)
-            power_equation = rf"y = {a_power:.4f}x^{{{b_power:.4f}}}"
-            
-            # Calcular R2 linealizado (ln(y) vs ln(x))
-            y_trans_power_mean = np.mean(y_trans_power)
-            S_y_trans_power_y_trans_power = np.sum((y_trans_power - y_trans_power_mean)**2)
-            y_trans_power_pred = b_power * x_trans_power + A_power
-            sse_linearized_power = np.sum((y_trans_power - y_trans_power_pred)**2)
-            r2_linearized_power = 1.0 - (sse_linearized_power / S_y_trans_power_y_trans_power) if S_y_trans_power_y_trans_power != 0 else 1.0
-            
-            sse_power = np.sum((Y - y_pred_power)**2)
-            rmse_power = np.sqrt(sse_power / n)
-            r2_power = 1 - (sse_power / Syy) if Syy != 0 else 0
+            sse_nl_quad = np.sum((Y - y_pred_nl_quad)**2)
+            rmse_nl_quad = np.sqrt(sse_nl_quad / n)
+            r2_nl_quad = 1 - (sse_nl_quad / Syy) if Syy != 0 else 0
         except Exception as e:
-            power_valid = False
-            power_error_msg = f"Error en los cálculos de Power Law Model: {e}"
+            quad_valid = False
+            quad_error_msg = f"Error en los cálculos del modelo Cuadrático: {e}"
+
+    # Asignar variables del modelo no lineal seleccionado en la barra lateral (para Tab 4)
+    nl_valid = True
+    nl_error_msg = ""
+    y_pred_nl = None
+    nl_equation = ""
+    a_nl, b_nl, c_nl = 0.0, 0.0, 0.0
+    A_nl = 0.0
+    sse_nl = None
+    rmse_nl = None
+    r2_nl = None
+
+    if nl_model.startswith("Exponencial"):
+        nl_valid = exp_asymp_valid
+        nl_error_msg = exp_asymp_error_msg
+        a_nl, b_nl, c_nl = a_nl_exp, b_nl_exp, c_nl_exp
+        A_nl = A_nl_exp
+        y_pred_nl = y_pred_nl_exp
+        nl_equation = nl_equation_exp
+        sse_nl, rmse_nl, r2_nl = sse_nl_exp, rmse_nl_exp, r2_nl_exp
+        # variables específicas para la tabla de sumatorias en tab 4
+        if exp_asymp_valid:
+            y_minus_a = Y - a_nl_exp
+            y_trans = np.log(y_minus_a)
+            sum_x = np.sum(X)
+            sum_x2 = np.sum(X**2)
+            sum_y_trans = np.sum(y_trans)
+            sum_x_y_trans = np.sum(X * y_trans)
+            r2_linearized = r2_linearized_exp
+    elif nl_model.startswith("Logarítmico"):
+        nl_valid = log_valid
+        nl_error_msg = log_error_msg
+        a_nl, b_nl = a_nl_log, b_nl_log
+        y_pred_nl = y_pred_nl_log
+        nl_equation = nl_equation_log
+        sse_nl, rmse_nl, r2_nl = sse_nl_log, rmse_nl_log, r2_nl_log
+    elif nl_model.startswith("Potencial"):
+        nl_valid = pot_valid
+        nl_error_msg = pot_error_msg
+        a_nl, b_nl = a_nl_pot, b_nl_pot
+        A_nl = A_nl_pot
+        y_pred_nl = y_pred_nl_pot
+        nl_equation = nl_equation_pot
+        sse_nl, rmse_nl, r2_nl = sse_nl_pot, rmse_nl_pot, r2_nl_pot
+    elif nl_model.startswith("Cuadrático"):
+        nl_valid = quad_valid
+        nl_error_msg = quad_error_msg
+        a_nl, b_nl, c_nl = a_nl_quad, b_nl_quad, c_nl_quad
+        y_pred_nl = y_pred_nl_quad
+        nl_equation = nl_equation_quad
+        sse_nl, rmse_nl, r2_nl = sse_nl_quad, rmse_nl_quad, r2_nl_quad
+
+    # ==================================================
+    # MÓDULO 5: Power Law Model (Duplicate de Potencial para Tab 5)
+    # ==================================================
+    power_valid = pot_valid
+    power_error_msg = pot_error_msg
+    a_power, b_power = a_nl_pot, b_nl_pot
+    A_power = A_nl_pot
+    y_pred_power = y_pred_nl_pot
+    power_equation = nl_equation_pot
+    sse_power = sse_nl_pot
+    rmse_power = rmse_nl_pot
+    r2_power = r2_nl_pot
+    x_trans_power = np.log(X) if pot_valid else None
+    y_trans_power = np.log(Y) if pot_valid else None
+    sum_x_trans_power = np.sum(x_trans_power) if pot_valid else 0.0
+    sum_x2_trans_power = np.sum(x_trans_power**2) if pot_valid else 0.0
+    sum_y_trans_power = np.sum(y_trans_power) if pot_valid else 0.0
+    sum_xy_trans_power = np.sum(x_trans_power * y_trans_power) if pot_valid else 0.0
+    r2_linearized_power = 0.0
+    if pot_valid:
+        y_trans_power_mean = np.mean(y_trans_power)
+        S_y_trans_power_y_trans_power = np.sum((y_trans_power - y_trans_power_mean)**2)
+        y_trans_power_pred = b_power * x_trans_power + A_power
+        sse_linearized_power = np.sum((y_trans_power - y_trans_power_pred)**2)
+        r2_linearized_power = 1.0 - (sse_linearized_power / S_y_trans_power_y_trans_power) if S_y_trans_power_y_trans_power != 0 else 1.0
+
+    # ==================================================
+    # MÓDULO 6: Función Potencia (base 10) (Cálculos Globales)
+    # ==================================================
+    fun_pot_valid = True
+    fun_pot_error_msg = ""
+    a_correct, b_correct = 0.0, 0.0
+    a_err, b_err = 0.0, 0.0
+    m_log, c_log = 0.0, 0.0
+    r2_lin_pot10 = 0.0
+    X_log, Y_log = None, None
+    X_log_mean, Y_log_mean = 0.0, 0.0
+    S_xx_log, S_xy_log, S_yy_log = 0.0, 0.0, 0.0
+    y_pred_pot10_correct = None
+    y_pred_pot10_incorrect = None
+    sse_pot10_correct, rmse_pot10_correct, r2_pot10_correct = None, None, None
+    sse_pot10_incorrect, rmse_pot10_incorrect, r2_pot10_incorrect = None, None, None
+
+    if np.any(X <= 0) or np.any(Y <= 0):
+        fun_pot_valid = False
+        fun_pot_error_msg = "⚠️ El modelo Función Potencia requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10)."
+    else:
+        try:
+            X_log = np.log10(X)
+            Y_log = np.log10(Y)
+            X_log_mean = np.mean(X_log)
+            Y_log_mean = np.mean(Y_log)
+
+            S_xx_log = np.sum((X_log - X_log_mean)**2)
+            S_xy_log = np.sum((X_log - X_log_mean) * (Y_log - Y_log_mean))
+            S_yy_log = np.sum((Y_log - Y_log_mean)**2)
+
+            m_log = S_xy_log / S_xx_log if S_xx_log != 0 else 0.0
+            c_log = Y_log_mean - m_log * X_log_mean
+
+            r2_lin_pot10 = (S_xy_log**2) / (S_xx_log * S_yy_log) if (S_xx_log * S_yy_log) != 0 else 0.0
+
+            a_correct = 10**c_log
+            b_correct = m_log
+
+            a_err = 10**c_log
+            b_err = 10**m_log
+
+            y_pred_pot10_correct = a_correct * (X ** b_correct)
+            sse_pot10_correct = np.sum((Y - y_pred_pot10_correct)**2)
+            rmse_pot10_correct = np.sqrt(sse_pot10_correct / n)
+            r2_pot10_correct = 1 - (sse_pot10_correct / Syy) if Syy != 0 else 0
+
+            y_pred_pot10_incorrect = a_err * (X ** b_err)
+            sse_pot10_incorrect = np.sum((Y - y_pred_pot10_incorrect)**2)
+            rmse_pot10_incorrect = np.sqrt(sse_pot10_incorrect / n)
+            r2_pot10_incorrect = 1 - (sse_pot10_incorrect / Syy) if Syy != 0 else 0
+        except Exception as e:
+            fun_pot_valid = False
+            fun_pot_error_msg = f"Error en los cálculos de Función Potencia (base 10): {e}"
+
+    # ==================================================
+    # MÓDULO 7: Función Exponencial Simple (ln) (Cálculos Globales)
+    # ==================================================
+    fun_exp_valid = True
+    fun_exp_error_msg = ""
+    b_coeff, ln_a = 0.0, 0.0
+    r2_lin_exp = 0.0
+    a_coeff = 0.0
+    Y_log_exp = None
+    X_mean_exp, Y_log_mean_exp = 0.0, 0.0
+    S_xx_exp, S_xy_log_exp, S_yy_log_exp = 0.0, 0.0, 0.0
+    y_pred_exp_simple = None
+    sse_exp_simple, rmse_exp_simple, r2_exp_simple = None, None, None
+
+    if np.any(Y <= 0):
+        fun_exp_valid = False
+        fun_exp_error_msg = "⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln)."
+    else:
+        try:
+            Y_log_exp = np.log(Y)
+            X_mean_exp = np.mean(X)
+            Y_log_mean_exp = np.mean(Y_log_exp)
+
+            S_xx_exp = np.sum((X - X_mean_exp)**2)
+            S_xy_log_exp = np.sum((X - X_mean_exp) * (Y_log_exp - Y_log_mean_exp))
+            S_yy_log_exp = np.sum((Y_log_exp - Y_log_mean_exp)**2)
+
+            b_coeff = S_xy_log_exp / S_xx_exp if S_xx_exp != 0 else 0.0
+            ln_a = Y_log_mean_exp - b_coeff * X_mean_exp
+
+            r2_lin_exp = (S_xy_log_exp**2) / (S_xx_exp * S_yy_log_exp) if (S_xx_exp * S_yy_log_exp) != 0 else 0.0
+            a_coeff = np.exp(ln_a)
+
+            y_pred_exp_simple = a_coeff * np.exp(b_coeff * X)
+            sse_exp_simple = np.sum((Y - y_pred_exp_simple)**2)
+            rmse_exp_simple = np.sqrt(sse_exp_simple / n)
+            r2_exp_simple = 1 - (sse_exp_simple / Syy) if Syy != 0 else 0
+        except Exception as e:
+            fun_exp_valid = False
+            fun_exp_error_msg = f"Error en los cálculos de Función Exponencial: {e}"
 
     # Construir DataFrame de Resultados
     df_results = df.copy()
@@ -355,13 +514,31 @@ if df is not None and len(df) >= 2:
     df_results["Y_est (GOR Prop)"] = y_pred_prop
     df_results["Residuo (GOR Prop)"] = Y - y_pred_prop
 
-    if nl_valid:
-        df_results[f"Y_est ({nl_model.split(' ')[0]})"] = y_pred_nl
-        df_results[f"Residuo ({nl_model.split(' ')[0]})"] = Y - y_pred_nl
+    if exp_asymp_valid:
+        df_results["Y_est (No Lin. Exponencial Asintota)"] = y_pred_nl_exp
+        df_results["Residuo (No Lin. Exponencial Asintota)"] = Y - y_pred_nl_exp
 
-    if power_valid:
-        df_results["Y_est (Power Law)"] = y_pred_power
-        df_results["Residuo (Power Law)"] = Y - y_pred_power
+    if log_valid:
+        df_results["Y_est (No Lin. Logaritmico)"] = y_pred_nl_log
+        df_results["Residuo (No Lin. Logaritmico)"] = Y - y_pred_nl_log
+
+    if pot_valid:
+        df_results["Y_est (No Lin. Potencial / Power Law)"] = y_pred_nl_pot
+        df_results["Residuo (No Lin. Potencial / Power Law)"] = Y - y_pred_nl_pot
+
+    if quad_valid:
+        df_results["Y_est (No Lin. Cuadratico)"] = y_pred_nl_quad
+        df_results["Residuo (No Lin. Cuadratico)"] = Y - y_pred_nl_quad
+
+    if fun_pot_valid:
+        df_results["Y_est (Fun. Potencia log10 - Correcto)"] = y_pred_pot10_correct
+        df_results["Residuo (Fun. Potencia log10 - Correcto)"] = Y - y_pred_pot10_correct
+        df_results["Y_est (Fun. Potencia log10 - Incorrecto)"] = y_pred_pot10_incorrect
+        df_results["Residuo (Fun. Potencia log10 - Incorrecto)"] = Y - y_pred_pot10_incorrect
+
+    if fun_exp_valid:
+        df_results["Y_est (Fun. Exponencial Simple ln)"] = y_pred_exp_simple
+        df_results["Residuo (Fun. Exponencial Simple ln)"] = Y - y_pred_exp_simple
 
 
 
@@ -447,7 +624,6 @@ if df is not None and len(df) >= 2:
         )
         st.plotly_chart(fig_plotly, use_container_width=True)
 
-
     with col2:
         # Tabla Comparativa de Parámetros
         comp_data = {
@@ -459,23 +635,67 @@ if df is not None and len(df) >= 2:
             "RMSE": [rmse_slr, rmse_gor, rmse_prop],
             "R²": [r2_slr, r2_gor, r2_prop]
         }
-        if nl_valid:
-            comp_data["Método"].append(f"{nl_model.split(' ')[0]} (No Lin.)")
+        if exp_asymp_valid:
+            comp_data["Método"].append("No Lin. Exponencial Asintota")
             comp_data["Pendiente (m)"].append(np.nan)
             comp_data["Intercepción (c)"].append(np.nan)
             comp_data["SE(m)"].append(np.nan)
             comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_nl)
-            comp_data["R²"].append(r2_nl)
+            comp_data["RMSE"].append(rmse_nl_exp)
+            comp_data["R²"].append(r2_nl_exp)
 
-        if power_valid:
-            comp_data["Método"].append("Power Law")
+        if log_valid:
+            comp_data["Método"].append("No Lin. Logarítmico")
             comp_data["Pendiente (m)"].append(np.nan)
             comp_data["Intercepción (c)"].append(np.nan)
             comp_data["SE(m)"].append(np.nan)
             comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_power)
-            comp_data["R²"].append(r2_power)
+            comp_data["RMSE"].append(rmse_nl_log)
+            comp_data["R²"].append(r2_nl_log)
+
+        if pot_valid:
+            comp_data["Método"].append("No Lin. Potencial / Power Law")
+            comp_data["Pendiente (m)"].append(np.nan)
+            comp_data["Intercepción (c)"].append(np.nan)
+            comp_data["SE(m)"].append(np.nan)
+            comp_data["SE(c)"].append(np.nan)
+            comp_data["RMSE"].append(rmse_nl_pot)
+            comp_data["R²"].append(r2_nl_pot)
+
+        if quad_valid:
+            comp_data["Método"].append("No Lin. Cuadrático")
+            comp_data["Pendiente (m)"].append(np.nan)
+            comp_data["Intercepción (c)"].append(np.nan)
+            comp_data["SE(m)"].append(np.nan)
+            comp_data["SE(c)"].append(np.nan)
+            comp_data["RMSE"].append(rmse_nl_quad)
+            comp_data["R²"].append(r2_nl_quad)
+
+        if fun_pot_valid:
+            comp_data["Método"].append("Fun. Potencia log10 (Correcto)")
+            comp_data["Pendiente (m)"].append(np.nan)
+            comp_data["Intercepción (c)"].append(np.nan)
+            comp_data["SE(m)"].append(np.nan)
+            comp_data["SE(c)"].append(np.nan)
+            comp_data["RMSE"].append(rmse_pot10_correct)
+            comp_data["R²"].append(r2_pot10_correct)
+
+            comp_data["Método"].append("Fun. Potencia log10 (Incorrecto)")
+            comp_data["Pendiente (m)"].append(np.nan)
+            comp_data["Intercepción (c)"].append(np.nan)
+            comp_data["SE(m)"].append(np.nan)
+            comp_data["SE(c)"].append(np.nan)
+            comp_data["RMSE"].append(rmse_pot10_incorrect)
+            comp_data["R²"].append(r2_pot10_incorrect)
+
+        if fun_exp_valid:
+            comp_data["Método"].append("Fun. Exponencial Simple ln")
+            comp_data["Pendiente (m)"].append(np.nan)
+            comp_data["Intercepción (c)"].append(np.nan)
+            comp_data["SE(m)"].append(np.nan)
+            comp_data["SE(c)"].append(np.nan)
+            comp_data["RMSE"].append(rmse_exp_simple)
+            comp_data["R²"].append(r2_exp_simple)
 
 
         df_comp = pd.DataFrame(comp_data)
@@ -1089,35 +1309,14 @@ if df is not None and len(df) >= 2:
         X_mod = df["X"].values
         Y_mod = df["Y"].values
 
-        if np.any(X_mod <= 0) or np.any(Y_mod <= 0):
-            st.error("⚠️ El modelo Potencial requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10).")
+        if not fun_pot_valid:
+            st.error(fun_pot_error_msg)
             st.info("Sugerencia: Ajusta tus datos de la barra lateral para cumplir con esta condición de dominio.")
         else:
-            X_log = np.log10(X_mod)
-            Y_log = np.log10(Y_mod)
-            n_mod = len(X_mod)
-
-            X_log_mean = np.mean(X_log)
-            Y_log_mean = np.mean(Y_log)
-
-            S_xx_log = np.sum((X_log - X_log_mean)**2)
-            S_xy_log = np.sum((X_log - X_log_mean) * (Y_log - Y_log_mean))
-            S_yy_log = np.sum((Y_log - Y_log_mean)**2)
-
-            m_log = S_xy_log / S_xx_log if S_xx_log != 0 else 0.0
-            c_log = Y_log_mean - m_log * X_log_mean
-
-            r2_lin = (S_xy_log**2) / (S_xx_log * S_yy_log) if (S_xx_log * S_yy_log) != 0 else 0.0
-
-            a_correct = 10**c_log
-            b_correct = m_log
-
-            a_err = 10**c_log
-            b_err = 10**m_log
-
+            r2_lin = r2_lin_pot10
             df_mod_calc = pd.DataFrame({
-                "x": X_mod,
-                "y": Y_mod,
+                "x": X,
+                "y": Y,
                 "Log Y": Y_log,
                 "Log X": X_log
             })
@@ -1251,30 +1450,15 @@ if df is not None and len(df) >= 2:
         X_mod = df["X"].values
         Y_mod = df["Y"].values
 
-        if np.any(Y_mod <= 0):
-            st.error("⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln).")
+        if not fun_exp_valid:
+            st.error(fun_exp_error_msg)
             st.info("Sugerencia: Ajusta tus datos de la barra lateral para cumplir con esta condición de dominio.")
         else:
-            Y_log = np.log(Y_mod)
-            n_mod = len(X_mod)
-
-            X_mean = np.mean(X_mod)
-            Y_log_mean = np.mean(Y_log)
-
-            S_xx = np.sum((X_mod - X_mean)**2)
-            S_xy_log = np.sum((X_mod - X_mean) * (Y_log - Y_log_mean))
-            S_yy_log = np.sum((Y_log - Y_log_mean)**2)
-
-            b_coeff = S_xy_log / S_xx if S_xx != 0 else 0.0
-            ln_a = Y_log_mean - b_coeff * X_mean
-
-            r2_lin = (S_xy_log**2) / (S_xx * S_yy_log) if (S_xx * S_yy_log) != 0 else 0.0
-            a_coeff = np.exp(ln_a)
-
+            r2_lin = r2_lin_exp
             df_mod_calc = pd.DataFrame({
-                "x": X_mod,
-                "y": Y_mod,
-                "Ln Y": Y_log
+                "x": X,
+                "y": Y,
+                "Ln Y": Y_log_exp
             })
 
             st.markdown("#### 📊 Tabla de Cálculos Intermedios (Base logaritmo natural)")
@@ -1386,22 +1570,381 @@ if df is not None and len(df) >= 2:
         st.dataframe(df_results, use_container_width=True)
 
         st.markdown("---")
+        st.subheader("📋 Guía de Fórmulas Dinámicas en Excel")
+        st.markdown("""
+        El reporte Excel descargable contiene fórmulas dinámicas que calculan automáticamente las estimaciones y los residuos. Esto permite cambiar los valores de entrada en Excel y actualizar el análisis en tiempo real. 
+        
+        A continuación se muestran las fórmulas aplicadas en la primera fila de datos (Fila 6 en Excel, donde la columna **B** es **X** y la columna **C** es **Y**):
+        """)
+        
+        # Build guide table matching models_details
+        models_details_guide = []
+        models_details_guide.append({
+            "name": "SLR",
+            "pred": lambda r: f"= {m_slr:.6f} * B{r} + {c_slr:.6f}",
+        })
+        models_details_guide.append({
+            "name": "GOR Conv",
+            "pred": lambda r: f"= {m_gor:.6f} * B{r} + {b_gor:.6f}",
+        })
+        models_details_guide.append({
+            "name": "GOR Prop",
+            "pred": lambda r: f"= {m_prop:.6f} * B{r} + {b_prop:.6f}",
+        })
+        if exp_asymp_valid:
+            models_details_guide.append({
+                "name": "Exp Asíntota",
+                "pred": lambda r: f"= {a_val:.6f} + {b_nl_exp:.6f} * EXP({c_nl_exp:.6f} * B{r})",
+            })
+        if log_valid:
+            models_details_guide.append({
+                "name": "Logarítmico",
+                "pred": lambda r: f"= {a_nl_log:.6f} + {b_nl_log:.6f} * LN(B{r})",
+            })
+        if pot_valid:
+            models_details_guide.append({
+                "name": "Potencial / Power Law",
+                "pred": lambda r: f"= {a_nl_pot:.6f} * (B{r} ^ {b_nl_pot:.6f})",
+            })
+        if quad_valid:
+            models_details_guide.append({
+                "name": "Cuadrático",
+                "pred": lambda r: f"= {a_nl_quad:.6f} * (B{r} ^ 2) + {b_nl_quad:.6f} * B{r} + {c_nl_quad:.6f}",
+            })
+        if fun_pot_valid:
+            models_details_guide.append({
+                "name": "Fun Potencia (Correcto)",
+                "pred": lambda r: f"= {a_correct:.6f} * (B{r} ^ {b_correct:.6f})",
+            })
+            models_details_guide.append({
+                "name": "Fun Potencia (Incorrecto)",
+                "pred": lambda r: f"= {a_err:.6f} * (B{r} ^ {b_err:.6f})",
+            })
+        if fun_exp_valid:
+            models_details_guide.append({
+                "name": "Fun Exponencial",
+                "pred": lambda r: f"= {a_coeff:.6f} * EXP({b_coeff:.6f} * B{r})",
+            })
+
+        from openpyxl.utils import get_column_letter
+
+        col_letters = {}
+        c_idx = 4 # column 4 is D
+        for m in models_details_guide:
+            pred_letter = get_column_letter(c_idx)
+            c_idx += 1
+            res_letter = get_column_letter(c_idx)
+            c_idx += 1
+            col_letters[m["name"]] = (pred_letter, res_letter)
+
+        guide_data = {
+            "Modelo / Método": [],
+            "Fórmula de Estimación (Columna en Excel)": [],
+            "Fórmula de Residuo (Columna en Excel)": []
+        }
+
+        for m in models_details_guide:
+            pred_col, res_col = col_letters[m["name"]]
+            guide_data["Modelo / Método"].append(m["name"])
+            guide_data["Fórmula de Estimación (Columna en Excel)"].append(f"`{m['pred'](6)}` (Columna {pred_col})")
+            guide_data["Fórmula de Residuo (Columna en Excel)"].append(f"`= C6 - {pred_col}6` (Columna {res_col})")
+
+        df_guide = pd.DataFrame(guide_data)
+        st.table(df_guide)
+
+        st.markdown("---")
         st.subheader("Exportar Resultados")
         col_out1, col_out2 = st.columns(2)
         
         with col_out1:
             st.markdown("**Descargar Excel:**")
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_results.to_excel(writer, index=False, sheet_name='Resultados_Completos')
-                df_comp.to_excel(writer, index=False, sheet_name='Comparacion_Modelos')
-            excel_data = output.getvalue()
-            st.download_button(
-                label="📊 Descargar Reporte en Excel",
-                data=excel_data,
-                file_name="Reporte_Comparacion_Regresiones.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            
+            def generate_excel_with_formulas():
+                import openpyxl
+                from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+                from openpyxl.utils import get_column_letter
+
+                wb = openpyxl.Workbook()
+                default_sheet = wb.active
+                wb.remove(default_sheet)
+
+                # Styles
+                title_font = Font(name="Calibri", size=16, bold=True, color="1F497D")
+                subtitle_font = Font(name="Calibri", size=11, italic=True, color="595959")
+                header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+                bold_font = Font(name="Calibri", size=11, bold=True)
+                regular_font = Font(name="Calibri", size=11)
+                
+                header_fill = PatternFill(start_color="1F497D", end_color="1F497D", fill_type="solid")
+                thin_border_side = Side(border_style="thin", color="D3D3D3")
+                thin_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+                
+                align_center = Alignment(horizontal="center", vertical="center")
+                align_left = Alignment(horizontal="left", vertical="center")
+                align_right = Alignment(horizontal="right", vertical="center")
+
+                # --- SHEET 1: Resumen de Modelos ---
+                ws_summary = wb.create_sheet(title="Resumen de Modelos")
+                ws_summary.views.sheetView[0].showGridLines = True
+                
+                ws_summary.cell(row=2, column=2, value="Reporte Comparativo de Regresiones").font = title_font
+                ws_summary.cell(row=3, column=2, value="Análisis estadístico y fórmulas dinámicas para Excel").font = subtitle_font
+                
+                headers_summary = ["Método", "Ecuación Matemática", "Fórmula Excel Sugerida", "RMSE", "R²", "Estado"]
+                for col_idx, header in enumerate(headers_summary, start=2):
+                    cell = ws_summary.cell(row=5, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = align_center
+                    cell.border = thin_border
+                
+                methods_list = [
+                    {"name": "Regresión Lineal Simple (SLR)", "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_slr, "r2": r2_slr},
+                    {"name": "GOR Convencional", "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_gor, "r2": r2_gor},
+                    {"name": "GOR Propuesto", "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_prop, "r2": r2_prop},
+                    {"name": "No Lin. Exponencial Asíntota", "math": "y = a + b*e^(cx)", "formula": "= a + b * EXP(c * X)", "valid": exp_asymp_valid, "rmse": rmse_nl_exp if exp_asymp_valid else np.nan, "r2": r2_nl_exp if exp_asymp_valid else np.nan},
+                    {"name": "No Lin. Logarítmico", "math": "y = a + b*ln(x)", "formula": "= a + b * LN(X)", "valid": log_valid, "rmse": rmse_nl_log if log_valid else np.nan, "r2": r2_nl_log if log_valid else np.nan},
+                    {"name": "No Lin. Potencial / Power Law", "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": pot_valid, "rmse": rmse_nl_pot if pot_valid else np.nan, "r2": r2_nl_pot if pot_valid else np.nan},
+                    {"name": "No Lin. Cuadrático", "math": "y = a*x^2 + b*x + c", "formula": "= a * (X ^ 2) + b * X + c", "valid": quad_valid, "rmse": rmse_nl_quad if quad_valid else np.nan, "r2": r2_nl_quad if quad_valid else np.nan},
+                    {"name": "Función Potencia log10 (Correcto)", "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": fun_pot_valid, "rmse": rmse_pot10_correct if fun_pot_valid else np.nan, "r2": r2_pot10_correct if fun_pot_valid else np.nan},
+                    {"name": "Función Potencia log10 (Incorrecto)", "math": "y = a_err * x^b_err", "formula": "= a_err * (X ^ b_err)", "valid": fun_pot_valid, "rmse": rmse_pot10_incorrect if fun_pot_valid else np.nan, "r2": r2_pot10_incorrect if fun_pot_valid else np.nan},
+                    {"name": "Función Exponencial Simple ln", "math": "y = a*e^(bx)", "formula": "= a * EXP(b * X)", "valid": fun_exp_valid, "rmse": rmse_exp_simple if fun_exp_valid else np.nan, "r2": r2_exp_simple if fun_exp_valid else np.nan},
+                ]
+                
+                current_row = 6
+                for m in methods_list:
+                    ws_summary.cell(row=current_row, column=2, value=m["name"]).font = regular_font
+                    ws_summary.cell(row=current_row, column=3, value=m["math"]).font = regular_font
+                    ws_summary.cell(row=current_row, column=4, value=m["formula"]).font = regular_font
+                    
+                    if m["valid"]:
+                        ws_summary.cell(row=current_row, column=5, value=m["rmse"]).number_format = "0.0000"
+                        ws_summary.cell(row=current_row, column=6, value=m["r2"]).number_format = "0.0000"
+                        ws_summary.cell(row=current_row, column=7, value="Ajustado").font = regular_font
+                    else:
+                        ws_summary.cell(row=current_row, column=5, value="-").alignment = align_center
+                        ws_summary.cell(row=current_row, column=6, value="-").alignment = align_center
+                        ws_summary.cell(row=current_row, column=7, value="No Válido (Dominio)").font = Font(name="Calibri", size=11, color="FF0000")
+                        
+                    for c in range(2, 8):
+                        cell = ws_summary.cell(row=current_row, column=c)
+                        cell.border = thin_border
+                        if c in [5, 6]:
+                            cell.alignment = align_right
+                        elif c in [2, 3, 4]:
+                            cell.alignment = align_left
+                        else:
+                            cell.alignment = align_center
+                    current_row += 1
+                    
+                # Autosize columns
+                for col in ws_summary.columns:
+                    max_len = max(len(str(cell.value or '')) for cell in col)
+                    col_letter = get_column_letter(col[0].column)
+                    if col[0].column >= 2:
+                        ws_summary.column_dimensions[col_letter].width = max(max_len + 3, 10)
+                
+                # --- SHEET 2: Resultados Detallados ---
+                ws_details = wb.create_sheet(title="Resultados Detallados")
+                ws_details.views.sheetView[0].showGridLines = True
+                
+                ws_details.cell(row=2, column=2, value="Resultados del Ajuste y Predicciones Dinámicas").font = title_font
+                ws_details.cell(row=3, column=2, value="Las estimaciones y residuos se calculan automáticamente mediante fórmulas de Excel").font = subtitle_font
+                
+                models_details = []
+                models_details.append({
+                    "name": "SLR",
+                    "pred": lambda r: f"= {m_slr:.12f} * B{r} + {c_slr:.12f}",
+                })
+                models_details.append({
+                    "name": "GOR Conv",
+                    "pred": lambda r: f"= {m_gor:.12f} * B{r} + {b_gor:.12f}",
+                })
+                models_details.append({
+                    "name": "GOR Prop",
+                    "pred": lambda r: f"= {m_prop:.12f} * B{r} + {b_prop:.12f}",
+                })
+                if exp_asymp_valid:
+                    models_details.append({
+                        "name": "Exp Asíntota",
+                        "pred": lambda r: f"= {a_val:.12f} + {b_nl_exp:.12f} * EXP({c_nl_exp:.12f} * B{r})",
+                    })
+                if log_valid:
+                    models_details.append({
+                        "name": "Logarítmico",
+                        "pred": lambda r: f"= {a_nl_log:.12f} + {b_nl_log:.12f} * LN(B{r})",
+                    })
+                if pot_valid:
+                    models_details.append({
+                        "name": "Potencial / Power Law",
+                        "pred": lambda r: f"= {a_nl_pot:.12f} * (B{r} ^ {b_nl_pot:.12f})",
+                    })
+                if quad_valid:
+                    models_details.append({
+                        "name": "Cuadrático",
+                        "pred": lambda r: f"= {a_nl_quad:.12f} * (B{r} ^ 2) + {b_nl_quad:.12f} * B{r} + {c_nl_quad:.12f}",
+                    })
+                if fun_pot_valid:
+                    models_details.append({
+                        "name": "Fun Potencia (Correcto)",
+                        "pred": lambda r: f"= {a_correct:.12f} * (B{r} ^ {b_correct:.12f})",
+                    })
+                    models_details.append({
+                        "name": "Fun Potencia (Incorrecto)",
+                        "pred": lambda r: f"= {a_err:.12f} * (B{r} ^ {b_err:.12f})",
+                    })
+                if fun_exp_valid:
+                    models_details.append({
+                        "name": "Fun Exponencial",
+                        "pred": lambda r: f"= {a_coeff:.12f} * EXP({b_coeff:.12f} * B{r})",
+                    })
+                
+                # Write Headers
+                ws_details.cell(row=5, column=2, value="X (Obs)").font = header_font
+                ws_details.cell(row=5, column=2).fill = header_fill
+                ws_details.cell(row=5, column=2).border = thin_border
+                ws_details.cell(row=5, column=2).alignment = align_center
+                
+                ws_details.cell(row=5, column=3, value="Y (Obs)").font = header_font
+                ws_details.cell(row=5, column=3).fill = header_fill
+                ws_details.cell(row=5, column=3).border = thin_border
+                ws_details.cell(row=5, column=3).alignment = align_center
+                
+                col_idx = 4
+                for m in models_details:
+                    cell_est = ws_details.cell(row=5, column=col_idx, value=f"Y_est ({m['name']})")
+                    cell_est.font = header_font
+                    cell_est.fill = header_fill
+                    cell_est.border = thin_border
+                    cell_est.alignment = align_center
+                    col_idx += 1
+                    
+                    cell_res = ws_details.cell(row=5, column=col_idx, value=f"Residuo ({m['name']})")
+                    cell_res.font = header_font
+                    cell_res.fill = header_fill
+                    cell_res.border = thin_border
+                    cell_res.alignment = align_center
+                    col_idx += 1
+
+                # Write Data
+                start_row = 6
+                for i, (x_val, y_val) in enumerate(zip(X, Y)):
+                    r = start_row + i
+                    ws_details.cell(row=r, column=2, value=float(x_val)).number_format = "0.00"
+                    ws_details.cell(row=r, column=3, value=float(y_val)).number_format = "0.00"
+                    ws_details.cell(row=r, column=2).border = thin_border
+                    ws_details.cell(row=r, column=3).border = thin_border
+                    ws_details.cell(row=r, column=2).alignment = align_right
+                    ws_details.cell(row=r, column=3).alignment = align_right
+                    
+                    c_idx = 4
+                    for m in models_details:
+                        pred_formula = m["pred"](r)
+                        pred_letter = get_column_letter(c_idx)
+                        
+                        cell_pred = ws_details.cell(row=r, column=c_idx, value=pred_formula)
+                        cell_pred.number_format = "0.0000"
+                        cell_pred.border = thin_border
+                        cell_pred.alignment = align_right
+                        c_idx += 1
+                        
+                        res_formula = f"= C{r} - {pred_letter}{r}"
+                        cell_res = ws_details.cell(row=r, column=c_idx, value=res_formula)
+                        cell_res.number_format = "0.0000"
+                        cell_res.border = thin_border
+                        cell_res.alignment = align_right
+                        c_idx += 1
+                        
+                for col in ws_details.columns:
+                    max_len = max(len(str(cell.value or '')) for cell in col)
+                    col_letter = get_column_letter(col[0].column)
+                    if col[0].column >= 2:
+                        ws_details.column_dimensions[col_letter].width = max(max_len + 3, 12)
+                        
+                # --- SHEET 3: Parámetros de Ajuste ---
+                ws_coefs = wb.create_sheet(title="Parametros de Ajuste")
+                ws_coefs.views.sheetView[0].showGridLines = True
+                
+                ws_coefs.cell(row=2, column=2, value="Coeficientes Calculados").font = title_font
+                ws_coefs.cell(row=3, column=2, value="Valores de los parámetros y métricas para cada modelo ajustado").font = subtitle_font
+                
+                headers_coefs = ["Método", "Parámetro 1", "Valor 1", "Parámetro 2", "Valor 2", "Parámetro 3", "Valor 3"]
+                for col_idx, header in enumerate(headers_coefs, start=2):
+                    cell = ws_coefs.cell(row=5, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = align_center
+                    cell.border = thin_border
+                    
+                coefs_data = []
+                coefs_data.append(["SLR", "Pendiente (m)", m_slr, "Intersección (c)", c_slr, "", ""])
+                coefs_data.append(["GOR Convencional", "Pendiente (m)", m_gor, "Intersección (c)", b_gor, "", ""])
+                coefs_data.append(["GOR Propuesto", "Pendiente (m)", m_prop, "Intersección (c)", b_prop, "", ""])
+                if exp_asymp_valid:
+                    coefs_data.append(["No Lin. Exponencial Asíntota", "Asíntota (a)", a_val, "b (escala)", b_nl_exp, "c (tasa)", c_nl_exp])
+                if log_valid:
+                    coefs_data.append(["No Lin. Logarítmico", "a (intersección)", a_nl_log, "b (escala)", b_nl_log, "", ""])
+                if pot_valid:
+                    coefs_data.append(["No Lin. Potencial / Power Law", "a (escala)", a_nl_pot, "b (exponente)", b_nl_pot, "", ""])
+                if quad_valid:
+                    coefs_data.append(["No Lin. Cuadrático", "a (x^2)", a_nl_quad, "b (x)", b_nl_quad, "c (cte)", c_nl_quad])
+                if fun_pot_valid:
+                    coefs_data.append(["Función Potencia log10 (Correcto)", "a (escala)", a_correct, "b (exponente)", b_correct, "", ""])
+                    coefs_data.append(["Función Potencia log10 (Incorrecto)", "a_err (escala)", a_err, "b_err (exponente)", b_err, "", ""])
+                if fun_exp_valid:
+                    coefs_data.append(["Función Exponencial Simple ln", "a (escala)", a_coeff, "b (exponente)", b_coeff, "", ""])
+
+                current_row = 6
+                for r_data in coefs_data:
+                    ws_coefs.cell(row=current_row, column=2, value=r_data[0]).font = bold_font
+                    
+                    ws_coefs.cell(row=current_row, column=3, value=r_data[1]).font = regular_font
+                    if isinstance(r_data[2], (int, float)):
+                        ws_coefs.cell(row=current_row, column=4, value=r_data[2]).number_format = "0.000000"
+                    else:
+                        ws_coefs.cell(row=current_row, column=4, value=r_data[2])
+                        
+                    ws_coefs.cell(row=current_row, column=5, value=r_data[3]).font = regular_font
+                    if isinstance(r_data[4], (int, float)):
+                        ws_coefs.cell(row=current_row, column=6, value=r_data[4]).number_format = "0.000000"
+                    else:
+                        ws_coefs.cell(row=current_row, column=6, value=r_data[4])
+                        
+                    ws_coefs.cell(row=current_row, column=7, value=r_data[5]).font = regular_font
+                    if isinstance(r_data[6], (int, float)):
+                        ws_coefs.cell(row=current_row, column=8, value=r_data[6]).number_format = "0.000000"
+                    else:
+                        ws_coefs.cell(row=current_row, column=8, value=r_data[6])
+                        
+                    for col_idx in range(2, 9):
+                        cell = ws_coefs.cell(row=current_row, column=col_idx)
+                        cell.border = thin_border
+                        if col_idx in [2, 3, 5, 7]:
+                            cell.alignment = align_left
+                        elif col_idx in [4, 6, 8]:
+                            cell.alignment = align_right
+                    current_row += 1
+
+                for col in ws_coefs.columns:
+                    max_len = max(len(str(cell.value or '')) for cell in col)
+                    col_letter = get_column_letter(col[0].column)
+                    if col[0].column >= 2:
+                        ws_coefs.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+                output = io.BytesIO()
+                wb.save(output)
+                return output.getvalue()
+
+            try:
+                excel_data = generate_excel_with_formulas()
+                st.download_button(
+                    label="📊 Descargar Reporte en Excel",
+                    data=excel_data,
+                    file_name="Reporte_Comparacion_Regresiones.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except Exception as e:
+                st.error(f"Error generando Excel: {e}")
             
         with col_out2:
             st.markdown("**Descargar PDF:**")
@@ -1461,15 +2004,31 @@ if df is not None and len(df) >= 2:
                 pdf.set_font('Arial', '', 10)
                 
                 for i, row in df_comp.iterrows():
-                    if "No Lin." in row['Método']:
-                        clean_eq = nl_equation.replace('\\cdot', '*').replace('\\ln', 'ln').replace('\\bar', '').replace('\\hat', '').replace('{', '').replace('}', '')
-                        eq = clean_eq
-                    elif "Power Law" in row['Método']:
-                        clean_eq = power_equation.replace('\\cdot', '*').replace('{', '').replace('}', '')
-                        eq = clean_eq
+                    method_name = row['Método']
+                    if method_name == "SLR":
+                        eq = f"y = {m_slr:.4f}x + {c_slr:.4f}"
+                    elif method_name.startswith("GOR Conv"):
+                        eq = f"y = {m_gor:.4f}x + {b_gor:.4f}"
+                    elif method_name.startswith("GOR Prop"):
+                        eq = f"y = {m_prop:.4f}x + {b_prop:.4f}"
+                    elif method_name == "No Lin. Exponencial Asintota":
+                        eq = nl_equation_exp
+                    elif method_name == "No Lin. Logarítmico":
+                        eq = nl_equation_log
+                    elif method_name == "No Lin. Potencial / Power Law":
+                        eq = nl_equation_pot
+                    elif method_name == "No Lin. Cuadrático":
+                        eq = nl_equation_quad
+                    elif method_name == "Fun. Potencia log10 (Correcto)":
+                        eq = f"y = {a_correct:.4f} * x^{{{b_correct:.4f}}}"
+                    elif method_name == "Fun. Potencia log10 (Incorrecto)":
+                        eq = f"y = {a_err:.4f} * x^{{{b_err:.4f}}}"
+                    elif method_name == "Fun. Exponencial Simple ln":
+                        eq = f"y = {a_coeff:.4f} * e^{{{b_coeff:.4f}x}}"
                     else:
-                        eq = f"y = {row['Pendiente (m)']:.4f}x + {row['Intercepción (c)']:.4f}"
-                    pdf.cell(0, 6, f"{row['Método']}: {eq} | RMSE: {row['RMSE']:.4f} | R2: {row['R²']:.4f}", 0, 1)
+                        eq = ""
+                    clean_eq = eq.replace('\\cdot', '*').replace('\\ln', 'ln').replace('\\bar', '').replace('\\hat', '').replace('{', '').replace('}', '')
+                    pdf.cell(0, 6, f"{method_name}: {clean_eq} | RMSE: {row['RMSE']:.4f} | R2: {row['R²']:.4f}", 0, 1)
                 
                 return bytes(pdf.output())
 

@@ -16,6 +16,10 @@ Esta es una herramienta educativa y profesional construida con Python y [Streaml
 
 ### 🚀 Características Principales
 
+*   🌐 **Selector de Idioma Interactivo (Bilingüe)**:
+    *   Cambio de inmediato entre **Español** e **Inglés** desde la barra lateral.
+    *   Traducción completa en tiempo real de las 8 pestañas educativas (explicaciones LaTeX, sumatorias, calculadoras y gráficos interactivos).
+    *   Reportes exportados (PDF y Excel) adaptados 100% al idioma activo.
 *   📊 **Entrada Única de Datos**:
     *   **Subida de Archivos**: Sube tus datos directamente en formatos `.csv` o `.xlsx`.
     *   **Ingreso Manual**: Usa un editor interactivo para ingresar o corregir tus puntos (X, Y) dinámicamente. Todos los modelos procesan esta misma base simultáneamente.
@@ -140,6 +144,10 @@ This is an educational and professional tool built with Python and [Streamlit](h
 
 ### 🚀 Key Features
 
+*   🌐 **Interactive Language Selector (Bilingual)**:
+    *   Switch instantly between **Spanish** and **English** using buttons in the sidebar.
+    *   Real-time translation of all 8 educational tabs (LaTeX math explanations, intermediate sums, calculators, and interactive plots).
+    *   Exported reports (PDF and Excel) fully adapted to the selected language.
 *   📊 **Single Data Input**:
     *   **File Upload**: Upload your data directly in `.csv` or `.xlsx` formats.
     *   **Manual Entry**: Use an interactive editor to dynamically input or correct your (X, Y) points. All models process this same base simultaneously.

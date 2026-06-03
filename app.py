@@ -7,9 +7,16 @@ import plotly.graph_objects as plgo
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
+from translations import TRANSLATIONS
+
+# --- IDIOMA / LANGUAGE SELECTOR ---
+if 'lang' not in st.session_state:
+    st.session_state.lang = 'es'
+
+t = TRANSLATIONS[st.session_state.lang]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="App Regresión Lineal", page_icon="📈", layout="wide")
+st.set_page_config(page_title=t["page_title"], page_icon="📈", layout="wide")
 
 # Estilos CSS
 st.markdown("""
@@ -31,17 +38,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📈 Plataforma Educativa de Regresión Lineal: Comparación de Métodos")
-st.markdown("Herramienta orientada a estudiantes de ingeniería y sismología para comprender y comparar: Regresión Lineal por Mínimos Cuadrados Ordinarios (SLR), Regresión Ortogonal Generalizada (GOR) Convencional y GOR Propuesto.")
+st.title(t["st_title"])
+st.markdown(t["st_desc"])
 
 # --- BARRA LATERAL: ENTRADA DE DATOS ---
-st.sidebar.header("1. Entrada de Datos")
-data_source = st.sidebar.radio("Selecciona el origen de los datos:", ("Ingreso Manual", "Subir Archivo (.csv, .xlsx)"))
+st.sidebar.markdown("### 🌐 Idioma / Language")
+col_lang1, col_lang2 = st.sidebar.columns(2)
+with col_lang1:
+    if st.button("Español", use_container_width=True, type="primary" if st.session_state.lang == 'es' else "secondary"):
+        st.session_state.lang = 'es'
+        st.rerun()
+with col_lang2:
+    if st.button("English", use_container_width=True, type="primary" if st.session_state.lang == 'en' else "secondary"):
+        st.session_state.lang = 'en'
+        st.rerun()
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(t["sb_header_data"])
+data_source = st.sidebar.radio(t["sb_data_source"], (t["sb_manual"], t["sb_upload"]))
 
 df = None
 
-if data_source == "Ingreso Manual":
-    st.sidebar.markdown("Edita la tabla inferior para agregar tus puntos (X, Y):")
+if data_source == t["sb_manual"]:
+    st.sidebar.markdown(t["sb_manual_desc"])
     # Tabla base con 19 muestras
     default_data = pd.DataFrame({
         "X": [4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0, 6.1, 6.2],
@@ -49,7 +69,7 @@ if data_source == "Ingreso Manual":
     })
     df = st.sidebar.data_editor(default_data, num_rows="dynamic", use_container_width=True)
 else:
-    uploaded_file = st.sidebar.file_uploader("Sube tu archivo (.csv, .xlsx)", type=["csv", "xlsx"])
+    uploaded_file = st.sidebar.file_uploader(t["sb_upload_desc"], type=["csv", "xlsx"])
     if uploaded_file is not None:
         try:
             if uploaded_file.name.endswith('.csv'):
@@ -57,35 +77,58 @@ else:
             else:
                 df_raw = pd.read_excel(uploaded_file)
             
-            st.sidebar.markdown("Selecciona las columnas para X e Y:")
-            x_col = st.sidebar.selectbox("Columna X (Variable Independiente)", df_raw.columns)
-            y_col = st.sidebar.selectbox("Columna Y (Variable Dependiente)", df_raw.columns)
+            st.sidebar.markdown(t["sb_select_cols"])
+            x_col = st.sidebar.selectbox(t["sb_col_x"], df_raw.columns)
+            y_col = st.sidebar.selectbox(t["sb_col_y"], df_raw.columns)
             
             df = df_raw[[x_col, y_col]].rename(columns={x_col: "X", y_col: "Y"}).dropna()
             
         except Exception as e:
-            st.sidebar.error(f"Error al leer el archivo: {e}")
+            st.sidebar.error(t["sb_err_file"].format(e))
 
 if df is not None and len(df) >= 2:
     st.sidebar.markdown("---")
-    st.sidebar.header("2. Parámetros Globales")
-    eta = st.sidebar.number_input("Valor de Eta (η) para GOR:", value=0.2000, step=0.1, format="%.4f")
+    st.sidebar.header(t["sb_header_params"])
+    eta = st.sidebar.number_input(t["sb_eta"], value=0.2000, step=0.1, format="%.4f")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("3. Regresión No Lineal")
+    st.sidebar.header(t["sb_header_nl"])
+    
+    nl_options = [
+        t["nl_models"]["exp"],
+        t["nl_models"]["log"],
+        t["nl_models"]["pot"],
+        t["nl_models"]["quad"]
+    ]
     nl_model = st.sidebar.selectbox(
-        "Selecciona el modelo no lineal:",
-        ("Exponencial (Y = a + b e^(cx))", "Logarítmico (Y = a + b ln(x))", "Potencial (Y = a x^b)", "Cuadrático (Y = ax^2 + bx + c)")
+        t["sb_select_nl"],
+        nl_options
     )
     
+    nl_mapping = {
+        t["nl_models"]["exp"]: "Exponential",
+        t["nl_models"]["log"]: "Logarithmic",
+        t["nl_models"]["pot"]: "Power",
+        t["nl_models"]["quad"]: "Quadratic"
+    }
+    selected_nl_key = nl_mapping[nl_model]
+    
+    nl_short_names = {
+        "Exponential": t["nl_models"]["exp"].split(' ')[0],
+        "Logarithmic": t["nl_models"]["log"].split(' ')[0],
+        "Power": t["nl_models"]["pot"].split(' ')[0],
+        "Quadratic": t["nl_models"]["quad"].split(' ')[0]
+    }
+    selected_nl_short = nl_short_names[selected_nl_key]
+    
     a_val = 0.0
-    if nl_model.startswith("Exponencial"):
+    if selected_nl_key == "Exponential":
         Y_temp = df["Y"].values
         min_y = float(np.min(Y_temp))
         default_a = 5.0 if min_y > 5.0 else float(np.round(min_y - 1.0, 2))
-        a_val = st.sidebar.number_input("Valor de la asíntota 'a':", value=default_a, step=0.1, format="%.4f")
+        a_val = st.sidebar.number_input(t["sb_asymptote"], value=default_a, step=0.1, format="%.4f")
         if a_val >= min_y:
-            st.sidebar.error("⚠️ La asíntota 'a' debe ser estrictamente menor que el valor mínimo de Y (Y > a) para calcular ln(y - a).")
+            st.sidebar.error(t["sb_asymptote_err"])
 
 
 
@@ -197,7 +240,10 @@ if df is not None and len(df) >= 2:
         min_y = np.min(Y)
         if a_nl_exp >= min_y:
             exp_asymp_valid = False
-            exp_asymp_error_msg = f"La asíntota a ({a_nl_exp:.4f}) debe ser estrictamente menor que el valor mínimo de Y ({min_y:.4f}) para calcular ln(y - a)."
+            if st.session_state.lang == 'es':
+                exp_asymp_error_msg = f"La asíntota a ({a_nl_exp:.4f}) debe ser estrictamente menor que el valor mínimo de Y ({min_y:.4f}) para calcular ln(y - a)."
+            else:
+                exp_asymp_error_msg = f"Asymptote a ({a_nl_exp:.4f}) must be strictly less than the minimum value of Y ({min_y:.4f}) to calculate ln(y - a)."
         else:
             y_minus_a = Y - a_nl_exp
             y_trans = np.log(y_minus_a)
@@ -232,7 +278,10 @@ if df is not None and len(df) >= 2:
             nl_equation_exp = rf"y = {a_nl_exp:.4f} {sign_b} {abs(b_nl_exp):.4f}e^{{{c_nl_exp:.4f}x}}"
     except Exception as e:
         exp_asymp_valid = False
-        exp_asymp_error_msg = f"Error en los cálculos del modelo Exponencial con Asíntota: {e}"
+        if st.session_state.lang == 'es':
+            exp_asymp_error_msg = f"Error en los cálculos del modelo Exponencial con Asíntota: {e}"
+        else:
+            exp_asymp_error_msg = f"Error in Exponential with Asymptote model calculations: {e}"
 
     # 4.2 Modelo Logarítmico (Y = a + b * ln(x))
     log_valid = True
@@ -246,7 +295,10 @@ if df is not None and len(df) >= 2:
 
     if np.any(X <= 0):
         log_valid = False
-        log_error_msg = "El modelo Logarítmico requiere que todos los valores de X sean estrictamente mayores a cero (X > 0) para calcular ln(X)."
+        if st.session_state.lang == 'es':
+            log_error_msg = "El modelo Logarítmico requiere que todos los valores de X sean estrictamente mayores a cero (X > 0) para calcular ln(X)."
+        else:
+            log_error_msg = "Logarithmic model requires all X values to be strictly greater than zero (X > 0) to calculate ln(X)."
     else:
         try:
             ln_X = np.log(X)
@@ -263,7 +315,10 @@ if df is not None and len(df) >= 2:
             r2_nl_log = 1 - (sse_nl_log / Syy) if Syy != 0 else 0
         except Exception as e:
             log_valid = False
-            log_error_msg = f"Error en los cálculos del modelo Logarítmico: {e}"
+            if st.session_state.lang == 'es':
+                log_error_msg = f"Error en los cálculos del modelo Logarítmico: {e}"
+            else:
+                log_error_msg = f"Error in Logarithmic model calculations: {e}"
 
     # 4.3 Modelo Potencial / Power Law (Y = a * x^b) usando ln
     pot_valid = True
@@ -278,7 +333,10 @@ if df is not None and len(df) >= 2:
 
     if np.any(X <= 0) or np.any(Y <= 0):
         pot_valid = False
-        pot_error_msg = "El modelo Potencial requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero (X > 0, Y > 0) para aplicar ln(X) y ln(Y)."
+        if st.session_state.lang == 'es':
+            pot_error_msg = "El modelo Potencial requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero (X > 0, Y > 0) para aplicar ln(X) y ln(Y)."
+        else:
+            pot_error_msg = "Power model requires all values of both X and Y to be strictly greater than zero (X > 0, Y > 0) to apply ln(X) and ln(Y)."
     else:
         try:
             ln_X = np.log(X)
@@ -298,7 +356,10 @@ if df is not None and len(df) >= 2:
             r2_nl_pot = 1 - (sse_nl_pot / Syy) if Syy != 0 else 0
         except Exception as e:
             pot_valid = False
-            pot_error_msg = f"Error en los cálculos del modelo Potencial: {e}"
+            if st.session_state.lang == 'es':
+                pot_error_msg = f"Error en los cálculos del modelo Potencial: {e}"
+            else:
+                pot_error_msg = f"Error in Power model calculations: {e}"
 
     # 4.4 Modelo Cuadrático (Y = ax^2 + bx + c)
     quad_valid = True
@@ -312,7 +373,10 @@ if df is not None and len(df) >= 2:
 
     if n < 3:
         quad_valid = False
-        quad_error_msg = "El modelo Cuadrático requiere al menos 3 puntos de datos para calcular un ajuste único. Por favor, agrega más puntos en la barra lateral."
+        if st.session_state.lang == 'es':
+            quad_error_msg = "El modelo Cuadrático requiere al menos 3 puntos de datos para calcular un ajuste único. Por favor, agrega más puntos en la barra lateral."
+        else:
+            quad_error_msg = "Quadratic model requires at least 3 data points to calculate a unique fit. Please add more points in the sidebar."
     else:
         try:
             coefs = np.polyfit(X, Y, 2)
@@ -325,7 +389,10 @@ if df is not None and len(df) >= 2:
             r2_nl_quad = 1 - (sse_nl_quad / Syy) if Syy != 0 else 0
         except Exception as e:
             quad_valid = False
-            quad_error_msg = f"Error en los cálculos del modelo Cuadrático: {e}"
+            if st.session_state.lang == 'es':
+                quad_error_msg = f"Error en los cálculos del modelo Cuadrático: {e}"
+            else:
+                quad_error_msg = f"Error in Quadratic model calculations: {e}"
 
     # Asignar variables del modelo no lineal seleccionado en la barra lateral (para Tab 4)
     nl_valid = True
@@ -338,7 +405,7 @@ if df is not None and len(df) >= 2:
     rmse_nl = None
     r2_nl = None
 
-    if nl_model.startswith("Exponencial"):
+    if selected_nl_key == "Exponential":
         nl_valid = exp_asymp_valid
         nl_error_msg = exp_asymp_error_msg
         a_nl, b_nl, c_nl = a_nl_exp, b_nl_exp, c_nl_exp
@@ -355,14 +422,14 @@ if df is not None and len(df) >= 2:
             sum_y_trans = np.sum(y_trans)
             sum_x_y_trans = np.sum(X * y_trans)
             r2_linearized = r2_linearized_exp
-    elif nl_model.startswith("Logarítmico"):
+    elif selected_nl_key == "Logarithmic":
         nl_valid = log_valid
         nl_error_msg = log_error_msg
         a_nl, b_nl = a_nl_log, b_nl_log
         y_pred_nl = y_pred_nl_log
         nl_equation = nl_equation_log
         sse_nl, rmse_nl, r2_nl = sse_nl_log, rmse_nl_log, r2_nl_log
-    elif nl_model.startswith("Potencial"):
+    elif selected_nl_key == "Power":
         nl_valid = pot_valid
         nl_error_msg = pot_error_msg
         a_nl, b_nl = a_nl_pot, b_nl_pot
@@ -370,7 +437,7 @@ if df is not None and len(df) >= 2:
         y_pred_nl = y_pred_nl_pot
         nl_equation = nl_equation_pot
         sse_nl, rmse_nl, r2_nl = sse_nl_pot, rmse_nl_pot, r2_nl_pot
-    elif nl_model.startswith("Cuadrático"):
+    elif selected_nl_key == "Quadratic":
         nl_valid = quad_valid
         nl_error_msg = quad_error_msg
         a_nl, b_nl, c_nl = a_nl_quad, b_nl_quad, c_nl_quad
@@ -423,7 +490,10 @@ if df is not None and len(df) >= 2:
 
     if np.any(X <= 0) or np.any(Y <= 0):
         fun_pot_valid = False
-        fun_pot_error_msg = "⚠️ El modelo Función Potencia requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10)."
+        if st.session_state.lang == 'es':
+            fun_pot_error_msg = "⚠️ El modelo Función Potencia requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10)."
+        else:
+            fun_pot_error_msg = "⚠️ The Power Function model requires all X and Y values to be strictly greater than zero (>0) to apply base 10 logarithm (log10)."
     else:
         try:
             X_log = np.log10(X)
@@ -457,7 +527,10 @@ if df is not None and len(df) >= 2:
             r2_pot10_incorrect = 1 - (sse_pot10_incorrect / Syy) if Syy != 0 else 0
         except Exception as e:
             fun_pot_valid = False
-            fun_pot_error_msg = f"Error en los cálculos de Función Potencia (base 10): {e}"
+            if st.session_state.lang == 'es':
+                fun_pot_error_msg = f"Error en los cálculos de Función Potencia (base 10): {e}"
+            else:
+                fun_pot_error_msg = f"Error in Power Function (base 10) calculations: {e}"
 
     # ==================================================
     # MÓDULO 7: Función Exponencial Simple (ln) (Cálculos Globales)
@@ -475,7 +548,10 @@ if df is not None and len(df) >= 2:
 
     if np.any(Y <= 0):
         fun_exp_valid = False
-        fun_exp_error_msg = "⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln)."
+        if st.session_state.lang == 'es':
+            fun_exp_error_msg = "⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln)."
+        else:
+            fun_exp_error_msg = "⚠️ The Exponential model requires all Y values to be strictly greater than zero (>0) to apply natural logarithm (ln)."
     else:
         try:
             Y_log_exp = np.log(Y)
@@ -498,7 +574,10 @@ if df is not None and len(df) >= 2:
             r2_exp_simple = 1 - (sse_exp_simple / Syy) if Syy != 0 else 0
         except Exception as e:
             fun_exp_valid = False
-            fun_exp_error_msg = f"Error en los cálculos de Función Exponencial: {e}"
+            if st.session_state.lang == 'es':
+                fun_exp_error_msg = f"Error en los cálculos de Función Exponencial: {e}"
+            else:
+                fun_exp_error_msg = f"Error in Exponential Function calculations: {e}"
 
     # Construir DataFrame de Resultados
     df_results = df.copy()
@@ -544,7 +623,7 @@ if df is not None and len(df) >= 2:
 
 
     # --- DASHBOARD COMPARATIVO CONSOLIDADO ---
-    st.header("📊 Dashboard Comparativo Consolidado")
+    st.header(t["db_title"])
     
     col1, col2 = st.columns([1.2, 1])
     
@@ -554,7 +633,7 @@ if df is not None and len(df) >= 2:
 
         # Puntos Reales (Negro)
         fig_plotly.add_trace(plgo.Scatter(
-            x=X, y=Y, mode='markers', name='Datos Observados',
+            x=X, y=Y, mode='markers', name=t["chart_obs"],
             marker=dict(color='black', size=8),
             hovertemplate='X: %{x}<br>Y: %{y}<extra></extra>'
         ))
@@ -563,41 +642,38 @@ if df is not None and len(df) >= 2:
         x_line = np.linspace(min(X), max(X), 100)
         
         fig_plotly.add_trace(plgo.Scatter(
-            x=x_line, y=m_slr * x_line + c_slr, mode='lines', name='SLR',
+            x=x_line, y=m_slr * x_line + c_slr, mode='lines', name=t["chart_slr"],
             line=dict(color='blue', width=2),
             hovertemplate='X: %{x:.2f}<br>Y (SLR): %{y:.2f}<extra></extra>'
         ))
         
         fig_plotly.add_trace(plgo.Scatter(
-            x=x_line, y=m_gor * x_line + b_gor, mode='lines', name='GOR Convencional',
+            x=x_line, y=m_gor * x_line + b_gor, mode='lines', name=t["chart_gor_conv"],
             line=dict(color='orange', width=2),
             hovertemplate='X: %{x:.2f}<br>Y (GOR): %{y:.2f}<extra></extra>'
         ))
         
         fig_plotly.add_trace(plgo.Scatter(
-            x=x_line, y=m_prop * x_line + b_prop, mode='lines', name='GOR Propuesto',
+            x=x_line, y=m_prop * x_line + b_prop, mode='lines', name=t["chart_gor_prop"],
             line=dict(color='green', width=2),
             hovertemplate='X: %{x:.2f}<br>Y (Prop): %{y:.2f}<extra></extra>'
         ))
 
         if nl_valid:
             x_line_nl = np.linspace(min(X), max(X), 200)
-            if nl_model.startswith("Exponencial"):
+            if selected_nl_key == "Exponential":
                 y_line_nl = a_nl + b_nl * np.exp(c_nl * x_line_nl)
-
-
-
-            elif nl_model.startswith("Logarítmico"):
+            elif selected_nl_key == "Logarithmic":
                 x_line_safe = np.maximum(x_line_nl, 1e-9)
                 y_line_nl = a_nl + b_nl * np.log(x_line_safe)
-            elif nl_model.startswith("Potencial"):
+            elif selected_nl_key == "Power":
                 x_line_safe = np.maximum(x_line_nl, 1e-9)
                 y_line_nl = a_nl * (x_line_safe ** b_nl)
-            elif nl_model.startswith("Cuadrático"):
+            elif selected_nl_key == "Quadratic":
                 y_line_nl = a_nl * (x_line_nl ** 2) + b_nl * x_line_nl + c_nl
             
             fig_plotly.add_trace(plgo.Scatter(
-                x=x_line_nl, y=y_line_nl, mode='lines', name=f"{nl_model.split(' ')[0]} (No Lin.)",
+                x=x_line_nl, y=y_line_nl, mode='lines', name=t["chart_nlin"].format(selected_nl_short),
                 line=dict(color='purple', width=2.5, dash='dashdot'),
                 hovertemplate='X: %{x:.2f}<br>Y (No Lin.): %{y:.2f}<extra></extra>'
             ))
@@ -608,16 +684,15 @@ if df is not None and len(df) >= 2:
             y_line_power = a_power * (x_line_power_safe ** b_power)
             
             fig_plotly.add_trace(plgo.Scatter(
-                x=x_line_power, y=y_line_power, mode='lines', name="Power Law",
+                x=x_line_power, y=y_line_power, mode='lines', name=t["chart_power"],
                 line=dict(color='coral', width=2.5, dash='dash'),
                 hovertemplate='X: %{x:.2f}<br>Y (Power Law): %{y:.2f}<extra></extra>'
             ))
 
-
         fig_plotly.update_layout(
-            title='Ajuste de los Modelos a los Datos Observados',
-            xaxis_title='Variable Independiente (X)',
-            yaxis_title='Variable Dependiente (Y)',
+            title=t["chart_title"],
+            xaxis_title=t["chart_x"],
+            yaxis_title=t["chart_y"],
             hovermode='closest',
             template='plotly_white',
             legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
@@ -627,358 +702,305 @@ if df is not None and len(df) >= 2:
     with col2:
         # Tabla Comparativa de Parámetros
         comp_data = {
-            "Método": ["SLR", "GOR Conv.", "GOR Prop."],
-            "Pendiente (m)": [m_slr, m_gor, m_prop],
-            "Intercepción (c)": [c_slr, b_gor, b_prop],
-            "SE(m)": [se_m_slr, se_m_gor, se_m_prop],
-            "SE(c)": [se_c_slr, se_b_gor, se_b_prop],
-            "RMSE": [rmse_slr, rmse_gor, rmse_prop],
-            "R²": [r2_slr, r2_gor, r2_prop]
+            t["table_col_method"]: [t["methods_names"]["SLR"], t["methods_names"]["GOR Conv"], t["methods_names"]["GOR Prop"]],
+            t["table_col_slope"]: [m_slr, m_gor, m_prop],
+            t["table_col_intercept"]: [c_slr, b_gor, b_prop],
+            t["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop],
+            t["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop],
+            t["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop],
+            t["table_col_r2"]: [r2_slr, r2_gor, r2_prop]
         }
         if exp_asymp_valid:
-            comp_data["Método"].append("No Lin. Exponencial Asintota")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_nl_exp)
-            comp_data["R²"].append(r2_nl_exp)
+            comp_data[t["table_col_method"]].append(t["methods_names"]["No Lin. Exponencial Asintota"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_nl_exp)
+            comp_data[t["table_col_r2"]].append(r2_nl_exp)
 
         if log_valid:
-            comp_data["Método"].append("No Lin. Logarítmico")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_nl_log)
-            comp_data["R²"].append(r2_nl_log)
+            comp_data[t["table_col_method"]].append(t["methods_names"]["No Lin. Logarítmico"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_nl_log)
+            comp_data[t["table_col_r2"]].append(r2_nl_log)
 
         if pot_valid:
-            comp_data["Método"].append("No Lin. Potencial / Power Law")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_nl_pot)
-            comp_data["R²"].append(r2_nl_pot)
+            comp_data[t["table_col_method"]].append(t["methods_names"]["No Lin. Potencial / Power Law"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_nl_pot)
+            comp_data[t["table_col_r2"]].append(r2_nl_pot)
 
         if quad_valid:
-            comp_data["Método"].append("No Lin. Cuadrático")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_nl_quad)
-            comp_data["R²"].append(r2_nl_quad)
+            comp_data[t["table_col_method"]].append(t["methods_names"]["No Lin. Cuadrático"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_nl_quad)
+            comp_data[t["table_col_r2"]].append(r2_nl_quad)
 
         if fun_pot_valid:
-            comp_data["Método"].append("Fun. Potencia log10 (Correcto)")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_pot10_correct)
-            comp_data["R²"].append(r2_pot10_correct)
+            comp_data[t["table_col_method"]].append(t["methods_names"]["Fun. Potencia log10 (Correcto)"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_pot10_correct)
+            comp_data[t["table_col_r2"]].append(r2_pot10_correct)
 
-            comp_data["Método"].append("Fun. Potencia log10 (Incorrecto)")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_pot10_incorrect)
-            comp_data["R²"].append(r2_pot10_incorrect)
+            comp_data[t["table_col_method"]].append(t["methods_names"]["Fun. Potencia log10 (Incorrecto)"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_pot10_incorrect)
+            comp_data[t["table_col_r2"]].append(r2_pot10_incorrect)
 
         if fun_exp_valid:
-            comp_data["Método"].append("Fun. Exponencial Simple ln")
-            comp_data["Pendiente (m)"].append(np.nan)
-            comp_data["Intercepción (c)"].append(np.nan)
-            comp_data["SE(m)"].append(np.nan)
-            comp_data["SE(c)"].append(np.nan)
-            comp_data["RMSE"].append(rmse_exp_simple)
-            comp_data["R²"].append(r2_exp_simple)
-
+            comp_data[t["table_col_method"]].append(t["methods_names"]["Fun. Exponencial Simple ln"])
+            comp_data[t["table_col_slope"]].append(np.nan)
+            comp_data[t["table_col_intercept"]].append(np.nan)
+            comp_data[t["table_col_se_m"]].append(np.nan)
+            comp_data[t["table_col_se_c"]].append(np.nan)
+            comp_data[t["table_col_rmse"]].append(rmse_exp_simple)
+            comp_data[t["table_col_r2"]].append(r2_exp_simple)
 
         df_comp = pd.DataFrame(comp_data)
-        st.markdown("**Comparativa de Métricas de los Modelos**")
+        st.markdown(t["table_title"])
         st.dataframe(df_comp.style.format({
-            "Pendiente (m)": "{:.4f}",
-            "Intercepción (c)": "{:.4f}",
-            "SE(m)": "{:.4f}",
-            "SE(c)": "{:.4f}",
-            "RMSE": "{:.4f}",
-            "R²": "{:.4f}"
+            t["table_col_slope"]: "{:.4f}",
+            t["table_col_intercept"]: "{:.4f}",
+            t["table_col_se_m"]: "{:.4f}",
+            t["table_col_se_c"]: "{:.4f}",
+            t["table_col_rmse"]: "{:.4f}",
+            t["table_col_r2"]: "{:.4f}"
         }, na_rep="-"), use_container_width=True)
         
         diff_pendiente = abs(m_slr - m_prop) / abs(m_slr) * 100 if m_slr != 0 else 0
-        st.info(f"**Insight:** La diferencia de pendiente entre SLR y GOR Propuesto es del **{diff_pendiente:.2f}%**.")
-
-
+        st.info(t["insight_text"].format(diff_pendiente))
 
     st.markdown("---")
 
     # --- MÓDULOS EDUCATIVOS ---
-    st.header("📖 Módulos Educativos y Fundamentos Matemáticos")
+    st.header(t["edu_header"])
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-        "1. SLR (Mínimos Cuadrados)", 
-        "2. GOR Convencional", 
-        "3. GOR Propuesto", 
-        "4. Regresión No Lineal", 
-        "5. Power Law Model",
-        "6. Función Potencia",
-        "7. Función Exponencial",
-        "📥 Datos y Exportación"
-    ])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(t["tab_titles"])
 
 
 
     with tab1:
-        st.subheader("Módulo 1: Regresión Lineal por Mínimos Cuadrados Ordinarios (SLR / OLS)")
+        st.subheader(t["t1_title"])
         
         # Concepto e Idea de la Diapositiva 3
         col_concept, col_example = st.columns([1.2, 1])
         with col_concept:
-            st.markdown("""
-            **Concepto de Regresión Lineal:**
-            La regresión lineal es un método utilizado para modelar la relación entre variables usando una **línea recta**.
+            st.markdown(t["t1_concept_hdr"])
+            st.markdown(t["t1_concept"])
             
-            **Ecuación del Modelo:**
-            """)
+            st.markdown(t["t1_eq_hdr"])
             st.latex(r"y = mx + c")
-            st.markdown("""
-            **Significado de los Parámetros:**
-            *   $x$: Variable independiente (independent variable)
-            *   $y$: Variable dependiente (dependent variable)
-            *   $m$: Pendiente / Tasa de cambio (slope / rate of change)
-            *   $c$: Intercepción (intercept)
-            """)
+            st.markdown(t["t1_params_hdr"])
+            st.markdown(t["t1_params"])
         with col_example:
-            st.markdown("""
-            **Idea Principal:**
-            *   Asume que los datos cambian a una **tasa constante** (constant rate).
-            *   La relación entre $x$ e $y$ es **lineal (línea recta)**.
-            
-            **Ejemplo Práctico:**
-            Si la temperatura aumenta, las ventas de helados aumentan de forma constante $\Rightarrow$ tendencia de línea recta (straight-line trend).
-            
-            *Nota Educativa:* Este método clásico asume que la variable independiente ($X$) es perfecta y **no tiene error de medición**, asignando toda la incertidumbre o error al eje dependiente ($Y$), minimizando las distancias verticales (residuos).
-            """)
+            st.markdown(t["t1_idea_hdr"])
+            st.markdown(t["t1_idea"])
 
-        st.markdown("### Fórmulas Matemáticas y Resultados")
+        st.markdown(t["math_results"])
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Pendiente ($m$):**")
+            st.markdown(t["t1_f_slope"])
             st.latex(r"m = \frac{n\sum(XY) - (\sum X)(\sum Y)}{n\sum X^2 - (\sum X)^2} \text{ o } m = \frac{S_{xy}}{S_{xx}}")
             st.latex(rf"\Rightarrow m = {m_slr:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Varianza Residual ($s_e^2$):**")
+            st.markdown(t["t1_f_var"])
             st.latex(r"s_e^2 = \frac{\sum(Y_{obs} - Y_{pred})^2}{n-2}")
             st.latex(rf"\Rightarrow s_e^2 = {s2_e_slr:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
         
         with col_f2:
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Intersección ($c$):**")
+            st.markdown(t["t1_f_intercept"])
             st.latex(r"c = \bar{Y} - m\bar{X}")
             st.latex(rf"\Rightarrow c = {c_slr:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Error Estándar de la Pendiente ($SE_m$):**")
+            st.markdown(t["t1_f_se_m"])
             st.latex(r"SE_m = \sqrt{\frac{s_e^2}{\sum(X_i - \bar{X})^2}}")
             st.latex(rf"\Rightarrow SE_m = {se_m_slr:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-        st.markdown("**Error Estándar de la Intercepción ($SE_c$):**")
+        st.markdown(t["t1_f_se_c"])
         st.latex(r"SE_c = SE_m \sqrt{\frac{\sum X_i^2}{n}}")
         st.latex(rf"\Rightarrow SE_c = {se_c_slr:.4f}")
         st.markdown("</div>", unsafe_allow_html=True)
 
 
     with tab2:
-        st.subheader("Módulo 2: Regresión Ortogonal Generalizada (GOR Convencional)")
-        st.markdown("""
-        **Enfoque Educativo:** 
-        En la naturaleza (como en sismología o ciencias físicas), **ambos instrumentos miden con error**. 
-        El GOR supera la limitación del SLR al minimiza la distancia *perpendicular* (ortogonal) a la recta, ponderada por la relación de varianzas de error de ambos ejes, denotada por $\eta$ (Eta).
-        """)
+        st.subheader(t["t2_title"])
+        st.markdown(t["t2_edu_focus"])
         
-        st.markdown("### Fórmulas Matemáticas y Resultados")
+        st.markdown(t["math_results"])
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Parámetro de Relación de Varianzas ($\eta$):**")
+            st.markdown(t["t2_f_eta"])
             st.latex(r"\eta = \frac{\sigma^2_{\varepsilon y}}{\sigma^2_{\varepsilon x}}")
             st.latex(rf"\Rightarrow \eta = {eta:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Pendiente GOR ($\hat{\beta}_1$):**")
+            st.markdown(t["t2_f_slope"])
             st.latex(r"\hat{\beta}_1 = \frac{(S_{yy} - \eta S_{xx}) + \sqrt{(S_{yy} - \eta S_{xx})^2 + 4 \eta S_{xy}^2}}{2 S_{xy}}")
             st.latex(rf"\Rightarrow \hat{{\beta}}_1 = {m_gor:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Proyecciones Ortogonales Verdaderas (puntos corregidos $X_t, Y_t$):**")
+            st.markdown(t["t2_f_projections"])
             st.latex(r"X_t = \frac{\hat{\beta}_1(Y_{obs} - \hat{\beta}_0) + \eta X_{obs}}{\eta + \hat{\beta}_1^2}")
             st.latex(r"Y_t = \hat{\beta}_0 + \hat{\beta}_1 X_t")
             st.markdown("</div>", unsafe_allow_html=True)
 
         with col_f2:
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Intersección GOR ($\hat{\beta}_0$):**")
+            st.markdown(t["t2_f_intercept"])
             st.latex(r"\hat{\beta}_0 = \bar{Y} - \hat{\beta}_1 \bar{X}")
             st.latex(rf"\Rightarrow \hat{{\beta}}_0 = {b_gor:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Varianza Residual Ortogonal ($\hat{\sigma}^2$):**")
+            st.markdown(t["t2_f_var"])
             st.latex(r"\hat{\sigma}^2 = \frac{1}{n-2} \sum_{i=1}^{n} \frac{(Y_i - \hat{\beta}_0 - \hat{\beta}_1 X_i)^2}{\hat{\beta}_1^2 + \eta}")
             st.latex(rf"\Rightarrow \hat{{\sigma}}^2 = {s2_e_gor:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Desviación Estándar Residual Ortogonal (Error Típico GOR):**")
+            st.markdown(t["t2_f_se"])
             st.latex(r"\hat{\sigma} = \sqrt{\hat{\sigma}^2}")
             st.latex(rf"\Rightarrow \hat{{\sigma}} = {sigma_gor:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
     with tab3:
-        st.subheader("Módulo 3: Regresión Ortogonal Propuesta (Ranjit Das et al.)")
-        st.markdown("""
-        **Enfoque Educativo:** 
-        Esta es la innovación del modelo propuesto por Das. Utiliza las **proyecciones ortogonales verdaderas ($Y_t$)** calculadas en el GOR convencional para ajustar una recta lineal insesgada final contra los valores observados de $X$.
-        Esto facilita enormemente su aplicación directa en sistemas operativos de monitoreo.
-        """)
+        st.subheader(t["t3_title"])
+        st.markdown(t["t3_edu_focus"])
         
-        st.markdown("### Fórmulas Matemáticas y Resultados")
+        st.markdown(t["math_results"])
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Pendiente Propuesta ($c_1$):**")
+            st.markdown(t["t3_f_slope"])
             st.latex(r"c_1 = \frac{\sum (X_{obs,i} - \bar{X}_{obs})(Y_{t,i} - \bar{Y}_t)}{\sum (X_{obs,i} - \bar{X}_{obs})^2}")
             st.latex(rf"\Rightarrow c_1 = {m_prop:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Ecuación Predictiva Final:**")
+            st.markdown(t["t3_f_eq"])
             st.latex(r"Y_{t\_propuesto} = c_1 X_{obs} + c_2")
-            st.markdown(f"**Ecuación calculada:** $Y = {m_prop:.4f}X + ({b_prop:.4f})$")
+            st.markdown(t["t3_f_eq_calc"].format(m_prop, b_prop))
             st.markdown("</div>", unsafe_allow_html=True)
 
         with col_f2:
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**Intersección Propuesta ($c_2$):**")
+            st.markdown(t["t3_f_intercept"])
             st.latex(r"c_2 = \bar{Y}_t - c_1 \bar{X}_{obs}")
             st.latex(rf"\Rightarrow c_2 = {b_prop:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-            st.markdown("**RMSE (Ajuste final contra datos reales $Y_{obs}$):**")
+            st.markdown(t["t3_f_rmse"])
             st.latex(r"RMSE = \sqrt{\frac{\sum (Y_{obs} - Y_{t\_propuesto})^2}{n}}")
             st.latex(rf"\Rightarrow RMSE = {rmse_prop:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
     with tab4:
-        st.subheader("Módulo 4: Regresión No Lineal")
+        st.subheader(t["t4_title"])
         
         # Conceptos de las Diapositivas 4 y 5
-        st.markdown("### 📖 Fundamentos de Regresión No Lineal")
+        st.markdown(t["t4_fund_hdr"])
         col_nl_concept, col_nl_diff = st.columns([1.1, 1.2])
         
         with col_nl_concept:
-            st.markdown("""
-            **¿Qué es la Regresión No Lineal?**
-            Se utiliza cuando la relación entre las variables **no es una línea recta**.
-            
-            **Modelo de Ejemplo (Exponencial):**
-            """)
+            st.markdown(t["t4_what_is"])
+            st.markdown(t["t4_exp_model"])
             st.latex(r"y = a + be^{cx}")
-            st.markdown("""
-            **Significado e Idea Principal:**
-            *   La relación cambia a **diferentes tasas** (tasa de cambio no es constante).
-            *   Los datos forman una **curva**, no una recta.
-            *   La curva puede tomar forma exponencial, logarítmica, potencial, entre otras.
-            
-            **Ejemplos de Aplicación:**
-            *   Decaimiento de terremotos (sismología).
-            *   Crecimiento de poblaciones.
-            *   Decaimiento radiactivo, etc.
-            """)
+            st.markdown(t["t4_meaning"])
+            st.markdown(t["t4_examples"])
             
         with col_nl_diff:
-            st.markdown("**Tabla Comparativa (Diferencias):**")
-            diff_df = pd.DataFrame({
-                "Característica": ["Forma (Shape)", "Tasa de Cambio (Rate of change)", "Ecuación (Equation)", "Complejidad (Complexity)", "Ejemplo (Example)"],
-                "Regresión Lineal": ["Línea recta (Straight line)", "Constante (Constant)", "y = mx + c", "Simple", "Salario vs Experiencia"],
-                "Regresión No Lineal": ["Curva (Curve)", "Cambiante (Changing)", "y = a + be^(cx), etc.", "Más compleja (More complex)", "Sistemas de decaimiento/crecimiento"]
-            })
+            st.markdown(t["t4_table_hdr"])
+            if st.session_state.lang == 'es':
+                diff_df = pd.DataFrame({
+                    "Característica": ["Forma (Shape)", "Tasa de Cambio (Rate of change)", "Ecuación (Equation)", "Complejidad (Complexity)", "Ejemplo (Example)"],
+                    "Regresión Lineal": ["Línea recta (Straight line)", "Constante (Constant)", "y = mx + c", "Simple", "Salario vs Experiencia"],
+                    "Regresión No Lineal": ["Curva (Curve)", "Cambiante (Changing)", "y = a + be^(cx), etc.", "Más compleja (More complex)", "Sistemas de decaimiento/crecimiento"]
+                })
+            else:
+                diff_df = pd.DataFrame({
+                    "Feature": ["Shape", "Rate of change", "Equation", "Complexity", "Example"],
+                    "Linear Regression": ["Straight line", "Constant", "y = mx + c", "Simple", "Salary vs Experience"],
+                    "Non-Linear Regression": ["Curve", "Changing", "y = a + be^(cx), etc.", "More complex", "Decay/growth systems"]
+                })
             st.table(diff_df)
             
         st.markdown("---")
 
         if not nl_valid:
             st.warning(nl_error_msg)
-            st.markdown("""
-            **Nota Educativa:**
-            Los modelos no lineales (como el Exponencial, Logarítmico y Potencial) se resuelven aplicando una transformación logarítmica para linealizar la relación. 
-            Dado que la función logaritmo natural $\\ln(z)$ está definida únicamente para $z > 0$, el conjunto de datos actual contiene valores no permitidos para este tipo de regresión.
-            
-            *Sugerencia:* Si deseas explorar estos modelos, modifica tus datos en la barra lateral para que todos los valores correspondientes sean estrictamente positivos, o selecciona el **Modelo Cuadrático** (que no posee restricciones de dominio).
-            """)
+            st.markdown(t["t4_warn_note"])
         else:
-            st.markdown(f"""
-            **Enfoque Educativo:**
-            El modelo **{nl_model.split(' ')[0]}** describe una relación no lineal en el espacio original de datos.
-            Para ajustarlo usando mínimos cuadrados, aplicamos una transformación a los datos (linealización), calculamos el ajuste sobre la recta transformada y luego aplicamos el operador inverso para recuperar los coeficientes originales.
-            """)
+            st.markdown(t["t4_edu_focus"].format(selected_nl_short))
             
-            st.markdown("### Fórmulas Matemáticas y Resultados")
+            st.markdown(t["t4_process_hdr"])
             col_f1, col_f2 = st.columns(2)
             
-            if nl_model.startswith("Exponencial"):
-                st.markdown("### 📊 Proceso de Linealización y Ajuste del Modelo")
-                
-                # 1. Tabla de datos
+            if selected_nl_key == "Exponential":
+                cols_lin = ["x", "Y", "y-a", "ln(y-a)", "Y est", "Residual"] if st.session_state.lang == 'en' else ["x", "Y", "y-a", "ln(y-a)", "Y estima", "Residuo"]
                 df_linearized = pd.DataFrame({
-                    "x": X,
-                    "Y": Y,
-                    "y-a": y_minus_a,
-                    "ln(y-a)": y_trans,
-                    "Y estima": y_pred_nl,
-                    "Residuo": Y - y_pred_nl
+                    cols_lin[0]: X,
+                    cols_lin[1]: Y,
+                    cols_lin[2]: y_minus_a,
+                    cols_lin[3]: y_trans,
+                    cols_lin[4]: y_pred_nl,
+                    cols_lin[5]: Y - y_pred_nl
                 })
-                st.markdown("**Tabla de Cálculos Intermedios:**")
+                st.markdown(t["t4_table_interm"])
                 st.dataframe(df_linearized.style.format({
-                    "x": "{:g}",
-                    "Y": "{:.2f}",
-                    "y-a": "{:.2f}",
-                    "ln(y-a)": "{:.6f}",
-                    "Y estima": "{:.6f}",
-                    "Residuo": "{:.6f}"
+                    cols_lin[0]: "{:g}",
+                    cols_lin[1]: "{:.2f}",
+                    cols_lin[2]: "{:.2f}",
+                    cols_lin[3]: "{:.6f}",
+                    cols_lin[4]: "{:.6f}",
+                    cols_lin[5]: "{:.6f}"
                 }), use_container_width=True)
                 
                 # 2. Sumatorias e Parámetros
                 col_math1, col_math2 = st.columns([1.1, 1])
                 
                 with col_math1:
-                    st.markdown("**Sumatorias de Mínimos Cuadrados Linealizados:**")
+                    st.markdown(t["t4_sums_hdr"])
                     st.markdown(f"""
-                    *   $n$ (número de puntos) = **{n}**
-                    *   $\sum x$ = **{sum_x:.4f}**
-                    *   $\sum x^2$ = **{sum_x2:.4f}**
-                    *   $\sum \ln(y-a)$ = **{sum_y_trans:.4f}**
-                    *   $\sum x \ln(y-a)$ = **{sum_x_y_trans:.4f}**
+                    *   {t['t4_n_points'].format(n)}
+                    *   {t['t4_sum_x'].format(sum_x)}
+                    *   {t['t4_sum_x2'].format(sum_x2)}
+                    *   {t['t4_sum_ln_ya'].format(sum_y_trans)}
+                    *   {t['t4_sum_x_ln_ya'].format(sum_x_y_trans)}
                     """)
                     
-                    st.markdown("**Fórmulas y Recuperación de Parámetros:**")
+                    st.markdown(t["t4_formulas_params"])
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
                     st.latex(r"c = \frac{n \sum (x \ln(y-a)) - (\sum x)(\sum \ln(y-a))}{n \sum x^2 - (\sum x)^2}")
                     st.latex(rf"\Rightarrow c \text{{ (pendiente)}} = {c_nl:.6f}")
@@ -1000,7 +1022,7 @@ if df is not None and len(df) >= 2:
                     
                     # Puntos linealizados
                     fig_lin.add_trace(plgo.Scatter(
-                        x=X, y=y_trans, mode='markers', name='Datos Transformados',
+                        x=X, y=y_trans, mode='markers', name=t["t4_graph_lin_dots"],
                         marker=dict(color='#1f77b4', size=10, symbol='circle'),
                         hovertemplate='x: %{x}<br>ln(y-a): %{y:.6f}<extra></extra>'
                     ))
@@ -1010,7 +1032,7 @@ if df is not None and len(df) >= 2:
                     y_line_trans = c_nl * x_line + A_nl
                     
                     fig_lin.add_trace(plgo.Scatter(
-                        x=x_line, y=y_line_trans, mode='lines', name='Ajuste Lineal',
+                        x=x_line, y=y_line_trans, mode='lines', name=t["t4_graph_lin_fit"],
                         line=dict(color='red', width=2, dash='dash'),
                         hovertemplate='x: %{x:.2f}<br>ln(y-a) pred: %{y:.6f}<extra></extra>'
                     ))
@@ -1018,9 +1040,9 @@ if df is not None and len(df) >= 2:
                     sign_A = "+" if A_nl >= 0 else "-"
                     abs_A = abs(A_nl)
                     fig_lin.update_layout(
-                        title=f"Gráfico Linealizado: ln(y-a)<br>y' = {c_nl:.4f}x {sign_A} {abs_A:.4f}  |  R² = {r2_linearized:.4f}",
-                        xaxis_title="x",
-                        yaxis_title="ln(y-a)",
+                        title=t["t4_graph_lin_title"].format(c_nl, sign_A, abs_A, r2_linearized),
+                        xaxis_title=t["t4_graph_lin_x"],
+                        yaxis_title=t["t4_graph_lin_y"],
                         template='plotly_white',
                         showlegend=False,
                         height=350,
@@ -1028,161 +1050,146 @@ if df is not None and len(df) >= 2:
                     )
                     st.plotly_chart(fig_lin, use_container_width=True)
                     
-                st.markdown("### 📈 Comparación en el Espacio Original")
-                st.markdown(f"**Ecuación Final Ajustada:** $y = {a_nl:.4f} {'+' if b_nl >= 0 else '-'} {abs(b_nl):.4f} \\cdot e^{{{c_nl:.4f} x}}$")
-
-
-
+                st.markdown(t["t4_space_orig_hdr"])
+                st.markdown(t["t4_eq_adjusted"].format(a_nl, '+' if b_nl >= 0 else '-', abs(b_nl), c_nl))
                     
-            elif nl_model.startswith("Logarítmico"):
+            elif selected_nl_key == "Logarithmic":
                 with col_f1:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Ecuación Original y Linealización:**")
+                    st.markdown(t["t4_eq_orig_lin"])
                     st.latex(r"Y = a + b \ln(X)")
-                    st.markdown("Definiendo $X' = \\ln(X)$, ajustamos la recta:")
+                    if st.session_state.lang == 'es':
+                        st.markdown("Definiendo $X' = \\ln(X)$, ajustamos la recta:")
+                    else:
+                        st.markdown("Defining $X' = \\ln(X)$, we fit the line:")
                     st.latex(r"Y = a + b X'")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Coeficientes del Modelo:**")
+                    st.markdown(t["t4_model_coefs"])
                     st.latex(rf"\Rightarrow a = {a_nl:.4f}")
                     st.latex(rf"\Rightarrow b = {b_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with col_f2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Pendiente ($b$):**")
+                    st.markdown(t["t1_f_slope"])
                     st.latex(r"b = \frac{\sum (\ln(X_i) - \bar{\ln(X)})(Y_i - \bar{Y})}{\sum (\ln(X_i) - \bar{\ln(X)})^2}")
                     st.latex(rf"\Rightarrow b = {b_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Intersección ($a$):**")
+                    st.markdown(t["t1_f_intercept"])
                     st.latex(r"a = \bar{Y} - b \bar{\ln(X)}")
                     st.latex(rf"\Rightarrow a = {a_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
-            elif nl_model.startswith("Potencial"):
+            elif selected_nl_key == "Power":
                 with col_f1:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Ecuación Original y Linealización:**")
+                    st.markdown(t["t4_eq_orig_lin"])
                     st.latex(r"Y = a \cdot X^b \implies \ln(Y) = \ln(a) + b \ln(X)")
-                    st.markdown("Definiendo $X' = \\ln(X)$, $Y' = \\ln(Y)$ y $A = \\ln(a)$, ajustamos:")
+                    if st.session_state.lang == 'es':
+                        st.markdown("Definiendo $X' = \\ln(X)$, $Y' = \\ln(Y)$ y $A = \\ln(a)$, ajustamos:")
+                    else:
+                        st.markdown("Defining $X' = \\ln(X)$, $Y' = \\ln(Y)$ and $A = \\ln(a)$, we fit:")
                     st.latex(r"Y' = A + b X'")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Recuperación de Coeficientes:**")
+                    st.markdown(t["t4_formulas_params"])
                     st.latex(rf"b = {b_nl:.4f}")
                     st.latex(r"a = e^A")
                     st.latex(rf"\Rightarrow a = e^{{{A_nl:.4f}}} = {a_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with col_f2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Pendiente Linealizada ($b$):**")
+                    st.markdown(t["t1_f_slope"])
                     st.latex(r"b = \frac{\sum (\ln(X_i) - \bar{\ln(X)})(\ln(Y_i) - \bar{\ln(Y)})}{\sum (\ln(X_i) - \bar{\ln(X)})^2}")
                     st.latex(rf"\Rightarrow b = {b_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Intersección Linealizada ($A$):**")
+                    st.markdown(t["t1_f_intercept"])
                     st.latex(r"A = \bar{\ln(Y)} - b \bar{\ln(X)}")
                     st.latex(rf"\Rightarrow A = {A_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
-            elif nl_model.startswith("Cuadrático"):
+            elif selected_nl_key == "Quadratic":
                 with col_f1:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Ecuación del Polinomio de Segundo Grado:**")
+                    st.markdown(t["t4_quad_eq"])
                     st.latex(r"Y = a X^2 + b X + c")
-                    st.markdown("A pesar de ser curvilíneo, es **lineal en sus parámetros** ($a, b, c$).")
+                    st.markdown("A pesar de ser curvilíneo, es **lineal en sus parámetros** ($a, b, c$)." if st.session_state.lang == 'es' else "Despite being curvilinear, it is **linear in its parameters** ($a, b, c$).")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Coeficientes Calculados:**")
+                    st.markdown(t["t4_coefs_calc"])
                     st.latex(rf"\Rightarrow a = {a_nl:.4f}")
                     st.latex(rf"\Rightarrow b = {b_nl:.4f}")
                     st.latex(rf"\Rightarrow c = {c_nl:.4f}")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with col_f2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                    st.markdown("**Sistema de Ecuaciones Normales:**")
+                    st.markdown(t["t4_normal_eq_sys"])
                     st.latex(r"\begin{pmatrix} \sum X_i^4 & \sum X_i^3 & \sum X_i^2 \\ \sum X_i^3 & \sum X_i^2 & \sum X_i \\ \sum X_i^2 & \sum X_i & n \end{pmatrix} \begin{pmatrix} a \\ b \\ c \end{pmatrix} = \begin{pmatrix} \sum X_i^2 Y_i \\ \sum X_i Y_i \\ \sum Y_i \end{pmatrix}")
-                    st.markdown("Se resuelve directamente por álgebra matricial lineal.")
+                    st.markdown("Se resuelve directamente por álgebra matricial lineal." if st.session_state.lang == 'es' else "It is solved directly by linear matrix algebra.")
                     st.markdown("</div>", unsafe_allow_html=True)
 
-            st.success(f"**Ecuación ajustada:** ${nl_equation}$")
+            st.success(t["t4_eq_adjusted_generic"].format(nl_equation))
             
             # Comparación específica de métricas
-            st.markdown("### Comparativa de Métricas: SLR vs No Lineal")
+            st.markdown(t["t4_metrics_comp"])
             metrics_nl_data = {
-                "Métrica": ["Suma de Errores al Cuadrado (SSE)", "Error Cuadrático Medio (RMSE)", "Coeficiente de Determinación (R²)"],
-                "SLR (Lineal)": [sse_slr, rmse_slr, r2_slr],
-                f"No Lineal ({nl_model.split(' ')[0]})": [sse_nl, rmse_nl, r2_nl]
+                t["t4_metrics_cols"][0]: t["t4_metrics_rows"],
+                t["t4_metrics_cols"][1]: [sse_slr, rmse_slr, r2_slr],
+                t["t4_metrics_cols"][2].format(selected_nl_short): [sse_nl, rmse_nl, r2_nl]
             }
             df_metrics_nl = pd.DataFrame(metrics_nl_data)
             st.dataframe(df_metrics_nl.style.format({
-                "SLR (Lineal)": "{:.4f}",
-                f"No Lineal ({nl_model.split(' ')[0]})": "{:.4f}"
+                t["t4_metrics_cols"][1]: "{:.4f}",
+                t["t4_metrics_cols"][2].format(selected_nl_short): "{:.4f}"
             }), use_container_width=True)
             
             # Calculadora de predicción interactiva
             st.markdown("---")
-            st.markdown("### 🧮 Calculadora de Predicciones Interactiva")
-            x_input = st.number_input(f"Ingresa un valor de X para calcular Y ({nl_model.split(' ')[0]}):", value=float(np.mean(X)), format="%.4f")
+            st.markdown(t["t4_calc_hdr"])
+            x_input = st.number_input(t["t4_calc_input"].format(selected_nl_short), value=float(np.mean(X)), format="%.4f")
             
             y_pred_calc = None
-            if nl_model.startswith("Exponencial"):
+            if selected_nl_key == "Exponential":
                 y_pred_calc = a_nl + b_nl * np.exp(c_nl * x_input)
                 sign_b = "+" if b_nl >= 0 else "-"
                 abs_b = abs(b_nl)
                 calc_latex = rf"y = {a_nl:.4f} {sign_b} {abs_b:.4f}e^{{{c_nl:.4f} \cdot {x_input:.4f}}} = {y_pred_calc:.4f}"
-
-
-
-            elif nl_model.startswith("Logarítmico"):
+            elif selected_nl_key == "Logarithmic":
                 if x_input <= 0:
-                    st.error("Error: Para el modelo Logarítmico, el valor de entrada X debe ser estrictamente mayor a cero.")
+                    st.error(t["t4_calc_err_log"])
                 else:
                     y_pred_calc = a_nl + b_nl * np.log(x_input)
                     calc_latex = rf"Y = {a_nl:.4f} + {b_nl:.4f} \cdot \ln({x_input:.4f}) = {y_pred_calc:.4f}"
-            elif nl_model.startswith("Potencial"):
+            elif selected_nl_key == "Power":
                 if x_input <= 0:
-                    st.error("Error: Para el modelo Potencial, el valor de entrada X debe ser estrictamente mayor a cero.")
+                    st.error(t["t4_calc_err_pot"])
                 else:
                     y_pred_calc = a_nl * (x_input ** b_nl)
                     calc_latex = rf"Y = {a_nl:.4f} \cdot {x_input:.4f}^{{{b_nl:.4f}}} = {y_pred_calc:.4f}"
-            elif nl_model.startswith("Cuadrático"):
+            elif selected_nl_key == "Quadratic":
                 y_pred_calc = a_nl * (x_input**2) + b_nl * x_input + c_nl
                 calc_latex = rf"Y = {a_nl:.4f} \cdot ({x_input:.4f})^2 + {b_nl:.4f} \cdot ({x_input:.4f}) + ({c_nl:.4f}) = {y_pred_calc:.4f}"
                 
             if y_pred_calc is not None:
                 st.latex(calc_latex)
-                st.info(f"**Resultado:** Para $X = {x_input:.4f}$, el valor de $Y$ estimado por el modelo no lineal es **{y_pred_calc:.4f}**.")
+                st.markdown(t["t4_calc_res_desc"].format(x_input, y_pred_calc))
 
     with tab5:
-        st.subheader("Módulo 5: Power Law Model (Modelo de Ley de Potencia)")
+        st.subheader(t["t5_title"])
         if not power_valid:
             st.warning(power_error_msg)
-            st.markdown("""
-            **Nota Educativa:**
-            El modelo de Ley de Potencia ($Y = a X^b$) requiere una transformación logarítmica dual en ambos ejes.
-            Dado que la función logaritmo natural $\\ln(z)$ está definida únicamente para $z > 0$, el conjunto de datos actual contiene valores no permitidos (negativos o cero) en las variables.
-            
-            *Sugerencia:* Ajusta tus puntos de datos en la barra lateral para que todos los valores de X e Y sean estrictamente positivos ($>0$) para poder realizar este ajuste.
-            """)
+            st.markdown(t["t5_warn_note"])
         else:
-            st.markdown("""
-            **Enfoque Educativo:**
-            El modelo de **Ley de Potencia (Power Law)** es uno de los más importantes en sismología y ciencias naturales. 
-            Describe relaciones de escala donde un cambio relativo en una cantidad produce un cambio relativo proporcional en la otra, independiente de la escala de tamaño de las cantidades.
+            st.markdown(t["t5_edu_focus"])
             
-            *Ejemplos en sismología:*
-            - **Ley de Omori** para la frecuencia de réplicas tras un gran terremoto: $n(t) \propto t^{-p}$.
-            - **Escalamiento del momento sísmico** con la longitud de ruptura de la falla: $M_0 \propto L^b$.
-            - **Ley de Gutenberg-Richter** (expresada en número acumulativo de sismos contra tamaño/energía).
-            """)
-            
-            st.markdown("### 📊 Proceso de Linealización y Ajuste del Modelo")
+            st.markdown(t["t4_process_hdr"])
             
             # 1. Tabla de datos
             df_power_linearized = pd.DataFrame({
@@ -1196,7 +1203,7 @@ if df is not None and len(df) >= 2:
                 "(x*)^2": x_trans_power**2,
                 "Y est Power": y_pred_power
             })
-            st.markdown("**Tabla de Cálculos Intermedios:**")
+            st.markdown(t["t4_table_interm"])
             st.dataframe(df_power_linearized.style.format({
                 "x": "{:g}",
                 "Y": "{:.2f}",
@@ -1213,16 +1220,16 @@ if df is not None and len(df) >= 2:
             col_math1, col_math2 = st.columns([1.1, 1])
             
             with col_math1:
-                st.markdown("**Sumatorias de Mínimos Cuadrados Linealizados:**")
+                st.markdown(t["t4_sums_hdr"])
                 st.markdown(f"""
-                *   $n$ (número de puntos) = **{n}**
-                *   $\sum x^*$ = **{sum_x_trans_power:.4f}**
-                *   $\sum (x^*)^2$ = **{sum_x2_trans_power:.4f}**
-                *   $\sum y^*$ = **{sum_y_trans_power:.4f}**
-                *   $\sum x^* \cdot y^*$ = **{sum_xy_trans_power:.4f}**
+                *   {t['t4_n_points'].format(n)}
+                *   {t['t5_sum_x_trans'].format(sum_x_trans_power)}
+                *   {t['t5_sum_x2_trans'].format(sum_x2_trans_power)}
+                *   {t['t5_sum_y_trans'].format(sum_y_trans_power)}
+                *   {t['t5_sum_xy_trans'].format(sum_xy_trans_power)}
                 """)
                 
-                st.markdown("**Fórmulas y Recuperación de Parámetros:**")
+                st.markdown(t["t4_formulas_params"])
                 st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
                 st.latex(r"b = \frac{n \sum (x^* y^*) - (\sum x^*)(\sum y^*)}{n \sum (x^*)^2 - (\sum x^*)^2}")
                 st.latex(rf"\Rightarrow b \text{{ (exponente)}} = {b_power:.6f}")
@@ -1244,7 +1251,7 @@ if df is not None and len(df) >= 2:
                 
                 # Puntos reales
                 fig_power.add_trace(plgo.Scatter(
-                    x=X, y=Y, mode='markers', name='Datos Observados',
+                    x=X, y=Y, mode='markers', name=t["chart_obs"],
                     marker=dict(color='black', size=10, symbol='circle'),
                     hovertemplate='x: %{x}<br>Y: %{y:.2f}<extra></extra>'
                 ))
@@ -1254,13 +1261,13 @@ if df is not None and len(df) >= 2:
                 y_curve_power = a_power * (x_curve ** b_power)
                 
                 fig_power.add_trace(plgo.Scatter(
-                    x=x_curve, y=y_curve_power, mode='lines', name='Ajuste Power Law',
+                    x=x_curve, y=y_curve_power, mode='lines', name=t["t4_graph_lin_fit"],
                     line=dict(color='#1f77b4', width=2),
                     hovertemplate='x: %{x:.2f}<br>Y estima: %{y:.4f}<extra></extra>'
                 ))
                 
                 fig_power.update_layout(
-                    title=f"Gráfico de Datos Exponenciales: Y est Power<br>y = {a_power:.4f} · x^{{{b_power:.4f}}}  |  R² = {r2_power:.4f}",
+                    title=t["t5_graph_title"].format(a_power, b_power, r2_power),
                     xaxis_title="x",
                     yaxis_title="Y",
                     template='plotly_white',
@@ -1270,48 +1277,45 @@ if df is not None and len(df) >= 2:
                 )
                 st.plotly_chart(fig_power, use_container_width=True)
                 
-            st.markdown("### 📈 Resumen del Modelo")
-            st.success(f"**Ecuación Final Ajustada:** $y = {a_power:.6f} \\cdot x^{{{b_power:.6f}}}$")
+            st.markdown(t["t5_res_hdr"])
+            st.success(t["t5_eq_adjusted"].format(a_power, b_power))
             
             # Comparativa de métricas
-            st.markdown("### Comparativa de Métricas: SLR vs Power Law")
+            st.markdown(t["t5_metrics_comp"])
             metrics_power_data = {
-                "Métrica": ["Suma de Errores al Cuadrado (SSE)", "Error Cuadrático Medio (RMSE)", "Coeficiente de Determinación (R²)"],
-                "SLR (Lineal)": [sse_slr, rmse_slr, r2_slr],
-                "Power Law (No Lineal)": [sse_power, rmse_power, r2_power]
+                t["t5_metrics_cols"][0]: t["t4_metrics_rows"],
+                t["t5_metrics_cols"][1]: [sse_slr, rmse_slr, r2_slr],
+                t["t5_metrics_cols"][2]: [sse_power, rmse_power, r2_power]
             }
             df_metrics_power = pd.DataFrame(metrics_power_data)
             st.dataframe(df_metrics_power.style.format({
-                "SLR (Lineal)": "{:.4f}",
-                "Power Law (No Lineal)": "{:.4f}"
+                t["t5_metrics_cols"][1]: "{:.4f}",
+                t["t5_metrics_cols"][2]: "{:.4f}"
             }), use_container_width=True)
             
             # Calculadora de predicción interactiva
             st.markdown("---")
-            st.markdown("### 🧮 Calculadora de Predicciones Interactiva")
-            x_input = st.number_input("Ingresa un valor de X para calcular Y (Power Law):", value=float(np.mean(X)), format="%.4f")
+            st.markdown(t["t4_calc_hdr"])
+            x_input = st.number_input(t["t5_calc_input"], value=float(np.mean(X)), format="%.4f")
             
             if x_input <= 0:
-                st.error("Error: Para el modelo Power Law, el valor de entrada X debe ser estrictamente mayor a cero.")
+                st.error(t["t5_calc_err"])
             else:
                 y_pred_calc = a_power * (x_input ** b_power)
                 calc_latex = rf"y = {a_power:.4f} \cdot {x_input:.4f}^{{{b_power:.4f}}} = {y_pred_calc:.4f}"
                 st.latex(calc_latex)
-                st.info(f"**Resultado:** Para $X = {x_input:.4f}$, el valor de $Y$ estimado por el modelo de Ley de Potencia es **{y_pred_calc:.4f}**.")
+                st.markdown(t["t5_calc_res"].format(x_input, y_pred_calc))
 
     with tab6:
-        st.subheader("Módulo 6: Función Potencia")
-        st.markdown("""
-        Este módulo está diseñado específicamente para analizar el modelo de **Función Potencia ($y = a \cdot x^b$)** recreando el comportamiento de tus hojas de cálculo. 
-        Utiliza el conjunto de datos de la barra lateral para validar el proceso de linealización logarítmica dual y observar un análisis crítico de los resultados.
-        """)
+        st.subheader(t["t6_title"])
+        st.markdown(t["t6_desc"])
         
         X_mod = df["X"].values
         Y_mod = df["Y"].values
 
         if not fun_pot_valid:
             st.error(fun_pot_error_msg)
-            st.info("Sugerencia: Ajusta tus datos de la barra lateral para cumplir con esta condición de dominio.")
+            st.info(t["t6_warn_note"])
         else:
             r2_lin = r2_lin_pot10
             df_mod_calc = pd.DataFrame({
@@ -1321,7 +1325,7 @@ if df is not None and len(df) >= 2:
                 "Log X": X_log
             })
 
-            st.markdown("#### 📊 Tabla de Cálculos Intermedios (Base log10)")
+            st.markdown(t["t6_table_hdr"])
             st.dataframe(df_mod_calc.style.format({
                 "x": "{:g}",
                 "y": "{:g}",
@@ -1332,40 +1336,40 @@ if df is not None and len(df) >= 2:
             col_coef1, col_coef2 = st.columns(2)
             with col_coef1:
                 st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                st.markdown("**Regresión Linealizada (Log-Log):**")
+                st.markdown(t["t6_coefs_lin"])
                 st.latex(rf"\log_{{10}}(y) = {m_log:.4f} \cdot \log_{{10}}(x) + {c_log:.4f}")
                 st.latex(rf"R^2 = {r2_lin:.4f}")
                 st.markdown("</div>", unsafe_allow_html=True)
 
             with col_coef2:
                 st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                st.markdown("**Parámetros Ajustados:**")
-                st.markdown(f"- **Log a** (Intercepción): `{c_log:.4f}`")
-                st.markdown(f"- **Log b** (Pendiente): `{m_log:.4f}`")
-                st.markdown(f"- **a** ($10^{{Log a}}$): `{a_correct:.4f}`")
-                st.markdown(f"- **b matemático (correcto, pendiente $m$):** `{b_correct:.4f}`")
-                st.markdown(f"- **b incorrecto ($10^{{m}}$):** `{b_err:.4f}`")
+                st.markdown(t["t6_coefs_adj"])
+                st.markdown(t["t6_coefs_log_a"].format(c_log))
+                st.markdown(t["t6_coefs_log_b"].format(m_log))
+                st.markdown(t["t6_coefs_a"].format(a_correct))
+                st.markdown(t["t6_coefs_b_corr"].format(b_correct))
+                st.markdown(t["t6_coefs_b_inc"].format(b_err))
                 st.markdown("</div>", unsafe_allow_html=True)
 
             col_g1, col_g2 = st.columns(2)
             with col_g1:
                 fig_lin_power = plgo.Figure()
                 fig_lin_power.add_trace(plgo.Scatter(
-                    x=X_log, y=Y_log, mode='markers', name='Datos Transformados',
+                    x=X_log, y=Y_log, mode='markers', name=t["t4_graph_lin_dots"],
                     marker=dict(color='#1f77b4', size=10, symbol='circle'),
                     hovertemplate='Log X: %{x:.5f}<br>Log Y: %{y:.5f}<extra></extra>'
                 ))
                 x_log_line = np.linspace(min(X_log), max(X_log), 100)
                 y_log_line = m_log * x_log_line + c_log
                 fig_lin_power.add_trace(plgo.Scatter(
-                    x=x_log_line, y=y_log_line, mode='lines', name='Línea de Tendencia',
+                    x=x_log_line, y=y_log_line, mode='lines', name=t["t4_graph_lin_fit"],
                     line=dict(color='#ff7f0e', width=2, dash='dash'),
                     hovertemplate='Log X: %{x:.5f}<br>Log Y Pred: %{y:.5f}<extra></extra>'
                 ))
                 fig_lin_power.update_layout(
-                    title=f"Gráfica en Espacio Linealizado<br>y = {m_log:.4f}x + {c_log:.4f} | R² = {r2_lin:.4f}",
-                    xaxis_title="Log X",
-                    yaxis_title="Log Y",
+                    title=t["t6_graph_lin_title"].format(m_log, c_log, r2_lin),
+                    xaxis_title=t["t6_graph_lin_x"],
+                    yaxis_title=t["t6_graph_lin_y"],
                     template='plotly_white',
                     showlegend=False,
                     height=380,
@@ -1376,7 +1380,7 @@ if df is not None and len(df) >= 2:
             with col_g2:
                 fig_orig_power = plgo.Figure()
                 fig_orig_power.add_trace(plgo.Scatter(
-                    x=X_mod, y=Y_mod, mode='markers', name='Datos Observados',
+                    x=X_mod, y=Y_mod, mode='markers', name=t["chart_obs"],
                     marker=dict(color='black', size=10, symbol='circle'),
                     hovertemplate='X: %{x}<br>Y: %{y}<extra></extra>'
                 ))
@@ -1385,7 +1389,7 @@ if df is not None and len(df) >= 2:
                 y_orig_correct = a_correct * (x_orig_line ** b_correct)
                 
                 fig_orig_power.add_trace(plgo.Scatter(
-                    x=x_orig_line, y=y_orig_correct, mode='lines', name='Curva Correcta (Verde)',
+                    x=x_orig_line, y=y_orig_correct, mode='lines', name=t["t6_graph_orig_correct"],
                     line=dict(color='green', width=2.5),
                     hovertemplate='X: %{x:.2f}<br>Y (Correcto): %{y:.4f}<extra></extra>'
                 ))
@@ -1394,7 +1398,7 @@ if df is not None and len(df) >= 2:
                     y_orig_err = a_err * (x_orig_line ** b_err)
                     if not np.any(np.isinf(y_orig_err)) and np.max(y_orig_err) < 1000000:
                         fig_orig_power.add_trace(plgo.Scatter(
-                            x=x_orig_line, y=y_orig_err, mode='lines', name='Curva con Despeje Erróneo (Rojo)',
+                            x=x_orig_line, y=y_orig_err, mode='lines', name=t["t6_graph_orig_incorrect"],
                             line=dict(color='red', width=2.5, dash='dot'),
                             hovertemplate='X: %{x:.2f}<br>Y (Despeje Erróneo): %{y:.4f}<extra></extra>'
                         ))
@@ -1402,7 +1406,7 @@ if df is not None and len(df) >= 2:
                     pass
 
                 fig_orig_power.update_layout(
-                    title="Ajuste en Espacio Original (X vs Y)",
+                    title=t["t6_graph_orig_title"],
                     xaxis_title="X",
                     yaxis_title="Y",
                     template='plotly_white',
@@ -1412,47 +1416,22 @@ if df is not None and len(df) >= 2:
                 )
                 st.plotly_chart(fig_orig_power, use_container_width=True)
 
-            st.warning("💡 **Análisis Educativo y Crítico del Modelo Potencia:**")
-            st.markdown(f"""
-            Al linealizar el modelo potencial $y = a x^b$ mediante logaritmos base 10, obtenemos:
-            $$\log_{{10}}(y) = \log_{{10}}(a) + b \log_{{10}}(x)$$
-            Comparando esto con la ecuación de una recta $Y^* = m X^* + c$, identificamos que:
-            - La **intercepción ($c$)** representa $\log_{{10}}(a)$, por lo que recuperamos $a = 10^c$: $\log_{{10}}(a) = {c_log:.4f} \Rightarrow a = 10^{{{c_log:.4f}}} = {a_correct:.4f}$.
-            - La **pendiente ($m$)** representa **directamente** el exponente $b$, por lo que $b = m$. En la regresión, la pendiente es **{m_log:.4f}**, por lo que la ecuación matemática correcta es **$y = {a_correct:.4f} x^{{{b_correct:.4f}}}$**.
+            st.warning(t["t6_analysis_hdr"])
+            st.markdown(t["t6_analysis_body"].format(c_log, c_log, a_correct, m_log, a_correct, b_correct, m_log, b_err, a_err, b_err))
 
-            **⚠️ El error común de despeje:**
-            Un error frecuente al recuperar los parámetros consiste en aplicar la transformación exponencial a la pendiente de manera incorrecta: $b_{{\text{{err}}}} = 10^{{m}} = 10^{{{m_log:.4f}}} = {b_err:.4f}$.
-            Esto resulta en la ecuación distorsionada $y = {a_err:.4f} x^{{{b_err:.4f}}}$.
-            
-            Como puedes ver en la gráfica en el **Espacio Original**, la curva resultante del despeje erróneo (en color rojo punteado) crece de manera explosiva y no se ajusta en absoluto a los datos reales para valores mayores de X, mientras que la curva matemáticamente correcta (en color verde) pasa exactamente por los puntos experimentales. ¡Este es un excelente ejemplo de por qué es importante comprender la teoría de la linealización!
-            """)
-
-            st.markdown("### 📖 Formulación Matemática")
-            st.markdown(r"""
-            Para ajustar el modelo de ley de potencia $y = a x^b$:
-            1. **Transformación:** Aplicamos logaritmo en base 10 a ambas variables:
-               $$x_i^* = \log_{10}(x_i), \quad y_i^* = \log_{10}(y_i)$$
-            2. **Regresión lineal:** Ajustamos la recta $y_i^* = m x_i^* + c$ usando Mínimos Cuadrados Ordinarios:
-               $$m = \frac{n \sum (x_i^* y_i^*) - (\sum x_i^*)(\sum y_i^*)}{n \sum (x_i^*)^2 - (\sum x_i^*)^2}$$
-               $$c = \bar{y}^* - m \bar{x}^*$$
-            3. **Despeje de parámetros:**
-               $$a = 10^c, \quad b = m \quad \text{(Despeje Matemático Correcto)}$$
-               $$a = 10^c, \quad b = 10^m \quad \text{(Despeje Incorrecto Común)}$$
-            """)
+            st.markdown(t["t6_math_formulation"])
+            st.markdown(t["t6_math_steps"])
 
     with tab7:
-        st.subheader("Módulo 7: Función Exponencial")
-        st.markdown("""
-        Este módulo está diseñado específicamente para analizar el modelo de **Función Exponencial ($y = a \cdot e^{bx}$)** recreando el comportamiento de tus hojas de cálculo. 
-        Utiliza el conjunto de datos de la barra lateral para validar el proceso de linealización semi-logarítmica y observar un análisis crítico de los resultados.
-        """)
+        st.subheader(t["t7_title"])
+        st.markdown(t["t7_desc"])
         
         X_mod = df["X"].values
         Y_mod = df["Y"].values
 
         if not fun_exp_valid:
             st.error(fun_exp_error_msg)
-            st.info("Sugerencia: Ajusta tus datos de la barra lateral para cumplir con esta condición de dominio.")
+            st.info(t["t6_warn_note"])
         else:
             r2_lin = r2_lin_exp
             df_mod_calc = pd.DataFrame({
@@ -1461,7 +1440,7 @@ if df is not None and len(df) >= 2:
                 "Ln Y": Y_log_exp
             })
 
-            st.markdown("#### 📊 Tabla de Cálculos Intermedios (Base logaritmo natural)")
+            st.markdown(t["t7_table_hdr"])
             st.dataframe(df_mod_calc.style.format({
                 "x": "{:g}",
                 "y": "{:g}",
@@ -1471,39 +1450,39 @@ if df is not None and len(df) >= 2:
             col_coef1, col_coef2 = st.columns(2)
             with col_coef1:
                 st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                st.markdown("**Regresión Linealizada (Semi-Log):**")
+                st.markdown(t["t7_coefs_lin"])
                 st.latex(rf"\ln(y) = {b_coeff:.4f} \cdot x + {ln_a:.4f}")
                 st.latex(rf"R^2 = {r2_lin:.4f}")
                 st.markdown("</div>", unsafe_allow_html=True)
 
             with col_coef2:
                 st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
-                st.markdown("**Parámetros Ajustados:**")
-                st.markdown(f"- **Ln(a)** (Intercepción): `{ln_a:.4f}`")
-                st.markdown(f"- **b** (Pendiente / Exponente): `{b_coeff:.4f}`")
-                st.markdown(f"- **A** (Coeficiente $a = e^{{Ln(a)}}$): `{a_coeff:.4f}`")
-                st.markdown(f"**Ecuación final:** $y = {a_coeff:.4f} \\cdot e^{{{b_coeff:.4f} x}}$")
+                st.markdown(t["t7_coefs_adj"])
+                st.markdown(t["t7_coefs_ln_a"].format(ln_a))
+                st.markdown(t["t7_coefs_b"].format(b_coeff))
+                st.markdown(t["t7_coefs_a"].format(a_coeff))
+                st.markdown(t["t7_eq_final"].format(a_coeff, b_coeff))
                 st.markdown("</div>", unsafe_allow_html=True)
 
             col_g1, col_g2 = st.columns(2)
             with col_g1:
                 fig_lin_exp = plgo.Figure()
                 fig_lin_exp.add_trace(plgo.Scatter(
-                    x=X_mod, y=Y_log, mode='markers', name='Datos Transformados',
+                    x=X_mod, y=Y_log, mode='markers', name=t["t4_graph_lin_dots"],
                     marker=dict(color='#1f77b4', size=10, symbol='circle'),
                     hovertemplate='X: %{x}<br>ln(Y): %{y:.5f}<extra></extra>'
                 ))
                 x_line = np.linspace(min(X_mod), max(X_mod), 100)
                 y_line = b_coeff * x_line + ln_a
                 fig_lin_exp.add_trace(plgo.Scatter(
-                    x=x_line, y=y_line, mode='lines', name='Línea de Tendencia',
+                    x=x_line, y=y_line, mode='lines', name=t["t4_graph_lin_fit"],
                     line=dict(color='#ff7f0e', width=2),
                     hovertemplate='X: %{x:.2f}<br>ln(Y) Pred: %{y:.5f}<extra></extra>'
                 ))
                 fig_lin_exp.update_layout(
-                    title=f"Gráfica en Espacio Linealizado<br>y = {b_coeff:.4f}x + {ln_a:.4f} | R² = {r2_lin:.4f}",
+                    title=t["t7_graph_lin_title"].format(b_coeff, ln_a, r2_lin),
                     xaxis_title="x",
-                    yaxis_title="Ln Y",
+                    yaxis_title=t["t7_graph_lin_y"],
                     template='plotly_white',
                     showlegend=False,
                     height=380,
@@ -1514,7 +1493,7 @@ if df is not None and len(df) >= 2:
             with col_g2:
                 fig_orig_exp = plgo.Figure()
                 fig_orig_exp.add_trace(plgo.Scatter(
-                    x=X_mod, y=Y_mod, mode='markers', name='Datos Observados',
+                    x=X_mod, y=Y_mod, mode='markers', name=t["chart_obs"],
                     marker=dict(color='black', size=10, symbol='circle'),
                     hovertemplate='X: %{x}<br>Y: %{y}<extra></extra>'
                 ))
@@ -1523,13 +1502,13 @@ if df is not None and len(df) >= 2:
                 y_orig_fit = a_coeff * np.exp(b_coeff * x_orig_line)
 
                 fig_orig_exp.add_trace(plgo.Scatter(
-                    x=x_orig_line, y=y_orig_fit, mode='lines', name='Curva Exponencial',
+                    x=x_orig_line, y=y_orig_fit, mode='lines', name=t["t7_graph_orig_curve"],
                     line=dict(color='green', width=2.5),
                     hovertemplate='X: %{x:.2f}<br>Y estima: %{y:.4f}<extra></extra>'
                 ))
 
                 fig_orig_exp.update_layout(
-                    title="Ajuste en Espacio Original (X vs Y)",
+                    title=t["t7_graph_orig_title"],
                     xaxis_title="X",
                     yaxis_title="Y",
                     template='plotly_white',
@@ -1539,43 +1518,55 @@ if df is not None and len(df) >= 2:
                 )
                 st.plotly_chart(fig_orig_exp, use_container_width=True)
 
-            st.info("💡 **Análisis Educativo y Crítico del Modelo Exponencial:**")
-            st.markdown(f"""
-            Al linealizar el modelo exponencial $y = a e^{{bx}}$ usando el logaritmo natural, obtenemos:
-            $$\ln(y) = \ln(a) + b x$$
-            Comparando esto con la ecuación de una recta $Y^* = b X + A$, observamos que:
-            - La **intercepción ($A$)** en el eje vertical es $\ln(a)$, de donde recuperamos el término $a = e^A$: $\ln(a) = {ln_a:.4f} \Rightarrow a = e^{{{ln_a:.4f}}} = {a_coeff:.4f}$.
-            - La **pendiente ($b$)** representa **directamente** el exponente en el factor de escala $e^{{bx}}$, que es **{b_coeff:.4f}**.
-            
-            Este cálculo resulta en la ecuación final ajustada:
-            $$y = {a_coeff:.4f} \cdot e^{{{b_coeff:.4f} x}}$$
-            La curva verde ajustada en el espacio original representa con precisión la tendencia de los datos experimentales sin experimentar desviaciones.
-            """)
+            st.info(t["t7_analysis_hdr"])
+            st.markdown(t["t7_analysis_body"].format(ln_a, ln_a, a_coeff, b_coeff, a_coeff, b_coeff))
 
-            st.markdown("### 📖 Formulación Matemática")
-            st.markdown(r"""
-            Para ajustar el modelo exponencial $y = a e^{bx}$:
-            1. **Transformación:** Aplicamos logaritmo natural únicamente a la variable dependiente $y$:
-               $$y_i^* = \ln(y_i)$$
-            2. **Regresión lineal:** Ajustamos la recta $y_i^* = b x_i + \ln(a)$ usando Mínimos Cuadrados Ordinarios:
-               $$b = \frac{n \sum (x_i y_i^*) - (\sum x_i)(\sum y_i^*)}{n \sum x_i^2 - (\sum x_i)^2}$$
-               $$\ln(a) = \bar{y}^* - b \bar{x}$$
-            3. **Despeje de parámetros:**
-               $$a = e^{\ln(a)}, \quad b = \text{pendiente}$$
-            """)
+            st.markdown(t["t7_math_formulation"])
+            st.markdown(t["t7_math_steps"])
 
     with tab8:
-        st.subheader("Datos Originales y Proyecciones")
-        st.markdown("Tabla detallada con cada dato original, sus predicciones y los residuos según cada modelo.")
-        st.dataframe(df_results, use_container_width=True)
+        st.subheader(t["t8_title_data"])
+        st.markdown(t["t8_desc_data"])
+        # Translate df_results columns for presentation
+        rename_cols = {
+            "X": "X",
+            "Y": "Y",
+            "Y_est (SLR)": t["xls_details_y_est"].format(t["methods_names"]["SLR"]),
+            "Residuo (SLR)": t["xls_details_residual"].format(t["methods_names"]["SLR"]),
+            "Y_est (GOR Conv)": t["xls_details_y_est"].format(t["methods_names"]["GOR Conv"]),
+            "Residuo (GOR Conv)": t["xls_details_residual"].format(t["methods_names"]["GOR Conv"]),
+            "X_t (GOR)": "X_t (GOR)",
+            "Y_t (GOR)": "Y_t (GOR)",
+            "Y_est (GOR Prop)": t["xls_details_y_est"].format(t["methods_names"]["GOR Prop"]),
+            "Residuo (GOR Prop)": t["xls_details_residual"].format(t["methods_names"]["GOR Prop"]),
+        }
+        if exp_asymp_valid:
+            rename_cols["Y_est (No Lin. Exponencial Asintota)"] = t["xls_details_y_est"].format(t["methods_names"]["No Lin. Exponencial Asintota"])
+            rename_cols["Residuo (No Lin. Exponencial Asintota)"] = t["xls_details_residual"].format(t["methods_names"]["No Lin. Exponencial Asintota"])
+        if log_valid:
+            rename_cols["Y_est (No Lin. Logaritmico)"] = t["xls_details_y_est"].format(t["methods_names"]["No Lin. Logarítmico"])
+            rename_cols["Residuo (No Lin. Logaritmico)"] = t["xls_details_residual"].format(t["methods_names"]["No Lin. Logarítmico"])
+        if pot_valid:
+            rename_cols["Y_est (No Lin. Potencial / Power Law)"] = t["xls_details_y_est"].format(t["methods_names"]["No Lin. Potencial / Power Law"])
+            rename_cols["Residuo (No Lin. Potencial / Power Law)"] = t["xls_details_residual"].format(t["methods_names"]["No Lin. Potencial / Power Law"])
+        if quad_valid:
+            rename_cols["Y_est (No Lin. Cuadratico)"] = t["xls_details_y_est"].format(t["methods_names"]["No Lin. Cuadrático"])
+            rename_cols["Residuo (No Lin. Cuadratico)"] = t["xls_details_residual"].format(t["methods_names"]["No Lin. Cuadrático"])
+        if fun_pot_valid:
+            rename_cols["Y_est (Fun. Potencia log10 - Correcto)"] = t["xls_details_y_est"].format(t["methods_names"]["Fun. Potencia log10 (Correcto)"])
+            rename_cols["Residuo (Fun. Potencia log10 - Correcto)"] = t["xls_details_residual"].format(t["methods_names"]["Fun. Potencia log10 (Correcto)"])
+            rename_cols["Y_est (Fun. Potencia log10 - Incorrecto)"] = t["xls_details_y_est"].format(t["methods_names"]["Fun. Potencia log10 (Incorrecto)"])
+            rename_cols["Residuo (Fun. Potencia log10 - Incorrecto)"] = t["xls_details_residual"].format(t["methods_names"]["Fun. Potencia log10 (Incorrecto)"])
+        if fun_exp_valid:
+            rename_cols["Y_est (Fun. Exponencial Simple ln)"] = t["xls_details_y_est"].format(t["methods_names"]["Fun. Exponencial Simple ln"])
+            rename_cols["Residuo (Fun. Exponencial Simple ln)"] = t["xls_details_residual"].format(t["methods_names"]["Fun. Exponencial Simple ln"])
+
+        df_results_translated = df_results.rename(columns=rename_cols)
+        st.dataframe(df_results_translated, use_container_width=True)
 
         st.markdown("---")
-        st.subheader("📋 Guía de Fórmulas Dinámicas en Excel")
-        st.markdown("""
-        El reporte Excel descargable contiene fórmulas dinámicas que calculan automáticamente las estimaciones y los residuos. Esto permite cambiar los valores de entrada en Excel y actualizar el análisis en tiempo real. 
-        
-        A continuación se muestran las fórmulas aplicadas en la primera fila de datos (Fila 6 en Excel, donde la columna **B** es **X** y la columna **C** es **Y**):
-        """)
+        st.subheader(t["t8_guide_title"])
+        st.markdown(t["t8_guide_desc"])
         
         # Build guide table matching models_details
         models_details_guide = []
@@ -1593,36 +1584,36 @@ if df is not None and len(df) >= 2:
         })
         if exp_asymp_valid:
             models_details_guide.append({
-                "name": "Exp Asíntota",
+                "name": "No Lin. Exponencial Asintota",
                 "pred": lambda r: f"= {a_val:.6f} + {b_nl_exp:.6f} * EXP({c_nl_exp:.6f} * B{r})",
             })
         if log_valid:
             models_details_guide.append({
-                "name": "Logarítmico",
+                "name": "No Lin. Logarítmico",
                 "pred": lambda r: f"= {a_nl_log:.6f} + {b_nl_log:.6f} * LN(B{r})",
             })
         if pot_valid:
             models_details_guide.append({
-                "name": "Potencial / Power Law",
+                "name": "No Lin. Potencial / Power Law",
                 "pred": lambda r: f"= {a_nl_pot:.6f} * (B{r} ^ {b_nl_pot:.6f})",
             })
         if quad_valid:
             models_details_guide.append({
-                "name": "Cuadrático",
+                "name": "No Lin. Cuadrático",
                 "pred": lambda r: f"= {a_nl_quad:.6f} * (B{r} ^ 2) + {b_nl_quad:.6f} * B{r} + {c_nl_quad:.6f}",
             })
         if fun_pot_valid:
             models_details_guide.append({
-                "name": "Fun Potencia (Correcto)",
+                "name": "Fun. Potencia log10 (Correcto)",
                 "pred": lambda r: f"= {a_correct:.6f} * (B{r} ^ {b_correct:.6f})",
             })
             models_details_guide.append({
-                "name": "Fun Potencia (Incorrecto)",
+                "name": "Fun. Potencia log10 (Incorrecto)",
                 "pred": lambda r: f"= {a_err:.6f} * (B{r} ^ {b_err:.6f})",
             })
         if fun_exp_valid:
             models_details_guide.append({
-                "name": "Fun Exponencial",
+                "name": "Fun. Exponencial Simple ln",
                 "pred": lambda r: f"= {a_coeff:.6f} * EXP({b_coeff:.6f} * B{r})",
             })
 
@@ -1637,27 +1628,31 @@ if df is not None and len(df) >= 2:
             c_idx += 1
             col_letters[m["name"]] = (pred_letter, res_letter)
 
+        cols = t["t8_guide_table_cols"]
+        col_desc = t["t8_guide_table_col_desc"]
+        
         guide_data = {
-            "Modelo / Método": [],
-            "Fórmula de Estimación (Columna en Excel)": [],
-            "Fórmula de Residuo (Columna en Excel)": []
+            cols[0]: [],
+            cols[1]: [],
+            cols[2]: []
         }
 
         for m in models_details_guide:
             pred_col, res_col = col_letters[m["name"]]
-            guide_data["Modelo / Método"].append(m["name"])
-            guide_data["Fórmula de Estimación (Columna en Excel)"].append(f"`{m['pred'](6)}` (Columna {pred_col})")
-            guide_data["Fórmula de Residuo (Columna en Excel)"].append(f"`= C6 - {pred_col}6` (Columna {res_col})")
+            translated_name = t["methods_names"].get(m["name"], m["name"])
+            guide_data[cols[0]].append(translated_name)
+            guide_data[cols[1]].append(f"`{m['pred'](6)}` ({col_desc} {pred_col})")
+            guide_data[cols[2]].append(f"`= C6 - {pred_col}6` ({col_desc} {res_col})")
 
         df_guide = pd.DataFrame(guide_data)
         st.table(df_guide)
 
         st.markdown("---")
-        st.subheader("Exportar Resultados")
+        st.subheader(t["t8_export_title"])
         col_out1, col_out2 = st.columns(2)
         
         with col_out1:
-            st.markdown("**Descargar Excel:**")
+            st.markdown(f"**{t['t8_export_excel_lbl']}**")
             
             def generate_excel_with_formulas():
                 import openpyxl
@@ -1684,13 +1679,13 @@ if df is not None and len(df) >= 2:
                 align_right = Alignment(horizontal="right", vertical="center")
 
                 # --- SHEET 1: Resumen de Modelos ---
-                ws_summary = wb.create_sheet(title="Resumen de Modelos")
+                ws_summary = wb.create_sheet(title=t["xls_sheet_summary"])
                 ws_summary.views.sheetView[0].showGridLines = True
                 
-                ws_summary.cell(row=2, column=2, value="Reporte Comparativo de Regresiones").font = title_font
-                ws_summary.cell(row=3, column=2, value="Análisis estadístico y fórmulas dinámicas para Excel").font = subtitle_font
+                ws_summary.cell(row=2, column=2, value=t["xls_summary_title"]).font = title_font
+                ws_summary.cell(row=3, column=2, value=t["xls_summary_subtitle"]).font = subtitle_font
                 
-                headers_summary = ["Método", "Ecuación Matemática", "Fórmula Excel Sugerida", "RMSE", "R²", "Estado"]
+                headers_summary = t["xls_summary_headers"]
                 for col_idx, header in enumerate(headers_summary, start=2):
                     cell = ws_summary.cell(row=5, column=col_idx, value=header)
                     cell.font = header_font
@@ -1699,16 +1694,16 @@ if df is not None and len(df) >= 2:
                     cell.border = thin_border
                 
                 methods_list = [
-                    {"name": "Regresión Lineal Simple (SLR)", "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_slr, "r2": r2_slr},
-                    {"name": "GOR Convencional", "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_gor, "r2": r2_gor},
-                    {"name": "GOR Propuesto", "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_prop, "r2": r2_prop},
-                    {"name": "No Lin. Exponencial Asíntota", "math": "y = a + b*e^(cx)", "formula": "= a + b * EXP(c * X)", "valid": exp_asymp_valid, "rmse": rmse_nl_exp if exp_asymp_valid else np.nan, "r2": r2_nl_exp if exp_asymp_valid else np.nan},
-                    {"name": "No Lin. Logarítmico", "math": "y = a + b*ln(x)", "formula": "= a + b * LN(X)", "valid": log_valid, "rmse": rmse_nl_log if log_valid else np.nan, "r2": r2_nl_log if log_valid else np.nan},
-                    {"name": "No Lin. Potencial / Power Law", "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": pot_valid, "rmse": rmse_nl_pot if pot_valid else np.nan, "r2": r2_nl_pot if pot_valid else np.nan},
-                    {"name": "No Lin. Cuadrático", "math": "y = a*x^2 + b*x + c", "formula": "= a * (X ^ 2) + b * X + c", "valid": quad_valid, "rmse": rmse_nl_quad if quad_valid else np.nan, "r2": r2_nl_quad if quad_valid else np.nan},
-                    {"name": "Función Potencia log10 (Correcto)", "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": fun_pot_valid, "rmse": rmse_pot10_correct if fun_pot_valid else np.nan, "r2": r2_pot10_correct if fun_pot_valid else np.nan},
-                    {"name": "Función Potencia log10 (Incorrecto)", "math": "y = a_err * x^b_err", "formula": "= a_err * (X ^ b_err)", "valid": fun_pot_valid, "rmse": rmse_pot10_incorrect if fun_pot_valid else np.nan, "r2": r2_pot10_incorrect if fun_pot_valid else np.nan},
-                    {"name": "Función Exponencial Simple ln", "math": "y = a*e^(bx)", "formula": "= a * EXP(b * X)", "valid": fun_exp_valid, "rmse": rmse_exp_simple if fun_exp_valid else np.nan, "r2": r2_exp_simple if fun_exp_valid else np.nan},
+                    {"name": t["methods_names"]["SLR"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_slr, "r2": r2_slr},
+                    {"name": t["methods_names"]["GOR Conv"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_gor, "r2": r2_gor},
+                    {"name": t["methods_names"]["GOR Prop"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_prop, "r2": r2_prop},
+                    {"name": t["methods_names"]["No Lin. Exponencial Asintota"], "math": "y = a + b*e^(cx)", "formula": "= a + b * EXP(c * X)", "valid": exp_asymp_valid, "rmse": rmse_nl_exp if exp_asymp_valid else np.nan, "r2": r2_nl_exp if exp_asymp_valid else np.nan},
+                    {"name": t["methods_names"]["No Lin. Logarítmico"], "math": "y = a + b*ln(x)", "formula": "= a + b * LN(X)", "valid": log_valid, "rmse": rmse_nl_log if log_valid else np.nan, "r2": r2_nl_log if log_valid else np.nan},
+                    {"name": t["methods_names"]["No Lin. Potencial / Power Law"], "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": pot_valid, "rmse": rmse_nl_pot if pot_valid else np.nan, "r2": r2_nl_pot if pot_valid else np.nan},
+                    {"name": t["methods_names"]["No Lin. Cuadrático"], "math": "y = a*x^2 + b*x + c", "formula": "= a * (X ^ 2) + b * X + c", "valid": quad_valid, "rmse": rmse_nl_quad if quad_valid else np.nan, "r2": r2_nl_quad if quad_valid else np.nan},
+                    {"name": t["methods_names"]["Fun. Potencia log10 (Correcto)"], "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": fun_pot_valid, "rmse": rmse_pot10_correct if fun_pot_valid else np.nan, "r2": r2_pot10_correct if fun_pot_valid else np.nan},
+                    {"name": t["methods_names"]["Fun. Potencia log10 (Incorrecto)"], "math": "y = a_err * x^b_err", "formula": "= a_err * (X ^ b_err)", "valid": fun_pot_valid, "rmse": rmse_pot10_incorrect if fun_pot_valid else np.nan, "r2": r2_pot10_incorrect if fun_pot_valid else np.nan},
+                    {"name": t["methods_names"]["Fun. Exponencial Simple ln"], "math": "y = a*e^(bx)", "formula": "= a * EXP(b * X)", "valid": fun_exp_valid, "rmse": rmse_exp_simple if fun_exp_valid else np.nan, "r2": r2_exp_simple if fun_exp_valid else np.nan},
                 ]
                 
                 current_row = 6
@@ -1720,11 +1715,11 @@ if df is not None and len(df) >= 2:
                     if m["valid"]:
                         ws_summary.cell(row=current_row, column=5, value=m["rmse"]).number_format = "0.0000"
                         ws_summary.cell(row=current_row, column=6, value=m["r2"]).number_format = "0.0000"
-                        ws_summary.cell(row=current_row, column=7, value="Ajustado").font = regular_font
+                        ws_summary.cell(row=current_row, column=7, value=t["xls_summary_status_fit"]).font = regular_font
                     else:
                         ws_summary.cell(row=current_row, column=5, value="-").alignment = align_center
                         ws_summary.cell(row=current_row, column=6, value="-").alignment = align_center
-                        ws_summary.cell(row=current_row, column=7, value="No Válido (Dominio)").font = Font(name="Calibri", size=11, color="FF0000")
+                        ws_summary.cell(row=current_row, column=7, value=t["xls_summary_status_invalid"]).font = Font(name="Calibri", size=11, color="FF0000")
                         
                     for c in range(2, 8):
                         cell = ws_summary.cell(row=current_row, column=c)
@@ -1745,11 +1740,11 @@ if df is not None and len(df) >= 2:
                         ws_summary.column_dimensions[col_letter].width = max(max_len + 3, 10)
                 
                 # --- SHEET 2: Resultados Detallados ---
-                ws_details = wb.create_sheet(title="Resultados Detallados")
+                ws_details = wb.create_sheet(title=t["xls_sheet_details"])
                 ws_details.views.sheetView[0].showGridLines = True
                 
-                ws_details.cell(row=2, column=2, value="Resultados del Ajuste y Predicciones Dinámicas").font = title_font
-                ws_details.cell(row=3, column=2, value="Las estimaciones y residuos se calculan automáticamente mediante fórmulas de Excel").font = subtitle_font
+                ws_details.cell(row=2, column=2, value=t["xls_details_title"]).font = title_font
+                ws_details.cell(row=3, column=2, value=t["xls_details_subtitle"]).font = subtitle_font
                 
                 models_details = []
                 models_details.append({
@@ -1766,60 +1761,60 @@ if df is not None and len(df) >= 2:
                 })
                 if exp_asymp_valid:
                     models_details.append({
-                        "name": "Exp Asíntota",
+                        "name": "No Lin. Exponencial Asintota",
                         "pred": lambda r: f"= {a_val:.12f} + {b_nl_exp:.12f} * EXP({c_nl_exp:.12f} * B{r})",
                     })
                 if log_valid:
                     models_details.append({
-                        "name": "Logarítmico",
+                        "name": "No Lin. Logarítmico",
                         "pred": lambda r: f"= {a_nl_log:.12f} + {b_nl_log:.12f} * LN(B{r})",
                     })
                 if pot_valid:
                     models_details.append({
-                        "name": "Potencial / Power Law",
+                        "name": "No Lin. Potencial / Power Law",
                         "pred": lambda r: f"= {a_nl_pot:.12f} * (B{r} ^ {b_nl_pot:.12f})",
                     })
                 if quad_valid:
                     models_details.append({
-                        "name": "Cuadrático",
+                        "name": "No Lin. Cuadrático",
                         "pred": lambda r: f"= {a_nl_quad:.12f} * (B{r} ^ 2) + {b_nl_quad:.12f} * B{r} + {c_nl_quad:.12f}",
                     })
                 if fun_pot_valid:
                     models_details.append({
-                        "name": "Fun Potencia (Correcto)",
+                        "name": "Fun. Potencia log10 (Correcto)",
                         "pred": lambda r: f"= {a_correct:.12f} * (B{r} ^ {b_correct:.12f})",
                     })
                     models_details.append({
-                        "name": "Fun Potencia (Incorrecto)",
+                        "name": "Fun. Potencia log10 (Incorrecto)",
                         "pred": lambda r: f"= {a_err:.12f} * (B{r} ^ {b_err:.12f})",
                     })
                 if fun_exp_valid:
                     models_details.append({
-                        "name": "Fun Exponencial",
+                        "name": "Fun. Exponencial Simple ln",
                         "pred": lambda r: f"= {a_coeff:.12f} * EXP({b_coeff:.12f} * B{r})",
                     })
                 
                 # Write Headers
-                ws_details.cell(row=5, column=2, value="X (Obs)").font = header_font
+                ws_details.cell(row=5, column=2, value=t["xls_details_col_x"]).font = header_font
                 ws_details.cell(row=5, column=2).fill = header_fill
                 ws_details.cell(row=5, column=2).border = thin_border
                 ws_details.cell(row=5, column=2).alignment = align_center
                 
-                ws_details.cell(row=5, column=3, value="Y (Obs)").font = header_font
+                ws_details.cell(row=5, column=3, value=t["xls_details_col_y"]).font = header_font
                 ws_details.cell(row=5, column=3).fill = header_fill
                 ws_details.cell(row=5, column=3).border = thin_border
                 ws_details.cell(row=5, column=3).alignment = align_center
                 
                 col_idx = 4
                 for m in models_details:
-                    cell_est = ws_details.cell(row=5, column=col_idx, value=f"Y_est ({m['name']})")
+                    cell_est = ws_details.cell(row=5, column=col_idx, value=t["xls_details_y_est"].format(t["methods_names"][m["name"]]))
                     cell_est.font = header_font
                     cell_est.fill = header_fill
                     cell_est.border = thin_border
                     cell_est.alignment = align_center
                     col_idx += 1
                     
-                    cell_res = ws_details.cell(row=5, column=col_idx, value=f"Residuo ({m['name']})")
+                    cell_res = ws_details.cell(row=5, column=col_idx, value=t["xls_details_residual"].format(t["methods_names"][m["name"]]))
                     cell_res.font = header_font
                     cell_res.fill = header_fill
                     cell_res.border = thin_border
@@ -1862,13 +1857,13 @@ if df is not None and len(df) >= 2:
                         ws_details.column_dimensions[col_letter].width = max(max_len + 3, 12)
                         
                 # --- SHEET 3: Parámetros de Ajuste ---
-                ws_coefs = wb.create_sheet(title="Parametros de Ajuste")
+                ws_coefs = wb.create_sheet(title=t["xls_sheet_coefs"])
                 ws_coefs.views.sheetView[0].showGridLines = True
                 
-                ws_coefs.cell(row=2, column=2, value="Coeficientes Calculados").font = title_font
-                ws_coefs.cell(row=3, column=2, value="Valores de los parámetros y métricas para cada modelo ajustado").font = subtitle_font
+                ws_coefs.cell(row=2, column=2, value=t["xls_coefs_title"]).font = title_font
+                ws_coefs.cell(row=3, column=2, value=t["xls_coefs_subtitle"]).font = subtitle_font
                 
-                headers_coefs = ["Método", "Parámetro 1", "Valor 1", "Parámetro 2", "Valor 2", "Parámetro 3", "Valor 3"]
+                headers_coefs = t["xls_coefs_headers"]
                 for col_idx, header in enumerate(headers_coefs, start=2):
                     cell = ws_coefs.cell(row=5, column=col_idx, value=header)
                     cell.font = header_font
@@ -1877,22 +1872,22 @@ if df is not None and len(df) >= 2:
                     cell.border = thin_border
                     
                 coefs_data = []
-                coefs_data.append(["SLR", "Pendiente (m)", m_slr, "Intersección (c)", c_slr, "", ""])
-                coefs_data.append(["GOR Convencional", "Pendiente (m)", m_gor, "Intersección (c)", b_gor, "", ""])
-                coefs_data.append(["GOR Propuesto", "Pendiente (m)", m_prop, "Intersección (c)", b_prop, "", ""])
+                coefs_data.append([t["methods_names"]["SLR"], t["xls_param_slope"], m_slr, t["xls_param_intercept"], c_slr, "", ""])
+                coefs_data.append([t["methods_names"]["GOR Conv"], t["xls_param_slope"], m_gor, t["xls_param_intercept"], b_gor, "", ""])
+                coefs_data.append([t["methods_names"]["GOR Prop"], t["xls_param_slope"], m_prop, t["xls_param_intercept"], b_prop, "", ""])
                 if exp_asymp_valid:
-                    coefs_data.append(["No Lin. Exponencial Asíntota", "Asíntota (a)", a_val, "b (escala)", b_nl_exp, "c (tasa)", c_nl_exp])
+                    coefs_data.append([t["methods_names"]["No Lin. Exponencial Asintota"], t["xls_param_asymptote"], a_val, t["xls_param_scale_b"], b_nl_exp, t["xls_param_rate_c"], c_nl_exp])
                 if log_valid:
-                    coefs_data.append(["No Lin. Logarítmico", "a (intersección)", a_nl_log, "b (escala)", b_nl_log, "", ""])
+                    coefs_data.append([t["methods_names"]["No Lin. Logarítmico"], t["xls_param_intercept_a"], a_nl_log, t["xls_param_scale_b"], b_nl_log, "", ""])
                 if pot_valid:
-                    coefs_data.append(["No Lin. Potencial / Power Law", "a (escala)", a_nl_pot, "b (exponente)", b_nl_pot, "", ""])
+                    coefs_data.append([t["methods_names"]["No Lin. Potencial / Power Law"], t["xls_param_scale_a"], a_nl_pot, t["xls_param_exponent_b"], b_nl_pot, "", ""])
                 if quad_valid:
-                    coefs_data.append(["No Lin. Cuadrático", "a (x^2)", a_nl_quad, "b (x)", b_nl_quad, "c (cte)", c_nl_quad])
+                    coefs_data.append([t["methods_names"]["No Lin. Cuadrático"], t["xls_param_quad_a"], a_nl_quad, t["xls_param_quad_b"], b_nl_quad, t["xls_param_quad_c"], c_nl_quad])
                 if fun_pot_valid:
-                    coefs_data.append(["Función Potencia log10 (Correcto)", "a (escala)", a_correct, "b (exponente)", b_correct, "", ""])
-                    coefs_data.append(["Función Potencia log10 (Incorrecto)", "a_err (escala)", a_err, "b_err (exponente)", b_err, "", ""])
+                    coefs_data.append([t["methods_names"]["Fun. Potencia log10 (Correcto)"], t["xls_param_scale_a"], a_correct, t["xls_param_exponent_b"], b_correct, "", ""])
+                    coefs_data.append([t["methods_names"]["Fun. Potencia log10 (Incorrecto)"], f"{t['xls_param_scale_a']} (err)", a_err, f"{t['xls_param_exponent_b']} (err)", b_err, "", ""])
                 if fun_exp_valid:
-                    coefs_data.append(["Función Exponencial Simple ln", "a (escala)", a_coeff, "b (exponente)", b_coeff, "", ""])
+                    coefs_data.append([t["methods_names"]["Fun. Exponencial Simple ln"], t["xls_param_scale_a"], a_coeff, t["xls_param_exponent_b"], b_coeff, "", ""])
 
                 current_row = 6
                 for r_data in coefs_data:
@@ -1938,48 +1933,47 @@ if df is not None and len(df) >= 2:
             try:
                 excel_data = generate_excel_with_formulas()
                 st.download_button(
-                    label="📊 Descargar Reporte en Excel",
+                    label=t["t8_export_excel_btn"],
                     data=excel_data,
-                    file_name="Reporte_Comparacion_Regresiones.xlsx",
+                    file_name="Reporte_Comparacion_Regresiones.xlsx" if st.session_state.lang == 'es' else "Regression_Comparison_Report.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             except Exception as e:
                 st.error(f"Error generando Excel: {e}")
             
         with col_out2:
-            st.markdown("**Descargar PDF:**")
+            st.markdown(f"**{t['t8_export_pdf_lbl']}**")
             
             def create_pdf():
                 # Crear imagen de Matplotlib estática en background para el PDF
                 fig_pdf, ax_pdf = plt.subplots(figsize=(8, 5))
-                ax_pdf.scatter(X, Y, color='black', label='Datos Observados')
+                ax_pdf.scatter(X, Y, color='black', label=t["chart_obs"])
                 x_vals = np.linspace(min(X), max(X), 100)
-                ax_pdf.plot(x_vals, m_slr * x_vals + c_slr, color='blue', label='SLR')
-                ax_pdf.plot(x_vals, m_gor * x_vals + b_gor, color='orange', label='GOR Conv')
-                ax_pdf.plot(x_vals, m_prop * x_vals + b_prop, color='green', label='GOR Prop')
+                ax_pdf.plot(x_vals, m_slr * x_vals + c_slr, color='blue', label=t["chart_slr"])
+                ax_pdf.plot(x_vals, m_gor * x_vals + b_gor, color='orange', label=t["chart_gor_conv"])
+                ax_pdf.plot(x_vals, m_prop * x_vals + b_prop, color='green', label=t["chart_gor_prop"])
                 
                 if nl_valid:
-                    if nl_model.startswith("Exponencial"):
+                    if selected_nl_key == "Exponential":
                         y_vals_nl = a_nl + b_nl * np.exp(c_nl * x_vals)
-
-                    elif nl_model.startswith("Logarítmico"):
+                    elif selected_nl_key == "Logarithmic":
                         x_vals_safe = np.maximum(x_vals, 1e-9)
                         y_vals_nl = a_nl + b_nl * np.log(x_vals_safe)
-                    elif nl_model.startswith("Potencial"):
+                    elif selected_nl_key == "Power":
                         x_vals_safe = np.maximum(x_vals, 1e-9)
                         y_vals_nl = a_nl * (x_vals_safe ** b_nl)
-                    elif nl_model.startswith("Cuadrático"):
+                    elif selected_nl_key == "Quadratic":
                         y_vals_nl = a_nl * (x_vals ** 2) + b_nl * x_vals + c_nl
                     
-                    ax_pdf.plot(x_vals, y_vals_nl, color='purple', linestyle='-.', label=f"No Lineal ({nl_model.split(' ')[0]})")
+                    ax_pdf.plot(x_vals, y_vals_nl, color='purple', linestyle='-.', label=t["chart_nlin"].format(selected_nl_short))
                 
                 if power_valid:
                     x_vals_safe = np.maximum(x_vals, 1e-9)
                     y_vals_power = a_power * (x_vals_safe ** b_power)
-                    ax_pdf.plot(x_vals, y_vals_power, color='coral', linestyle='--', label='Power Law')
+                    ax_pdf.plot(x_vals, y_vals_power, color='coral', linestyle='--', label=t["chart_power"])
 
                 ax_pdf.legend()
-                ax_pdf.set_title("Comparacion de Metodos")
+                ax_pdf.set_title(t["pdf_chart_title"])
                 
                 img_buffer = io.BytesIO()
                 fig_pdf.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
@@ -1988,7 +1982,7 @@ if df is not None and len(df) >= 2:
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font('Arial', 'B', 16)
-                pdf.cell(0, 10, 'Reporte de Comparacion de Regresiones', 0, 1, 'C')
+                pdf.cell(0, 10, t["pdf_title"], 0, 1, 'C')
                 pdf.ln(5)
                 
                 import tempfile, os
@@ -2000,48 +1994,48 @@ if df is not None and len(df) >= 2:
                 
                 pdf.ln(5)
                 pdf.set_font('Arial', 'B', 12)
-                pdf.cell(0, 10, '1. Resumen de Modelos', 0, 1)
+                pdf.cell(0, 10, t["pdf_sec_summary"], 0, 1)
                 pdf.set_font('Arial', '', 10)
                 
                 for i, row in df_comp.iterrows():
-                    method_name = row['Método']
-                    if method_name == "SLR":
+                    method_name = row[t["table_col_method"]]
+                    if method_name == t["methods_names"]["SLR"]:
                         eq = f"y = {m_slr:.4f}x + {c_slr:.4f}"
-                    elif method_name.startswith("GOR Conv"):
+                    elif method_name == t["methods_names"]["GOR Conv"]:
                         eq = f"y = {m_gor:.4f}x + {b_gor:.4f}"
-                    elif method_name.startswith("GOR Prop"):
+                    elif method_name == t["methods_names"]["GOR Prop"]:
                         eq = f"y = {m_prop:.4f}x + {b_prop:.4f}"
-                    elif method_name == "No Lin. Exponencial Asintota":
+                    elif method_name == t["methods_names"]["No Lin. Exponencial Asintota"]:
                         eq = nl_equation_exp
-                    elif method_name == "No Lin. Logarítmico":
+                    elif method_name == t["methods_names"]["No Lin. Logarítmico"]:
                         eq = nl_equation_log
-                    elif method_name == "No Lin. Potencial / Power Law":
+                    elif method_name == t["methods_names"]["No Lin. Potencial / Power Law"]:
                         eq = nl_equation_pot
-                    elif method_name == "No Lin. Cuadrático":
+                    elif method_name == t["methods_names"]["No Lin. Cuadrático"]:
                         eq = nl_equation_quad
-                    elif method_name == "Fun. Potencia log10 (Correcto)":
+                    elif method_name == t["methods_names"]["Fun. Potencia log10 (Correcto)"]:
                         eq = f"y = {a_correct:.4f} * x^{{{b_correct:.4f}}}"
-                    elif method_name == "Fun. Potencia log10 (Incorrecto)":
+                    elif method_name == t["methods_names"]["Fun. Potencia log10 (Incorrecto)"]:
                         eq = f"y = {a_err:.4f} * x^{{{b_err:.4f}}}"
-                    elif method_name == "Fun. Exponencial Simple ln":
+                    elif method_name == t["methods_names"]["Fun. Exponencial Simple ln"]:
                         eq = f"y = {a_coeff:.4f} * e^{{{b_coeff:.4f}x}}"
                     else:
                         eq = ""
                     clean_eq = eq.replace('\\cdot', '*').replace('\\ln', 'ln').replace('\\bar', '').replace('\\hat', '').replace('{', '').replace('}', '')
-                    pdf.cell(0, 6, f"{method_name}: {clean_eq} | RMSE: {row['RMSE']:.4f} | R2: {row['R²']:.4f}", 0, 1)
+                    pdf.cell(0, 6, f"{method_name}: {clean_eq} | RMSE: {row[t['table_col_rmse']]:.4f} | R2: {row[t['table_col_r2']]:.4f}", 0, 1)
                 
                 return bytes(pdf.output())
 
             try:
                 pdf_data = create_pdf()
                 st.download_button(
-                    label="📄 Descargar Reporte en PDF",
+                    label=t["t8_export_pdf_btn"],
                     data=pdf_data,
-                    file_name="Reporte_Comparacion_Regresiones.pdf",
+                    file_name="Reporte_Comparacion_Regresiones.pdf" if st.session_state.lang == 'es' else "Regression_Comparison_Report.pdf",
                     mime="application/pdf"
                 )
             except Exception as e:
-                st.error(f"Error generando PDF: {e}")
+                st.error(t["pdf_err_msg"].format(e))
 
 
 

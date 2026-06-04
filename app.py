@@ -43,7 +43,7 @@ st.markdown(t["st_desc"])
 
 # --- BARRA LATERAL: ENTRADA DE DATOS ---
 st.sidebar.markdown("### 🌐 Idioma / Language")
-col_lang1, col_lang2 = st.sidebar.columns(2)
+col_lang1, col_lang2, col_lang3 = st.sidebar.columns(3)
 with col_lang1:
     if st.button("Español", use_container_width=True, type="primary" if st.session_state.lang == 'es' else "secondary"):
         st.session_state.lang = 'es'
@@ -51,6 +51,10 @@ with col_lang1:
 with col_lang2:
     if st.button("English", use_container_width=True, type="primary" if st.session_state.lang == 'en' else "secondary"):
         st.session_state.lang = 'en'
+        st.rerun()
+with col_lang3:
+    if st.button("हिन्दी", use_container_width=True, type="primary" if st.session_state.lang == 'hi' else "secondary"):
+        st.session_state.lang = 'hi'
         st.rerun()
 
 st.sidebar.markdown("---")
@@ -242,6 +246,8 @@ if df is not None and len(df) >= 2:
             exp_asymp_valid = False
             if st.session_state.lang == 'es':
                 exp_asymp_error_msg = f"La asíntota a ({a_nl_exp:.4f}) debe ser estrictamente menor que el valor mínimo de Y ({min_y:.4f}) para calcular ln(y - a)."
+            elif st.session_state.lang == 'hi':
+                exp_asymp_error_msg = f"एसिम्पटोट a ({a_nl_exp:.4f}) ln(y - a) की गणना करने के लिए Y के न्यूनतम मान ({min_y:.4f}) से कड़ाई से कम होना चाहिए।"
             else:
                 exp_asymp_error_msg = f"Asymptote a ({a_nl_exp:.4f}) must be strictly less than the minimum value of Y ({min_y:.4f}) to calculate ln(y - a)."
         else:
@@ -280,6 +286,8 @@ if df is not None and len(df) >= 2:
         exp_asymp_valid = False
         if st.session_state.lang == 'es':
             exp_asymp_error_msg = f"Error en los cálculos del modelo Exponencial con Asíntota: {e}"
+        elif st.session_state.lang == 'hi':
+            exp_asymp_error_msg = f"एसिम्पटोट मॉडल गणनाओं के साथ घातांकीय में त्रुटि: {e}"
         else:
             exp_asymp_error_msg = f"Error in Exponential with Asymptote model calculations: {e}"
 
@@ -297,6 +305,8 @@ if df is not None and len(df) >= 2:
         log_valid = False
         if st.session_state.lang == 'es':
             log_error_msg = "El modelo Logarítmico requiere que todos los valores de X sean estrictamente mayores a cero (X > 0) para calcular ln(X)."
+        elif st.session_state.lang == 'hi':
+            log_error_msg = "लघुगणकीय मॉडल के लिए सभी X मान शून्य से अधिक होने चाहिए (X > 0) ताकि ln(X) की गणना की जा सके।"
         else:
             log_error_msg = "Logarithmic model requires all X values to be strictly greater than zero (X > 0) to calculate ln(X)."
     else:
@@ -317,6 +327,8 @@ if df is not None and len(df) >= 2:
             log_valid = False
             if st.session_state.lang == 'es':
                 log_error_msg = f"Error en los cálculos del modelo Logarítmico: {e}"
+            elif st.session_state.lang == 'hi':
+                log_error_msg = f"लघुगणकीय मॉडल की गणना में त्रुटि: {e}"
             else:
                 log_error_msg = f"Error in Logarithmic model calculations: {e}"
 
@@ -335,6 +347,8 @@ if df is not None and len(df) >= 2:
         pot_valid = False
         if st.session_state.lang == 'es':
             pot_error_msg = "El modelo Potencial requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero (X > 0, Y > 0) para aplicar ln(X) y ln(Y)."
+        elif st.session_state.lang == 'hi':
+            pot_error_msg = "घातीय मॉडल को ln(X) और ln(Y) लागू करने के लिए X और Y दोनों के सभी मानों को शून्य से कड़ाई से अधिक (X > 0, Y > 0) होना आवश्यक है।"
         else:
             pot_error_msg = "Power model requires all values of both X and Y to be strictly greater than zero (X > 0, Y > 0) to apply ln(X) and ln(Y)."
     else:
@@ -358,6 +372,8 @@ if df is not None and len(df) >= 2:
             pot_valid = False
             if st.session_state.lang == 'es':
                 pot_error_msg = f"Error en los cálculos del modelo Potencial: {e}"
+            elif st.session_state.lang == 'hi':
+                pot_error_msg = f"घातीय (पावर) मॉडल की गणना में त्रुटि: {e}"
             else:
                 pot_error_msg = f"Error in Power model calculations: {e}"
 
@@ -375,6 +391,8 @@ if df is not None and len(df) >= 2:
         quad_valid = False
         if st.session_state.lang == 'es':
             quad_error_msg = "El modelo Cuadrático requiere al menos 3 puntos de datos para calcular un ajuste único. Por favor, agrega más puntos en la barra lateral."
+        elif st.session_state.lang == 'hi':
+            quad_error_msg = "द्विघात मॉडल को एक विशिष्ट फिट की गणना करने के लिए कम से कम 3 डेटा बिंदुओं की आवश्यकता होती है। कृपया साइडबार में और बिंदु जोड़ें।"
         else:
             quad_error_msg = "Quadratic model requires at least 3 data points to calculate a unique fit. Please add more points in the sidebar."
     else:
@@ -391,6 +409,8 @@ if df is not None and len(df) >= 2:
             quad_valid = False
             if st.session_state.lang == 'es':
                 quad_error_msg = f"Error en los cálculos del modelo Cuadrático: {e}"
+            elif st.session_state.lang == 'hi':
+                quad_error_msg = f"द्विघात मॉडल की गणना में त्रुटि: {e}"
             else:
                 quad_error_msg = f"Error in Quadratic model calculations: {e}"
 
@@ -492,6 +512,8 @@ if df is not None and len(df) >= 2:
         fun_pot_valid = False
         if st.session_state.lang == 'es':
             fun_pot_error_msg = "⚠️ El modelo Función Potencia requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10)."
+        elif st.session_state.lang == 'hi':
+            fun_pot_error_msg = "⚠️ पावर फंक्शन मॉडल को बेस 10 लघुगणक (log10) लागू करने के लिए X और Y के सभी मानों को शून्य से कड़ाई से अधिक (>0) होना आवश्यक है।"
         else:
             fun_pot_error_msg = "⚠️ The Power Function model requires all X and Y values to be strictly greater than zero (>0) to apply base 10 logarithm (log10)."
     else:
@@ -529,6 +551,8 @@ if df is not None and len(df) >= 2:
             fun_pot_valid = False
             if st.session_state.lang == 'es':
                 fun_pot_error_msg = f"Error en los cálculos de Función Potencia (base 10): {e}"
+            elif st.session_state.lang == 'hi':
+                fun_pot_error_msg = f"पावर फंक्शन (बेस 10) की गणना में त्रुटि: {e}"
             else:
                 fun_pot_error_msg = f"Error in Power Function (base 10) calculations: {e}"
 
@@ -550,6 +574,8 @@ if df is not None and len(df) >= 2:
         fun_exp_valid = False
         if st.session_state.lang == 'es':
             fun_exp_error_msg = "⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln)."
+        elif st.session_state.lang == 'hi':
+            fun_exp_error_msg = "⚠️ घातांकीय मॉडल को प्राकृतिक लघुगणक (ln) लागू करने के लिए Y के सभी मानों को शून्य से कड़ाई से अधिक (>0) होना आवश्यक है।"
         else:
             fun_exp_error_msg = "⚠️ The Exponential model requires all Y values to be strictly greater than zero (>0) to apply natural logarithm (ln)."
     else:
@@ -576,6 +602,8 @@ if df is not None and len(df) >= 2:
             fun_exp_valid = False
             if st.session_state.lang == 'es':
                 fun_exp_error_msg = f"Error en los cálculos de Función Exponencial: {e}"
+            elif st.session_state.lang == 'hi':
+                fun_exp_error_msg = f"घातांकीय फंक्शन की गणना में त्रुटि: {e}"
             else:
                 fun_exp_error_msg = f"Error in Exponential Function calculations: {e}"
 
@@ -948,6 +976,12 @@ if df is not None and len(df) >= 2:
                     "Regresión Lineal": ["Línea recta (Straight line)", "Constante (Constant)", "y = mx + c", "Simple", "Salario vs Experiencia"],
                     "Regresión No Lineal": ["Curva (Curve)", "Cambiante (Changing)", "y = a + be^(cx), etc.", "Más compleja (More complex)", "Sistemas de decaimiento/crecimiento"]
                 })
+            elif st.session_state.lang == 'hi':
+                diff_df = pd.DataFrame({
+                    "विशेषता (Feature)": ["आकार (Shape)", "परिवर्तन की दर (Rate of change)", "समीकरण (Equation)", "जटिलता (Complexity)", "उदाहरण (Example)"],
+                    "रेखीय प्रतिगमन (Linear Regression)": ["सीधी रेखा (Straight line)", "स्थिर (Constant)", "y = mx + c", "सरल (Simple)", "वेतन बनाम अनुभव (Salary vs Experience)"],
+                    "गैर-रेखीय प्रतिगमन (Non-Linear Regression)": ["वक्र (Curve)", "परिवर्तनशील (Changing)", "y = a + be^(cx), etc.", "अधिक जटिल (More complex)", "क्षय/वृद्धि प्रणालियां (Decay/growth systems)"]
+                })
             else:
                 diff_df = pd.DataFrame({
                     "Feature": ["Shape", "Rate of change", "Equation", "Complexity", "Example"],
@@ -968,7 +1002,7 @@ if df is not None and len(df) >= 2:
             col_f1, col_f2 = st.columns(2)
             
             if selected_nl_key == "Exponential":
-                cols_lin = ["x", "Y", "y-a", "ln(y-a)", "Y est", "Residual"] if st.session_state.lang == 'en' else ["x", "Y", "y-a", "ln(y-a)", "Y estima", "Residuo"]
+                cols_lin = ["x", "Y", "y-a", "ln(y-a)", "Y est", "Residual"] if st.session_state.lang == 'en' else (["x", "Y", "y-a", "ln(y-a)", "Y अनुमानित", "अवशेष"] if st.session_state.lang == 'hi' else ["x", "Y", "y-a", "ln(y-a)", "Y estima", "Residuo"])
                 df_linearized = pd.DataFrame({
                     cols_lin[0]: X,
                     cols_lin[1]: Y,
@@ -1060,6 +1094,8 @@ if df is not None and len(df) >= 2:
                     st.latex(r"Y = a + b \ln(X)")
                     if st.session_state.lang == 'es':
                         st.markdown("Definiendo $X' = \\ln(X)$, ajustamos la recta:")
+                    elif st.session_state.lang == 'hi':
+                        st.markdown("$X' = \\ln(X)$ परिभाषित करते हुए, हम रेखा को फिट करते हैं:")
                     else:
                         st.markdown("Defining $X' = \\ln(X)$, we fit the line:")
                     st.latex(r"Y = a + b X'")
@@ -1090,6 +1126,8 @@ if df is not None and len(df) >= 2:
                     st.latex(r"Y = a \cdot X^b \implies \ln(Y) = \ln(a) + b \ln(X)")
                     if st.session_state.lang == 'es':
                         st.markdown("Definiendo $X' = \\ln(X)$, $Y' = \\ln(Y)$ y $A = \\ln(a)$, ajustamos:")
+                    elif st.session_state.lang == 'hi':
+                        st.markdown("$X' = \\ln(X)$, $Y' = \\ln(Y)$ और $A = \\ln(a)$ परिभाषित करते हुए, हम फिट करते हैं:")
                     else:
                         st.markdown("Defining $X' = \\ln(X)$, $Y' = \\ln(Y)$ and $A = \\ln(a)$, we fit:")
                     st.latex(r"Y' = A + b X'")
@@ -1119,7 +1157,7 @@ if df is not None and len(df) >= 2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
                     st.markdown(t["t4_quad_eq"])
                     st.latex(r"Y = a X^2 + b X + c")
-                    st.markdown("A pesar de ser curvilíneo, es **lineal en sus parámetros** ($a, b, c$)." if st.session_state.lang == 'es' else "Despite being curvilinear, it is **linear in its parameters** ($a, b, c$).")
+                    st.markdown("A pesar de ser curvilíneo, es **lineal en sus parámetros** ($a, b, c$)." if st.session_state.lang == 'es' else ("वक्राकार होने के बावजूद, यह अपने मापदंडों ($a, b, c$) में **रेखीय** है।" if st.session_state.lang == 'hi' else "Despite being curvilinear, it is **linear in its parameters** ($a, b, c$)."))
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
@@ -1132,7 +1170,7 @@ if df is not None and len(df) >= 2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
                     st.markdown(t["t4_normal_eq_sys"])
                     st.latex(r"\begin{pmatrix} \sum X_i^4 & \sum X_i^3 & \sum X_i^2 \\ \sum X_i^3 & \sum X_i^2 & \sum X_i \\ \sum X_i^2 & \sum X_i & n \end{pmatrix} \begin{pmatrix} a \\ b \\ c \end{pmatrix} = \begin{pmatrix} \sum X_i^2 Y_i \\ \sum X_i Y_i \\ \sum Y_i \end{pmatrix}")
-                    st.markdown("Se resuelve directamente por álgebra matricial lineal." if st.session_state.lang == 'es' else "It is solved directly by linear matrix algebra.")
+                    st.markdown("Se resuelve directamente por álgebra matricial lineal." if st.session_state.lang == 'es' else ("यह सीधे रेखीय आव्यूह बीजगणित द्वारा हल किया जाता है।" if st.session_state.lang == 'hi' else "It is solved directly by linear matrix algebra."))
                     st.markdown("</div>", unsafe_allow_html=True)
 
             st.success(t["t4_eq_adjusted_generic"].format(nl_equation))
@@ -1935,7 +1973,7 @@ if df is not None and len(df) >= 2:
                 st.download_button(
                     label=t["t8_export_excel_btn"],
                     data=excel_data,
-                    file_name="Reporte_Comparacion_Regresiones.xlsx" if st.session_state.lang == 'es' else "Regression_Comparison_Report.xlsx",
+                    file_name="Reporte_Comparacion_Regresiones.xlsx" if st.session_state.lang == 'es' else ("प्रतिगमन_तुलना_रिपोर्ट.xlsx" if st.session_state.lang == 'hi' else "Regression_Comparison_Report.xlsx"),
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             except Exception as e:
@@ -1945,13 +1983,90 @@ if df is not None and len(df) >= 2:
             st.markdown(f"**{t['t8_export_pdf_lbl']}**")
             
             def create_pdf():
+                # Use English translations for PDF if the current language is Hindi to avoid Unicode encoding errors in fpdf2
+                t_pdf = TRANSLATIONS["en"] if st.session_state.lang == "hi" else t
+                
+                # Rebuild comparison dataframe for PDF using t_pdf to avoid language conflicts
+                comp_data_pdf = {
+                    t_pdf["table_col_method"]: [t_pdf["methods_names"]["SLR"], t_pdf["methods_names"]["GOR Conv"], t_pdf["methods_names"]["GOR Prop"]],
+                    t_pdf["table_col_slope"]: [m_slr, m_gor, m_prop],
+                    t_pdf["table_col_intercept"]: [c_slr, b_gor, b_prop],
+                    t_pdf["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop],
+                    t_pdf["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop],
+                    t_pdf["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop],
+                    t_pdf["table_col_r2"]: [r2_slr, r2_gor, r2_prop]
+                }
+                if exp_asymp_valid:
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["No Lin. Exponencial Asintota"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_nl_exp)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_nl_exp)
+
+                if log_valid:
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["No Lin. Logarítmico"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_nl_log)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_nl_log)
+
+                if pot_valid:
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["No Lin. Potencial / Power Law"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_nl_pot)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_nl_pot)
+
+                if quad_valid:
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["No Lin. Cuadrático"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_nl_quad)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_nl_quad)
+
+                if fun_pot_valid:
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["Fun. Potencia log10 (Correcto)"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_pot10_correct)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_pot10_correct)
+
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["Fun. Potencia log10 (Incorrecto)"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_pot10_incorrect)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_pot10_incorrect)
+
+                if fun_exp_valid:
+                    comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["Fun. Exponencial Simple ln"])
+                    comp_data_pdf[t_pdf["table_col_slope"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_intercept"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_m"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_se_c"]].append(np.nan)
+                    comp_data_pdf[t_pdf["table_col_rmse"]].append(rmse_exp_simple)
+                    comp_data_pdf[t_pdf["table_col_r2"]].append(r2_exp_simple)
+
+                df_comp_pdf = pd.DataFrame(comp_data_pdf)
+
                 # Crear imagen de Matplotlib estática en background para el PDF
                 fig_pdf, ax_pdf = plt.subplots(figsize=(8, 5))
-                ax_pdf.scatter(X, Y, color='black', label=t["chart_obs"])
+                ax_pdf.scatter(X, Y, color='black', label=t_pdf["chart_obs"])
                 x_vals = np.linspace(min(X), max(X), 100)
-                ax_pdf.plot(x_vals, m_slr * x_vals + c_slr, color='blue', label=t["chart_slr"])
-                ax_pdf.plot(x_vals, m_gor * x_vals + b_gor, color='orange', label=t["chart_gor_conv"])
-                ax_pdf.plot(x_vals, m_prop * x_vals + b_prop, color='green', label=t["chart_gor_prop"])
+                ax_pdf.plot(x_vals, m_slr * x_vals + c_slr, color='blue', label=t_pdf["chart_slr"])
+                ax_pdf.plot(x_vals, m_gor * x_vals + b_gor, color='orange', label=t_pdf["chart_gor_conv"])
+                ax_pdf.plot(x_vals, m_prop * x_vals + b_prop, color='green', label=t_pdf["chart_gor_prop"])
                 
                 if nl_valid:
                     if selected_nl_key == "Exponential":
@@ -1965,15 +2080,22 @@ if df is not None and len(df) >= 2:
                     elif selected_nl_key == "Quadratic":
                         y_vals_nl = a_nl * (x_vals ** 2) + b_nl * x_vals + c_nl
                     
-                    ax_pdf.plot(x_vals, y_vals_nl, color='purple', linestyle='-.', label=t["chart_nlin"].format(selected_nl_short))
+                    nl_short_names_pdf = {
+                        "Exponential": t_pdf["nl_models"]["exp"].split(' ')[0],
+                        "Logarithmic": t_pdf["nl_models"]["log"].split(' ')[0],
+                        "Power": t_pdf["nl_models"]["pot"].split(' ')[0],
+                        "Quadratic": t_pdf["nl_models"]["quad"].split(' ')[0]
+                    }
+                    selected_nl_short_pdf = nl_short_names_pdf[selected_nl_key]
+                    ax_pdf.plot(x_vals, y_vals_nl, color='purple', linestyle='-.', label=t_pdf["chart_nlin"].format(selected_nl_short_pdf))
                 
                 if power_valid:
                     x_vals_safe = np.maximum(x_vals, 1e-9)
                     y_vals_power = a_power * (x_vals_safe ** b_power)
-                    ax_pdf.plot(x_vals, y_vals_power, color='coral', linestyle='--', label=t["chart_power"])
+                    ax_pdf.plot(x_vals, y_vals_power, color='coral', linestyle='--', label=t_pdf["chart_power"])
 
                 ax_pdf.legend()
-                ax_pdf.set_title(t["pdf_chart_title"])
+                ax_pdf.set_title(t_pdf["pdf_chart_title"])
                 
                 img_buffer = io.BytesIO()
                 fig_pdf.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
@@ -1982,7 +2104,7 @@ if df is not None and len(df) >= 2:
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font('Arial', 'B', 16)
-                pdf.cell(0, 10, t["pdf_title"], 0, 1, 'C')
+                pdf.cell(0, 10, t_pdf["pdf_title"], 0, 1, 'C')
                 pdf.ln(5)
                 
                 import tempfile, os
@@ -1994,35 +2116,35 @@ if df is not None and len(df) >= 2:
                 
                 pdf.ln(5)
                 pdf.set_font('Arial', 'B', 12)
-                pdf.cell(0, 10, t["pdf_sec_summary"], 0, 1)
+                pdf.cell(0, 10, t_pdf["pdf_sec_summary"], 0, 1)
                 pdf.set_font('Arial', '', 10)
                 
-                for i, row in df_comp.iterrows():
-                    method_name = row[t["table_col_method"]]
-                    if method_name == t["methods_names"]["SLR"]:
+                for i, row in df_comp_pdf.iterrows():
+                    method_name = row[t_pdf["table_col_method"]]
+                    if method_name == t_pdf["methods_names"]["SLR"]:
                         eq = f"y = {m_slr:.4f}x + {c_slr:.4f}"
-                    elif method_name == t["methods_names"]["GOR Conv"]:
+                    elif method_name == t_pdf["methods_names"]["GOR Conv"]:
                         eq = f"y = {m_gor:.4f}x + {b_gor:.4f}"
-                    elif method_name == t["methods_names"]["GOR Prop"]:
+                    elif method_name == t_pdf["methods_names"]["GOR Prop"]:
                         eq = f"y = {m_prop:.4f}x + {b_prop:.4f}"
-                    elif method_name == t["methods_names"]["No Lin. Exponencial Asintota"]:
+                    elif method_name == t_pdf["methods_names"]["No Lin. Exponencial Asintota"]:
                         eq = nl_equation_exp
-                    elif method_name == t["methods_names"]["No Lin. Logarítmico"]:
+                    elif method_name == t_pdf["methods_names"]["No Lin. Logarítmico"]:
                         eq = nl_equation_log
-                    elif method_name == t["methods_names"]["No Lin. Potencial / Power Law"]:
+                    elif method_name == t_pdf["methods_names"]["No Lin. Potencial / Power Law"]:
                         eq = nl_equation_pot
-                    elif method_name == t["methods_names"]["No Lin. Cuadrático"]:
+                    elif method_name == t_pdf["methods_names"]["No Lin. Cuadrático"]:
                         eq = nl_equation_quad
-                    elif method_name == t["methods_names"]["Fun. Potencia log10 (Correcto)"]:
+                    elif method_name == t_pdf["methods_names"]["Fun. Potencia log10 (Correcto)"]:
                         eq = f"y = {a_correct:.4f} * x^{{{b_correct:.4f}}}"
-                    elif method_name == t["methods_names"]["Fun. Potencia log10 (Incorrecto)"]:
+                    elif method_name == t_pdf["methods_names"]["Fun. Potencia log10 (Incorrecto)"]:
                         eq = f"y = {a_err:.4f} * x^{{{b_err:.4f}}}"
-                    elif method_name == t["methods_names"]["Fun. Exponencial Simple ln"]:
+                    elif method_name == t_pdf["methods_names"]["Fun. Exponencial Simple ln"]:
                         eq = f"y = {a_coeff:.4f} * e^{{{b_coeff:.4f}x}}"
                     else:
                         eq = ""
                     clean_eq = eq.replace('\\cdot', '*').replace('\\ln', 'ln').replace('\\bar', '').replace('\\hat', '').replace('{', '').replace('}', '')
-                    pdf.cell(0, 6, f"{method_name}: {clean_eq} | RMSE: {row[t['table_col_rmse']]:.4f} | R2: {row[t['table_col_r2']]:.4f}", 0, 1)
+                    pdf.cell(0, 6, f"{method_name}: {clean_eq} | RMSE: {row[t_pdf['table_col_rmse']]:.4f} | R2: {row[t_pdf['table_col_r2']]:.4f}", 0, 1)
                 
                 return bytes(pdf.output())
 
@@ -2031,7 +2153,7 @@ if df is not None and len(df) >= 2:
                 st.download_button(
                     label=t["t8_export_pdf_btn"],
                     data=pdf_data,
-                    file_name="Reporte_Comparacion_Regresiones.pdf" if st.session_state.lang == 'es' else "Regression_Comparison_Report.pdf",
+                    file_name="Reporte_Comparacion_Regresiones.pdf" if st.session_state.lang == 'es' else ("प्रतिगमन_तुलना_रिपोर्ट.pdf" if st.session_state.lang == 'hi' else "Regression_Comparison_Report.pdf"),
                     mime="application/pdf"
                 )
             except Exception as e:

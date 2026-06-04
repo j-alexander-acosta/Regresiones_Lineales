@@ -3,6 +3,7 @@
 Selecciona tu idioma / Select your language:
 *   [🇪🇸 Español](#-español)
 *   [🇺🇸 English](#-english)
+*   [🇮🇳 हिन्दी](#-हिन्दी)
 
 ---
 
@@ -16,10 +17,15 @@ Esta es una herramienta educativa y profesional construida con Python y [Streaml
 
 ### 🚀 Características Principales
 
-*   🌐 **Selector de Idioma Interactivo (Bilingüe)**:
-    *   Cambio de inmediato entre **Español** e **Inglés** desde la barra lateral.
-    *   Traducción completa en tiempo real de las 8 pestañas educativas (explicaciones LaTeX, sumatorias, calculadoras y gráficos interactivos).
+*   🌐 **Selector de Idioma Interactivo (Trilingüe)**:
+    *   Cambio de inmediato entre **Español**, **Inglés** y **Hindi** desde la barra lateral.
+    *   Traducción completa en tiempo real de toda la interfaz (explicaciones LaTeX, sumatorias, calculadoras y gráficos interactivos).
     *   Reportes exportados (PDF y Excel) adaptados 100% al idioma activo.
+*   📊 **Módulo de Regresión Lineal Múltiple (MLR)**:
+    *   Ajusta y analiza la relación entre una variable dependiente ($Y$) y múltiples variables independientes ($X_1, X_2, \dots, X_k$).
+    *   Preferencia predeterminada por un conjunto sismológico de predicción de movimiento del suelo (GMPE: `logPOA`, `M`, `M^2`, `logR`, `R`).
+    *   Estadísticas avanzadas idénticas a las de Excel: Coeficiente de correlación múltiple, $R^2$, $R^2$ ajustado, Error típico, tabla ANOVA completa y coeficientes con errores estándar, estadísticos t, P-valores e intervalos de confianza del 95%.
+    *   Visualizaciones dinámicas en pestañas separadas para gráficos de residuales individuales, gráficos de curvas de ajuste y el gráfico de probabilidad normal.
 *   📊 **Entrada Única de Datos**:
     *   **Subida de Archivos**: Sube tus datos directamente en formatos `.csv` o `.xlsx`.
     *   **Ingreso Manual**: Usa un editor interactivo para ingresar o corregir tus puntos (X, Y) dinámicamente. Todos los modelos procesan esta misma base simultáneamente.
@@ -144,10 +150,15 @@ This is an educational and professional tool built with Python and [Streamlit](h
 
 ### 🚀 Key Features
 
-*   🌐 **Interactive Language Selector (Bilingual)**:
-    *   Switch instantly between **Spanish** and **English** using buttons in the sidebar.
-    *   Real-time translation of all 8 educational tabs (LaTeX math explanations, intermediate sums, calculators, and interactive plots).
+*   🌐 **Interactive Language Selector (Trilingual)**:
+    *   Switch instantly between **Spanish**, **English**, and **Hindi** using buttons in the sidebar.
+    *   Real-time translation of the entire interface (LaTeX math explanations, intermediate sums, calculators, and interactive plots).
     *   Exported reports (PDF and Excel) fully adapted to the selected language.
+*   📊 **Multiple Linear Regression (MLR) Module**:
+    *   Fit and analyze the relationship between a dependent variable ($Y$) and multiple independent variables ($X_1, X_2, \dots, X_k$).
+    *   Preloaded with a seismological Ground Motion Prediction Equation (GMPE) dataset (`logPOA`, `M`, `M^2`, `logR`, `R`).
+    *   Calculates Excel-matching regression statistics (Multiple R, $R^2$, Adjusted $R^2$, Standard Error, complete ANOVA table, coefficient estimates, standard errors, t stats, P-values, and 95% Confidence Intervals).
+    *   Interactive separate tabs for individual residual plots, line fit plots, and the normal probability plot.
 *   📊 **Single Data Input**:
     *   **File Upload**: Upload your data directly in `.csv` or `.xlsx` formats.
     *   **Manual Entry**: Use an interactive editor to dynamically input or correct your (X, Y) points. All models process this same base simultaneously.
@@ -258,3 +269,104 @@ Your web browser will automatically open at the local address `http://localhost:
 ### 👨‍💻 About the Author
 
 Developed and maintained by **Alexander Acosta** ([@j-alexander-acosta](https://github.com/j-alexander-acosta)).
+
+---
+---
+
+## 🇮🇳 हिन्दी
+
+**रैखिक और गैर-रैखिक प्रतिगमन विधि तुलना** मंच पर आपका स्वागत है!
+
+यह पायथन और [Streamlit](https://streamlit.io/) के साथ बनाया गया एक शैक्षिक और पेशेवर उपकरण है जो आपको पारंपरिक स्प्रेडशीट के विपरीत मॉडल व्यवहारों का आलोचनात्मक विश्लेषण करते हुए, एक साथ कई गणितीय प्रतिगमन विधियों को स्वचालित, प्रोजेक्ट और तुलना करने की अनुमति देता है।
+
+---
+
+### 🚀 मुख्य विशेषताएं
+
+*   🌐 **इंटरएक्टिव भाषा चयनकर्ता (त्रिभाषी)**:
+    *   साइडबार में बटन का उपयोग करके तुरंत **स्पैनिश**, **अंग्रेजी** और **हिन्दी** के बीच स्विच करें।
+    *   सभी शैक्षिक टैब (LaTeX गणितीय स्पष्टीकरण, मध्यवर्ती योग, कैलकुलेटर और इंटरैक्टिव आलेख) का रीयल-टाइम अनुवाद।
+    *   निर्यातित रिपोर्ट (PDF और Excel) पूरी तरह से चुनी गई भाषा के अनुकूल।
+*   📊 **रैखिक बहु-प्रतिगमन (MLR) मॉड्यूल**:
+    *   एक आश्रित चर ($Y$) और कई स्वतंत्र चरों ($X_1, X_2, \dots, X_k$) के बीच संबंध का विश्लेषण करें।
+    *   भूकंपीय ग्राउंड मोशन प्रेडिक्शन इक्वेशन (GMPE) डेटासेट (`logPOA`, `M`, `M^2`, `logR`, `R`) के साथ डिफ़ॉल्ट रूप से प्रीलोड किया गया।
+    *   Microsoft Excel से मेल खाने वाले प्रतिगमन आँकड़े (Multiple R, $R^2$, समायोजित $R^2$, मानक त्रुटि, ANOVA तालिका, गुणांक, मानक त्रुटि, टी सांख्यिकी, पी-मान और 95% विश्वास अंतराल) की गणना करता है।
+    *   इंटरएक्टिव अवशिष्ट आलेख, लाइन फिट आलेख और सामान्य संभाव्यता आलेख शामिल हैं।
+*   📈 **एकल डेटा प्रविष्टि**:
+    *   **फ़ाइल अपलोड**: `.csv` या `.xlsx` प्रारूपों में सीधे डेटा अपलोड करें।
+    *   **मैनुअल प्रविष्टि**: अपने बिंदुओं को गतिशील रूप से दर्ज या सही करने के लिए इंटरैक्टिव डेटा संपादक का उपयोग करें।
+*   🧮 **एक साथ कई मॉडलों की तुलना**:
+    1. **LSR (सामान्य न्यूनतम वर्ग):** Y-अक्ष पर ऊर्ध्वाधर त्रुटियों को न्यूनतम करना।
+    2. **पारंपरिक GOR:** प्रसरण अनुपात $\eta$ द्वारा भारित लंबवत दूरियों को न्यूनतम करना (Das et al., 2018)।
+    3. **प्रस्तावित GOR (निष्पक्ष):** वास्तविक लंबवत अनुमानों के आधार पर अंतिम फिट को अनुकूलित करता है।
+    4. **गैर-रेखीय प्रतिगमन:** एक्सपोनेंशियल, लॉगरिदमिक, पोटेंशियल और क्वाड्रेटिक मॉडल का फिट।
+*   📉 **इंटरएक्टिव डैशबोर्ड (Plotly)**:
+    *   मूल डेटा स्पेस में टूलटिप्स और ज़ूम क्षमताओं के साथ गतिशील आलेख।
+*   📄 **रिपोर्ट निर्यात करना**:
+    *   **PDF रिपोर्ट**: सभी फिट किए गए मॉडलों के समीकरणों और मैट्रिक्स का सारांश।
+    *   **Excel रिपोर्ट**: संरचित `.xlsx` दस्तावेज़ में सभी मॉडलों के लिए भविष्यवाणियां, पैरामीटर, अवशिष्ट और अनुमानित डेटा डाउनलोड करें।
+
+---
+
+### 🛠️ प्रौद्योगिकियां और पुस्तकालय
+
+*   **Python:** कोर विकास भाषा।
+*   **Streamlit:** इंटरैक्टिव यूजर इंटरफेस के लिए वेब फ्रेमवर्क।
+*   **Plotly:** गतिशील चार्ट रेंडरिंग।
+*   **Pandas & NumPy:** डेटा हेरफेर और मैट्रिक्स गणना।
+*   **Scikit-Learn:** कोर रैखिक प्रतिगमन फिटिंग।
+*   **Matplotlib & Seaborn:** स्थिर चार्ट जनरेशन।
+*   **fpdf2:** पीडीएफ रिपोर्ट जनरेशन।
+*   **openpyxl:** एक्सेल राइटिंग इंजन।
+
+---
+
+### 💻 स्थापना और स्थानीय उपयोग
+
+अपने स्थानीय कंप्यूटर पर इस परियोजना को चलाने के लिए, सुनिश्चित करें कि आपके पास [Python 3](https://www.python.org/downloads/) और [Git](https://git-scm.com/) स्थापित हैं।
+
+#### 🍎 macOS और 🐧 Linux पर
+1. **रिपॉजिटरी क्लोन करें**:
+    ```bash
+    git clone https://github.com/j-alexander-acosta/Regresiones_Lineales.git
+    cd Regresiones_Lineales
+    ```
+2. **वर्चुअल एनवायरनमेंट बनाएं और सक्रिय करें**:
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+3. **निर्भरताएं स्थापित करें**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4. **सर्वर चलाएं**:
+    ```bash
+    streamlit run app.py
+    ```
+
+#### 🪟 Windows पर
+1. **रिपॉजिटरी क्लोन करें**:
+    ```cmd
+    git clone https://github.com/j-alexander-acosta/Regresiones_Lineales.git
+    cd Regresiones_Lineales
+    ```
+2. **वर्चुअल एनवायरनमेंट बनाएं और सक्रिय करें**:
+    ```cmd
+    python -m venv venv
+    venv\Scripts\activate
+    ```
+3. **निर्भरताएं स्थापित करें**:
+    ```cmd
+    pip install -r requirements.txt
+    ```
+4. **सर्वर चलाएं**:
+    ```cmd
+    streamlit run app.py
+    ```
+
+---
+
+### 👨‍💻 लेखक के बारे में
+
+**Alexander Acosta** ([@j-alexander-acosta](https://github.com/j-alexander-acosta)) द्वारा विकसित और प्रबंधित।

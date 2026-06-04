@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+import scipy.stats as stats
 import plotly.graph_objects as plgo
 import matplotlib.pyplot as plt
 import io
@@ -58,39 +59,267 @@ with col_lang3:
         st.rerun()
 
 st.sidebar.markdown("---")
+analysis_type = st.sidebar.selectbox(t["sb_analysis_type"], [t["sb_simple_regression"], t["sb_multiple_regression"]])
+is_mlr = (analysis_type == t["sb_multiple_regression"])
 
 st.sidebar.header(t["sb_header_data"])
 data_source = st.sidebar.radio(t["sb_data_source"], (t["sb_manual"], t["sb_upload"]))
 
 df = None
 
-if data_source == t["sb_manual"]:
-    st.sidebar.markdown(t["sb_manual_desc"])
-    # Tabla base con 19 muestras
-    default_data = pd.DataFrame({
-        "X": [4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0, 6.1, 6.2],
-        "Y": [4.7, 4.6, 5.1, 5.2, 5.0, 5.4, 5.3, 5.5, 5.4, 5.6, 5.8, 5.9, 5.7, 6.1, 6.0, 6.2, 6.4, 6.3, 6.6]
-    })
-    df = st.sidebar.data_editor(default_data, num_rows="dynamic", use_container_width=True)
+if not is_mlr:
+    if data_source == t["sb_manual"]:
+        st.sidebar.markdown(t["sb_manual_desc"])
+        default_data = pd.DataFrame({
+            "X": [4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0, 6.1, 6.2],
+            "Y": [4.7, 4.6, 5.1, 5.2, 5.0, 5.4, 5.3, 5.5, 5.4, 5.6, 5.8, 5.9, 5.7, 6.1, 6.0, 6.2, 6.4, 6.3, 6.6]
+        })
+        df = st.sidebar.data_editor(default_data, num_rows="dynamic", use_container_width=True)
+    else:
+        uploaded_file = st.sidebar.file_uploader(t["sb_upload_desc"], type=["csv", "xlsx"])
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df_raw = pd.read_csv(uploaded_file)
+                else:
+                    df_raw = pd.read_excel(uploaded_file)
+                
+                st.sidebar.markdown(t["sb_select_cols"])
+                x_col = st.sidebar.selectbox(t["sb_col_x"], df_raw.columns)
+                y_col = st.sidebar.selectbox(t["sb_col_y"], df_raw.columns)
+                
+                df = df_raw[[x_col, y_col]].rename(columns={x_col: "X", y_col: "Y"}).dropna()
+                
+            except Exception as e:
+                st.sidebar.error(t["sb_err_file"].format(e))
 else:
-    uploaded_file = st.sidebar.file_uploader(t["sb_upload_desc"], type=["csv", "xlsx"])
-    if uploaded_file is not None:
-        try:
-            if uploaded_file.name.endswith('.csv'):
-                df_raw = pd.read_csv(uploaded_file)
-            else:
-                df_raw = pd.read_excel(uploaded_file)
-            
-            st.sidebar.markdown(t["sb_select_cols"])
-            x_col = st.sidebar.selectbox(t["sb_col_x"], df_raw.columns)
-            y_col = st.sidebar.selectbox(t["sb_col_y"], df_raw.columns)
-            
-            df = df_raw[[x_col, y_col]].rename(columns={x_col: "X", y_col: "Y"}).dropna()
-            
-        except Exception as e:
-            st.sidebar.error(t["sb_err_file"].format(e))
+    if data_source == t["sb_manual"]:
+        st.sidebar.markdown(t["sb_manual_desc"])
+        default_data_mlr = pd.DataFrame({
+            "logPOA": [1.91991, 1.91472, 1.56733, 1.93615, 1.84532, 1.46172, 1.73993, 1.34949, 1.23044, 1.73635, 1.58530, 1.85273, 1.68352, 2.03520, 1.60728],
+            "M": [4.78507, 4.78507, 4.78507, 4.78507, 4.78507, 4.78507, 4.78507, 5.81963, 5.81963, 5.74574, 5.74574, 5.74574, 5.74574, 5.74574, 5.74574],
+            "M^2": [22.8969, 22.8969, 22.8969, 22.8969, 22.8969, 22.8969, 22.8969, 33.8681, 33.8681, 33.0135, 33.0135, 33.0135, 33.0135, 33.0135, 33.0135],
+            "logR": [1.79358, 1.81018, 1.83163, 1.85999, 1.90601, 1.91687, 1.92090, 2.24137, 2.40310, 2.07246, 1.93409, 2.07355, 2.10917, 2.07282, 2.17219],
+            "R": [62.1692, 64.5929, 67.8788, 72.4423, 80.5395, 82.5788, 83.3484, 174.328, 252.991, 118.156, 85.9195, 118.454, 128.578, 118.255, 148.659]
+        })
+        df = st.sidebar.data_editor(default_data_mlr, num_rows="dynamic", use_container_width=True)
+    else:
+        uploaded_file = st.sidebar.file_uploader(t["sb_upload_desc"], type=["csv", "xlsx"])
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+            except Exception as e:
+                st.sidebar.error(t["sb_err_file"].format(e))
 
 if df is not None and len(df) >= 2:
+    if is_mlr:
+        st.sidebar.markdown("---")
+        st.sidebar.header(t["sb_select_cols"])
+        y_col = st.sidebar.selectbox(t["sb_col_y"], df.columns, index=0)
+        x_cols = st.sidebar.multiselect(t["sb_col_x_multiple"], [c for c in df.columns if c != y_col], default=[c for c in df.columns if c != y_col])
+        
+        if not x_cols:
+            st.warning(t["mlr_err_no_x"])
+            st.markdown("---")
+            st.markdown(
+                "<p style='text-align: center; color: gray; font-size: 14px;'>"
+                "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+                "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+                "</p>", 
+                unsafe_allow_html=True
+            )
+            st.stop()
+            
+        df_clean = df[[y_col] + x_cols].dropna()
+        if len(df_clean) < len(x_cols) + 2:
+            st.warning(t["mlr_err_insufficient_data"].format(len(x_cols) + 2, len(x_cols)))
+            st.markdown("---")
+            st.markdown(
+                "<p style='text-align: center; color: gray; font-size: 14px;'>"
+                "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+                "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+                "</p>", 
+                unsafe_allow_html=True
+            )
+            st.stop()
+            
+        # Math Solver
+        Y = df_clean[y_col].values
+        X_vals = df_clean[x_cols].values
+        N = len(Y)
+        K = len(x_cols)
+        
+        X_mat = np.column_stack([np.ones(N), X_vals])
+        
+        try:
+            XtX = np.dot(X_mat.T, X_mat)
+            XtX_inv = np.linalg.inv(XtX)
+            XtY = np.dot(X_mat.T, Y)
+            beta = np.dot(XtX_inv, XtY)
+            
+            Y_pred = np.dot(X_mat, beta)
+            residuals = Y - Y_pred
+            
+            Y_mean = np.mean(Y)
+            SST = np.sum((Y - Y_mean)**2)
+            SSE = np.sum(residuals**2)
+            SSR = SST - SSE
+            
+            df_reg = K
+            df_resid = N - K - 1
+            df_total = N - 1
+            
+            MSR = SSR / df_reg if df_reg > 0 else 0
+            MSE = SSE / df_resid if df_resid > 0 else 0
+            
+            F_stat = MSR / MSE if MSE > 0 else 0
+            signif_f = stats.f.sf(F_stat, df_reg, df_resid) if df_resid > 0 else 1.0
+            
+            r2 = 1.0 - (SSE / SST) if SST > 0 else 0.0
+            r2_adj = 1.0 - ((SSE / df_resid) / (SST / df_total)) if df_resid > 0 and df_total > 0 else 0.0
+            se_reg = np.sqrt(MSE)
+            
+            cov_beta = MSE * XtX_inv
+            se_beta = np.sqrt(np.diagonal(cov_beta))
+            t_stats = beta / se_beta
+            p_values = 2.0 * stats.t.sf(np.abs(t_stats), df_resid) if df_resid > 0 else np.ones(K+1)
+            
+            t_crit = stats.t.ppf(0.975, df_resid) if df_resid > 0 else 0.0
+            ci_lower = beta - t_crit * se_beta
+            ci_upper = beta + t_crit * se_beta
+            
+            multiple_r = np.sqrt(r2) if r2 >= 0 else 0.0
+        except np.linalg.LinAlgError:
+            st.error("Error: Colinealidad detectada en las variables independientes. Por favor, remueve alguna variable correlacionada.")
+            st.stop()
+            
+        # UI
+        st.header(t["mlr_title"])
+        tab_stats, tab_plots, tab_normal = st.tabs([t["mlr_tab_stats"], t["mlr_tab_plots"], t["mlr_tab_normal"]])
+        
+        with tab_stats:
+            st.subheader(t["mlr_stats_title"])
+            stats_df = pd.DataFrame({
+                t["table_col_method"]: [
+                    t["mlr_multiple_r"],
+                    t["mlr_r2"],
+                    t["mlr_r2_adj"],
+                    t["mlr_se"],
+                    t["mlr_obs"]
+                ],
+                "Valor": [
+                    f"{multiple_r:.8f}",
+                    f"{r2:.8f}",
+                    f"{r2_adj:.8f}",
+                    f"{se_reg:.8f}",
+                    f"{N}"
+                ]
+            })
+            st.table(stats_df)
+            
+            st.subheader(t["mlr_anova_title"])
+            anova_df = pd.DataFrame({
+                "": [t["mlr_row_reg"], t["mlr_row_resid"], t["mlr_row_total"]],
+                t["mlr_anova_df"]: [df_reg, df_resid, df_total],
+                t["mlr_anova_ss"]: [f"{SSR:.6f}", f"{SSE:.6f}", f"{SST:.6f}"],
+                t["mlr_anova_ms"]: [f"{MSR:.6f}", f"{MSE:.6f}", ""],
+                t["mlr_anova_f"]: [f"{F_stat:.6f}" if df_reg > 0 else "", "", ""],
+                t["mlr_anova_sig_f"]: [f"{signif_f:.3e}" if df_reg > 0 else "", "", ""]
+            })
+            st.table(anova_df)
+            
+            st.subheader(t["mlr_coefs_title"])
+            coef_names = [t["mlr_intercept"]] + list(x_cols)
+            coefs_df = pd.DataFrame({
+                "": coef_names,
+                t["mlr_col_coef"]: [f"{b:.8f}" for b in beta],
+                t["mlr_col_se"]: [f"{se:.8f}" for se in se_beta],
+                t["mlr_col_t"]: [f"{t_val:.8f}" for t_val in t_stats],
+                t["mlr_col_p"]: [f"{p:.3e}" for p in p_values],
+                t["mlr_col_low95"]: [f"{low:.8f}" for low in ci_lower],
+                t["mlr_col_upp95"]: [f"{upp:.8f}" for upp in ci_upper]
+            })
+            st.table(coefs_df)
+            
+        with tab_plots:
+            for j, x_col in enumerate(x_cols):
+                st.markdown(f"### Variable X: **{x_col}**")
+                col_p1, col_p2 = st.columns(2)
+                x_vals_col = df_clean[x_col].values
+                
+                with col_p1:
+                    fig_res = plgo.Figure()
+                    fig_res.add_trace(plgo.Scatter(
+                        x=x_vals_col, y=residuals, mode='markers',
+                        marker=dict(color='#1f77b4', size=8),
+                        hovertemplate='X: %{x}<br>Residuo: %{y:.4f}<extra></extra>'
+                    ))
+                    fig_res.add_hline(y=0, line_dash="dash", line_color="red")
+                    fig_res.update_layout(
+                        title=t["mlr_res_plot_title"].format(x_col),
+                        xaxis_title=x_col,
+                        yaxis_title=t["mlr_res_y_label"],
+                        template='plotly_white',
+                        height=350
+                    )
+                    st.plotly_chart(fig_res, use_container_width=True)
+                    
+                with col_p2:
+                    fig_fit = plgo.Figure()
+                    fig_fit.add_trace(plgo.Scatter(
+                        x=x_vals_col, y=Y, mode='markers', name=t["mlr_observed"],
+                        marker=dict(color='#1f77b4', size=8),
+                        hovertemplate='X: %{x}<br>Obs: %{y:.4f}<extra></extra>'
+                    ))
+                    sort_idx = np.argsort(x_vals_col)
+                    fig_fit.add_trace(plgo.Scatter(
+                        x=x_vals_col[sort_idx], y=Y_pred[sort_idx], mode='lines+markers', name=t["mlr_predicted"],
+                        line=dict(color='orange', width=2),
+                        marker=dict(color='orange', size=6),
+                        hovertemplate='X: %{x}<br>Pred: %{y:.4f}<extra></extra>'
+                    ))
+                    fig_fit.update_layout(
+                        title=t["mlr_fit_plot_title"].format(x_col),
+                        xaxis_title=x_col,
+                        yaxis_title=y_col,
+                        template='plotly_white',
+                        height=350
+                    )
+                    st.plotly_chart(fig_fit, use_container_width=True)
+                    
+        with tab_normal:
+            Y_sorted = np.sort(Y)
+            percentiles = (np.arange(1, N + 1) - 0.5) / N * 100
+            
+            fig_norm = plgo.Figure()
+            fig_norm.add_trace(plgo.Scatter(
+                x=percentiles, y=Y_sorted, mode='markers+lines',
+                marker=dict(color='#1f77b4', size=8),
+                line=dict(color='#1f77b4', width=1.5),
+                hovertemplate='Percentil: %{x:.2f}%<br>Y: %{y:.4f}<extra></extra>'
+            ))
+            fig_norm.update_layout(
+                title=t["mlr_normal_plot_title"],
+                xaxis_title=t["mlr_normal_x_label"],
+                yaxis_title=t["mlr_normal_y_label"],
+                template='plotly_white',
+                height=450
+            )
+            st.plotly_chart(fig_norm, use_container_width=True)
+            
+        st.markdown("---")
+        st.markdown(
+            "<p style='text-align: center; color: gray; font-size: 14px;'>"
+            "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+            "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+            "</p>", 
+            unsafe_allow_html=True
+        )
+        st.stop()
+
     st.sidebar.markdown("---")
     st.sidebar.header(t["sb_header_params"])
     eta = st.sidebar.number_input(t["sb_eta"], value=0.2000, step=0.1, format="%.4f")

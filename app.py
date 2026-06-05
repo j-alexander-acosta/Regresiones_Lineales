@@ -289,7 +289,24 @@ if df is not None and len(df) >= 2:
                         height=350
                     )
                     st.plotly_chart(fig_fit, use_container_width=True)
-                    
+            
+            st.markdown("---")
+            st.subheader(t["mlr_res_analysis_title"])
+            
+            res_df = pd.DataFrame({
+                t["mlr_observation"]: np.arange(1, N + 1),
+                t["mlr_predicted_value"].format(y_col): Y_pred,
+                t["mlr_residual_val"]: residuals
+            })
+            st.dataframe(
+                res_df.style.format({
+                    t["mlr_predicted_value"].format(y_col): "{:.8f}",
+                    t["mlr_residual_val"]: "{:.8f}"
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+            
         with tab_normal:
             Y_sorted = np.sort(Y)
             percentiles = (np.arange(1, N + 1) - 0.5) / N * 100

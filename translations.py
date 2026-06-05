@@ -316,7 +316,11 @@ TRANSLATIONS = {
         "mlr_observed": "Observado (Y)",
         "mlr_predicted": "Pronóstico (Y est)",
         "mlr_err_insufficient_data": "⚠️ Datos insuficientes. Necesitas al menos {} observaciones para ajustar {} variables.",
-        "mlr_err_no_x": "⚠️ Selecciona al menos una variable independiente (X)."
+        "mlr_err_no_x": "⚠️ Selecciona al menos una variable independiente (X).",
+        "mlr_res_analysis_title": "Análisis de los residuales",
+        "mlr_observation": "Observación",
+        "mlr_predicted_value": "Pronóstico para {}",
+        "mlr_residual_val": "Residuos"
     },
     "en": {
         "page_title": "Linear Regression App",
@@ -633,7 +637,11 @@ TRANSLATIONS = {
         "mlr_observed": "Observed (Y)",
         "mlr_predicted": "Predicted (Y est)",
         "mlr_err_insufficient_data": "⚠️ Insufficient data. You need at least {} observations to fit {} variables.",
-        "mlr_err_no_x": "⚠️ Select at least one independent variable (X)."
+        "mlr_err_no_x": "⚠️ Select at least one independent variable (X).",
+        "mlr_res_analysis_title": "Residual Analysis",
+        "mlr_observation": "Observation",
+        "mlr_predicted_value": "Predicted {}",
+        "mlr_residual_val": "Residuals"
     },
     "hi": {
         "page_title": "रेखीय प्रतिगमन ऐप",
@@ -950,6 +958,10 @@ TRANSLATIONS = {
         "mlr_observed": "देखा गया (Y)",
         "mlr_predicted": "अनुमानित (Y est)",
         "mlr_err_insufficient_data": "⚠️ अपर्याप्त डेटा। आपको {} चरों को फिट करने के लिए कम से कम {} अवलोकनों की आवश्यकता है।",
-        "mlr_err_no_x": "⚠️ कृपया कम से कम एक स्वतंत्र चर (X) का चयन करें।"
+        "mlr_err_no_x": "⚠️ कृपया कम से कम एक स्वतंत्र चर (X) का चयन करें।",
+        "mlr_res_analysis_title": "अवशिष्ट विश्लेषण",
+        "mlr_observation": "अवलोकन",
+        "mlr_predicted_value": "अनुमानित {}",
+        "mlr_residual_val": "अवशिष्ट"
     }
 }

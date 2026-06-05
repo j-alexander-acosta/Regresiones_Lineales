@@ -192,13 +192,21 @@ if df is not None and len(df) >= 2:
             ci_upper = beta + t_crit * se_beta
             
             multiple_r = np.sqrt(r2) if r2 >= 0 else 0.0
+            Y_sorted = np.sort(Y)
+            percentiles = (np.arange(1, N + 1) - 0.5) / N * 100
         except np.linalg.LinAlgError:
             st.error("Error: Colinealidad detectada en las variables independientes. Por favor, remueve alguna variable correlacionada.")
             st.stop()
             
         # UI
         st.header(t["mlr_title"])
-        tab_stats, tab_plots, tab_normal = st.tabs([t["mlr_tab_stats"], t["mlr_tab_plots"], t["mlr_tab_normal"]])
+        tab_stats, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
+            t["mlr_tab_stats"],
+            t["mlr_tab_res_analysis"],
+            t["mlr_tab_prob_output"],
+            t["mlr_tab_normal"],
+            t["mlr_tab_plots"]
+        ])
         
         with tab_stats:
             st.subheader(t["mlr_stats_title"])
@@ -243,6 +251,57 @@ if df is not None and len(df) >= 2:
                 t["mlr_col_upp95"]: [f"{upp:.8f}" for upp in ci_upper]
             })
             st.table(coefs_df)
+            
+        with tab_res_analysis:
+            st.subheader(t["mlr_res_analysis_title"])
+            
+            res_df = pd.DataFrame({
+                t["mlr_observation"]: np.arange(1, N + 1),
+                t["mlr_predicted_value"].format(y_col): Y_pred,
+                t["mlr_residual_val"]: residuals
+            })
+            st.dataframe(
+                res_df.style.format({
+                    t["mlr_predicted_value"].format(y_col): "{:.8f}",
+                    t["mlr_residual_val"]: "{:.8f}"
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+        with tab_prob_output:
+            st.subheader(t["mlr_tab_prob_output"])
+            
+            prob_df = pd.DataFrame({
+                t["mlr_prob_observation"]: np.arange(1, N + 1),
+                t["mlr_prob_percentile"]: percentiles,
+                t["mlr_prob_ordered_y"].format(y_col): Y_sorted
+            })
+            st.dataframe(
+                prob_df.style.format({
+                    t["mlr_prob_percentile"]: "{:.8f}",
+                    t["mlr_prob_ordered_y"].format(y_col): "{:.8f}"
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+        with tab_normal:
+            fig_norm = plgo.Figure()
+            fig_norm.add_trace(plgo.Scatter(
+                x=percentiles, y=Y_sorted, mode='markers+lines',
+                marker=dict(color='#1f77b4', size=8),
+                line=dict(color='#1f77b4', width=1.5),
+                hovertemplate='Percentil: %{x:.2f}%<br>Y: %{y:.4f}<extra></extra>'
+            ))
+            fig_norm.update_layout(
+                title=t["mlr_normal_plot_title"],
+                xaxis_title=t["mlr_normal_x_label"],
+                yaxis_title=t["mlr_normal_y_label"],
+                template='plotly_white',
+                height=450
+            )
+            st.plotly_chart(fig_norm, use_container_width=True)
             
         with tab_plots:
             for j, x_col in enumerate(x_cols):
@@ -289,43 +348,6 @@ if df is not None and len(df) >= 2:
                         height=350
                     )
                     st.plotly_chart(fig_fit, use_container_width=True)
-            
-            st.markdown("---")
-            st.subheader(t["mlr_res_analysis_title"])
-            
-            res_df = pd.DataFrame({
-                t["mlr_observation"]: np.arange(1, N + 1),
-                t["mlr_predicted_value"].format(y_col): Y_pred,
-                t["mlr_residual_val"]: residuals
-            })
-            st.dataframe(
-                res_df.style.format({
-                    t["mlr_predicted_value"].format(y_col): "{:.8f}",
-                    t["mlr_residual_val"]: "{:.8f}"
-                }),
-                use_container_width=True,
-                hide_index=True
-            )
-            
-        with tab_normal:
-            Y_sorted = np.sort(Y)
-            percentiles = (np.arange(1, N + 1) - 0.5) / N * 100
-            
-            fig_norm = plgo.Figure()
-            fig_norm.add_trace(plgo.Scatter(
-                x=percentiles, y=Y_sorted, mode='markers+lines',
-                marker=dict(color='#1f77b4', size=8),
-                line=dict(color='#1f77b4', width=1.5),
-                hovertemplate='Percentil: %{x:.2f}%<br>Y: %{y:.4f}<extra></extra>'
-            ))
-            fig_norm.update_layout(
-                title=t["mlr_normal_plot_title"],
-                xaxis_title=t["mlr_normal_x_label"],
-                yaxis_title=t["mlr_normal_y_label"],
-                template='plotly_white',
-                height=450
-            )
-            st.plotly_chart(fig_norm, use_container_width=True)
             
         st.markdown("---")
         st.markdown(

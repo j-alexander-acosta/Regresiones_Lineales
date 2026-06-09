@@ -25,7 +25,7 @@ Esta es una herramienta educativa y profesional construida con Python y [Streaml
     *   Ajusta y analiza la relación entre una variable dependiente ($Y$) y múltiples variables independientes ($X_1, X_2, \dots, X_k$).
     *   Preferencia predeterminada por un conjunto sismológico de predicción de movimiento del suelo (GMPE: `logPOA`, `M`, `M^2`, `logR`, `R`).
     *   Estadísticas avanzadas idénticas a las de Excel: Coeficiente de correlación múltiple, $R^2$, $R^2$ ajustado, Error típico, tabla ANOVA completa y coeficientes con errores estándar, estadísticos t, P-valores e intervalos de confianza del 95%.
-    *   Visualizaciones dinámicas en pestañas separadas para estadísticas y ANOVA, análisis de los residuales, resultados de datos de probabilidad, gráfico de probabilidad normal y gráficos de residuales y ajuste.
+    *   Visualizaciones dinámicas en pestañas separadas para estadísticas y ANOVA, **fórmulas matemáticas en LaTeX**, análisis de los residuales, resultados de datos de probabilidad, gráfico de probabilidad normal y gráficos de residuales y ajuste.
 *   📊 **Entrada Única de Datos**:
     *   **Subida de Archivos**: Sube tus datos directamente en formatos `.csv` o `.xlsx`.
     *   **Ingreso Manual**: Usa un editor interactivo para ingresar o corregir tus puntos (X, Y) dinámicamente. Todos los modelos procesan esta misma base simultáneamente.
@@ -158,7 +158,7 @@ This is an educational and professional tool built with Python and [Streamlit](h
     *   Fit and analyze the relationship between a dependent variable ($Y$) and multiple independent variables ($X_1, X_2, \dots, X_k$).
     *   Preloaded with a seismological Ground Motion Prediction Equation (GMPE) dataset (`logPOA`, `M`, `M^2`, `logR`, `R`).
     *   Calculates Excel-matching regression statistics (Multiple R, $R^2$, Adjusted $R^2$, Standard Error, complete ANOVA table, coefficient estimates, standard errors, t stats, P-values, and 95% Confidence Intervals).
-    *   Interactive separate tabs for statistics & ANOVA, residual analysis, probability output, normal probability plot, and residual & fit plots.
+    *   Interactive separate tabs for statistics & ANOVA, **mathematical formulas in LaTeX**, residual analysis, probability output, normal probability plot, and residual & fit plots.
 *   📊 **Single Data Input**:
     *   **File Upload**: Upload your data directly in `.csv` or `.xlsx` formats.
     *   **Manual Entry**: Use an interactive editor to dynamically input or correct your (X, Y) points. All models process this same base simultaneously.
@@ -291,7 +291,7 @@ Developed and maintained by **Alexander Acosta** ([@j-alexander-acosta](https://
     *   एक आश्रित चर ($Y$) और कई स्वतंत्र चरों ($X_1, X_2, \dots, X_k$) के बीच संबंध का विश्लेषण करें।
     *   भूकंपीय ग्राउंड मोशन प्रेडिक्शन इक्वेशन (GMPE) डेटासेट (`logPOA`, `M`, `M^2`, `logR`, `R`) के साथ डिफ़ॉल्ट रूप से प्रीलोड किया गया।
     *   Microsoft Excel से मेल खाने वाले प्रतिगमन आँकड़े (Multiple R, $R^2$, समायोजित $R^2$, मानक त्रुटि, ANOVA तालिका, गुणांक, मानक त्रुटि, टी सांख्यिकी, पी-मान और 95% विश्वास अंतराल) की गणना करता है।
-    *   इंटरएक्टिव सांख्यिकी और एनोवा, अवशिष्ट विश्लेषण, संभाव्यता डेटा परिणाम, सामान्य संभाव्यता आलेख और अवशिष्ट और फिट आलेख शामिल हैं।
+    *   इंटरएक्टिव सांख्यिकी और एनोवा, **LaTeX में गणितीय सूत्र**, अवशिष्ट विश्लेषण, संभाव्यता डेटा परिणाम, सामान्य संभाव्यता आलेख और अवशिष्ट और फिट आलेख शामिल हैं।
 *   📈 **एकल डेटा प्रविष्टि**:
     *   **फ़ाइल अपलोड**: `.csv` या `.xlsx` प्रारूपों में सीधे डेटा अपलोड करें।
     *   **मैनुअल प्रविष्टि**: अपने बिंदुओं को गतिशील रूप से दर्ज या सही करने के लिए इंटरैक्टिव डेटा संपादक का उपयोग करें।

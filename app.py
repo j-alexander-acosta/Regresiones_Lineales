@@ -200,8 +200,9 @@ if df is not None and len(df) >= 2:
             
         # UI
         st.header(t["mlr_title"])
-        tab_stats, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
+        tab_stats, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
             t["mlr_tab_stats"],
+            t["mlr_tab_formulas"],
             t["mlr_tab_res_analysis"],
             t["mlr_tab_prob_output"],
             t["mlr_tab_normal"],
@@ -251,6 +252,55 @@ if df is not None and len(df) >= 2:
                 t["mlr_col_upp95"]: [f"{upp:.8f}" for upp in ci_upper]
             })
             st.table(coefs_df)
+            
+        with tab_formulas:
+            st.markdown(r"""
+### Estadísticas de la Regresión
+
+| Estadística | Fórmula Visual (Cálculo) |
+| :--- | :--- |
+| **Coeficiente de correlación múltiple** | $R = \sqrt{R^2}$ |
+| **Coeficiente de determinación ($R^2$)** | $R^2 = \frac{SSR}{SST} = \frac{\sum(\hat{y}_i - \bar{y})^2}{\sum(y_i - \bar{y})^2}$ |
+| **$R^2$ ajustado** | $R^2_{adj} = 1 - (1 - R^2) \frac{(n - 1)}{(n - k - 1)}$ |
+| **Error típico** | $S_e = \sqrt{\frac{SSE}{(n - k - 1)}} = \sqrt{\frac{\sum(y_i - \hat{y}_i)^2}{(n - k - 1)}}$ |
+| **Observaciones** | $n = \text{Total Observaciones}$ |
+
+<br>
+
+### Análisis de Varianza (ANOVA)
+
+| Fuente | Grados de libertad ($df$) | Suma de Cuadrados ($SS$) | Promedio de los Cuadrados ($MS$) | $F$ |
+| :--- | :--- | :--- | :--- | :--- |
+| **Regresión** | $k$ | $SSR = \sum(\hat{y}_i - \bar{y})^2$ | $MSR = \frac{SSR}{k}$ | $F = \frac{MSR}{MSE}$ |
+| **Residuos** | $n - k - 1$ | $SSE = \sum(y_i - \hat{y}_i)^2$ | $MSE = \frac{SSE}{n - k - 1}$ | |
+| **Total** | $n - 1$ | $SST = \sum(y_i - \bar{y})^2$ | | |
+
+<br>
+
+### Parámetros y Coeficientes
+
+| Estadística | Fórmula Visual (Cálculo) |
+| :--- | :--- |
+| **Coeficientes ($\hat{\beta}$)** | $\hat{\beta} = (X^T X)^{-1} X^T Y$ |
+| **Error típico ($SE(\hat{\beta}_j)$)** | $SE(\hat{\beta}_j) = \sqrt{MSE \cdot [(X^T X)^{-1}]_{jj}}$ |
+| **Estadístico $t$** | $t = \frac{\hat{\beta}_j}{SE(\hat{\beta}_j)}$ |
+| **Probabilidad (p-valor)** | $p = 2 \cdot (1 - P(T \le \lvert t \rvert))$ |
+| **Intervalo de Confianza (95%)** | $\hat{\beta}_j \pm t_{\alpha/2, \text{df}} \cdot SE(\hat{\beta}_j)$ |
+
+<br>
+
+**Leyenda:**
+- **SSR, SST, SSE:** Suma de Cuadrados (Regresión, Total, Error/Residuo)
+- **MSR, MSE:** Promedio de los Cuadrados (Regresión, Residuo)
+- **n:** total de observaciones
+- **k:** número de predictores (variables independientes)
+- **$X$:** Matriz de variables independientes (incluyendo columna de unos)
+- **$Y$:** Vector de la variable dependiente
+- **$(X^T X)^{-1}$:** Matriz inversa de $X^T X$
+- **$[ \cdot ]_{jj}$:** Elemento de la diagonal principal de la matriz
+- **$t_{\alpha/2, \text{df}}$:** Valor crítico $t$ de Student con $\alpha = 0.05$
+""", unsafe_allow_html=True)
+            
             
         with tab_res_analysis:
             st.subheader(t["mlr_res_analysis_title"])

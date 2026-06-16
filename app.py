@@ -200,8 +200,9 @@ if df is not None and len(df) >= 2:
             
         # UI
         st.header(t["mlr_title"])
-        tab_stats, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
+        tab_stats, tab_kmean, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
             t["mlr_tab_stats"],
+            t["mlr_tab_kmean"],
             t["mlr_tab_formulas"],
             t["mlr_tab_res_analysis"],
             t["mlr_tab_prob_output"],
@@ -398,6 +399,212 @@ if df is not None and len(df) >= 2:
                         height=350
                     )
                     st.plotly_chart(fig_fit, use_container_width=True)
+            
+        with tab_kmean:
+            st.subheader(t["km_title"])
+            st.write(t["km_intro"])
+            
+            col_f1, col_f2, col_f3 = st.columns(3)
+            with col_f1:
+                st.markdown(f"#### {t['km_formula_dist_title']}")
+                st.latex(r"d(P, C) = \sqrt{(x_p - x_c)^2 + (y_p - y_c)^2}")
+                st.write(t["km_formula_dist"])
+            with col_f2:
+                st.markdown(f"#### {t['km_formula_assign_title']}")
+                st.latex(r"\text{Cluster}(P) = \arg\min_{i} d(P, C_i)")
+                st.write(t["km_formula_assign"])
+            with col_f3:
+                st.markdown(f"#### {t['km_formula_update_title']}")
+                st.latex(r"C_i^{(new)} = \frac{1}{|S_i|} \sum_{P \in S_i} P")
+                st.write(t["km_formula_update"])
+
+            st.markdown("---")
+            st.subheader(t["km_input_data_title"])
+            
+            col_ed1, col_ed2 = st.columns(2)
+            with col_ed1:
+                st.markdown(f"**{t['km_data_points_label']}**")
+                df_points_default = pd.DataFrame({
+                    t["km_col_label"]: ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2"],
+                    "X": [2.0, 2.0, 8.0, 5.0, 7.0, 6.0, 1.0, 4.0],
+                    "Y": [10.0, 5.0, 4.0, 8.0, 5.0, 4.0, 2.0, 9.0]
+                })
+                df_points = st.data_editor(df_points_default, num_rows="dynamic", use_container_width=True, key="km_df_points")
+            with col_ed2:
+                st.markdown(f"**{t['km_centroids_label']}**")
+                df_centroids_default = pd.DataFrame({
+                    t["km_col_label"]: ["A1", "B1", "C1"],
+                    "X": [2.0, 6.0, 1.5],
+                    "Y": [10.0, 6.0, 3.5]
+                })
+                df_centroids = st.data_editor(df_centroids_default, num_rows="dynamic", use_container_width=True, key="km_df_centroids")
+
+            if df_points is not None and df_centroids is not None:
+                points_clean = df_points.dropna(subset=["X", "Y"])
+                centroids_clean = df_centroids.dropna(subset=["X", "Y"])
+                
+                if len(points_clean) > 0 and len(centroids_clean) > 0:
+                    import plotly.express as px
+                    
+                    # Calculate Euclidean distances
+                    dist_matrix = {}
+                    for idx, row_c in centroids_clean.iterrows():
+                        c_label = str(row_c[t["km_col_label"]])
+                        c_x = float(row_c["X"])
+                        c_y = float(row_c["Y"])
+                        
+                        distances = []
+                        for idx_p, row_p in points_clean.iterrows():
+                            p_x = float(row_p["X"])
+                            p_y = float(row_p["Y"])
+                            dist = np.sqrt((p_x - c_x)**2 + (p_y - c_y)**2)
+                            distances.append(dist)
+                        
+                        dist_matrix[c_label] = distances
+                    
+                    # Assign initial cluster (closest centroid)
+                    closest_clusters = []
+                    for i in range(len(points_clean)):
+                        min_dist = float('inf')
+                        best_cluster_idx = 1
+                        for idx_c, (c_label, distances) in enumerate(dist_matrix.items()):
+                            if distances[i] < min_dist:
+                                min_dist = distances[i]
+                                best_cluster_idx = idx_c + 1
+                        closest_clusters.append(best_cluster_idx)
+                    
+                    # Calculate New Centroids (average of points assigned to each cluster)
+                    new_centroids_list = []
+                    for idx_c, c_label in enumerate(dist_matrix.keys()):
+                        cluster_num = idx_c + 1
+                        assigned_points_x = []
+                        assigned_points_y = []
+                        for i, p_idx in enumerate(points_clean.index):
+                            if closest_clusters[i] == cluster_num:
+                                assigned_points_x.append(points_clean.loc[p_idx, "X"])
+                                assigned_points_y.append(points_clean.loc[p_idx, "Y"])
+                        
+                        if len(assigned_points_x) > 0:
+                            new_x = np.mean(assigned_points_x)
+                            new_y = np.mean(assigned_points_y)
+                        else:
+                            c_row = centroids_clean.iloc[idx_c]
+                            new_x = float(c_row["X"])
+                            new_y = float(c_row["Y"])
+                        new_centroids_list.append((c_label, new_x, new_y))
+                    
+                    # Calculate New Cluster Assignment (using the updated new centroids)
+                    new_closest_clusters = []
+                    for idx_p, row_p in points_clean.iterrows():
+                        p_x = float(row_p["X"])
+                        p_y = float(row_p["Y"])
+                        min_dist = float('inf')
+                        best_cluster_idx = 1
+                        for idx_c, (c_label, new_x, new_y) in enumerate(new_centroids_list):
+                            dist = np.sqrt((p_x - new_x)**2 + (p_y - new_y)**2)
+                            if dist < min_dist:
+                                min_dist = dist
+                                best_cluster_idx = idx_c + 1
+                        new_closest_clusters.append(best_cluster_idx)
+
+                    # Build results dataframe
+                    results_df = pd.DataFrame()
+                    results_df[t["km_col_label"]] = points_clean[t["km_col_label"]].values
+                    results_df["X"] = points_clean["X"].values
+                    results_df["Y"] = points_clean["Y"].values
+                    
+                    format_dict = {}
+                    for c_label, distances in dist_matrix.items():
+                        col_name = t["km_col_distance_to"].format(c_label)
+                        results_df[col_name] = distances
+                        format_dict[col_name] = "{:.2f}"
+                        
+                    results_df[t["km_col_cluster"]] = closest_clusters
+                    results_df[t["km_col_new_cluster"]] = new_closest_clusters
+                    
+                    format_dict["X"] = "{:.2f}"
+                    format_dict["Y"] = "{:.2f}"
+                    
+                    # Render Main Table
+                    st.markdown("---")
+                    st.subheader(t["km_table_title"])
+                    st.dataframe(
+                        results_df.style.format(format_dict),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Render New Centroids & Plotly
+                    st.markdown("---")
+                    col_nc1, col_nc2 = st.columns([1, 2])
+                    
+                    with col_nc1:
+                        st.subheader(t["km_new_centroids_title"])
+                        new_centroids_df = pd.DataFrame(new_centroids_list, columns=[t["km_col_label"], "X", "Y"])
+                        st.table(new_centroids_df.style.format({"X": "{:.2f}", "Y": "{:.2f}"}))
+                        
+                    with col_nc2:
+                        st.subheader(t["km_plot_title"])
+                        fig_km = plgo.Figure()
+                        
+                        unique_clusters = sorted(list(set(closest_clusters)))
+                        colors = px.colors.qualitative.Plotly
+                        
+                        for idx_cl, cl in enumerate(unique_clusters):
+                            cl_mask = [c == cl for c in closest_clusters]
+                            cl_points = points_clean[cl_mask]
+                            fig_km.add_trace(plgo.Scatter(
+                                x=cl_points["X"],
+                                y=cl_points["Y"],
+                                mode='markers',
+                                name=f"{t['km_col_cluster']} {cl}",
+                                marker=dict(size=10, color=colors[idx_cl % len(colors)]),
+                                text=cl_points[t["km_col_label"]],
+                                hovertemplate="<b>%{text}</b><br>X: %{x}<br>Y: %{y}<extra></extra>"
+                            ))
+                            
+                        # Add initial centroids
+                        fig_km.add_trace(plgo.Scatter(
+                            x=centroids_clean["X"],
+                            y=centroids_clean["Y"],
+                            mode='markers+text',
+                            name=t["km_legend_initial_centroids"],
+                            marker=dict(size=14, symbol='x', color='black', line=dict(width=2)),
+                            text=centroids_clean[t["km_col_label"]],
+                            textposition="top center",
+                            hovertemplate="<b>Inicial: %{text}</b><br>X: %{x}<br>Y: %{y}<extra></extra>"
+                        ))
+                        
+                        # Add updated centroids
+                        new_c_x = [nc[1] for nc in new_centroids_list]
+                        new_c_y = [nc[2] for nc in new_centroids_list]
+                        new_c_labels = [nc[0] for nc in new_centroids_list]
+                        
+                        fig_km.add_trace(plgo.Scatter(
+                            x=new_c_x,
+                            y=new_c_y,
+                            mode='markers+text',
+                            name=t["km_legend_new_centroids"],
+                            marker=dict(size=14, symbol='star', color='red'),
+                            text=new_c_labels,
+                            textposition="bottom center",
+                            hovertemplate="<b>Nuevo: %{text}</b><br>X: %{x}<br>Y: %{y}<extra></extra>"
+                        ))
+                        
+                        fig_km.update_layout(
+                            xaxis_title="X",
+                            yaxis_title="Y",
+                            template='plotly_white',
+                            height=400,
+                            margin=dict(l=20, r=20, t=30, b=20),
+                            legend=dict(
+                                yanchor="top",
+                                y=0.99,
+                                xanchor="left",
+                                x=0.01
+                            )
+                        )
+                        st.plotly_chart(fig_km, use_container_width=True)
             
         st.markdown("---")
         st.markdown(

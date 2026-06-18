@@ -200,9 +200,11 @@ if df is not None and len(df) >= 2:
             
         # UI
         st.header(t["mlr_title"])
-        tab_stats, tab_kmean, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
+        tab_stats, tab_kmean, tab_kvalue, tab_elbow, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
             t["mlr_tab_stats"],
             t["mlr_tab_kmean"],
+            t["mlr_tab_kvalue"],
+            t["mlr_tab_elbow"],
             t["mlr_tab_formulas"],
             t["mlr_tab_res_analysis"],
             t["mlr_tab_prob_output"],
@@ -430,6 +432,7 @@ if df is not None and len(df) >= 2:
                     "Y": [10.0, 5.0, 4.0, 8.0, 5.0, 4.0, 2.0, 9.0]
                 })
                 df_points = st.data_editor(df_points_default, num_rows="dynamic", use_container_width=True, key="km_df_points")
+                st.session_state["km_df_points_df"] = df_points
             with col_ed2:
                 st.markdown(f"**{t['km_centroids_label']}**")
                 df_centroids_default = pd.DataFrame({
@@ -605,6 +608,270 @@ if df is not None and len(df) >= 2:
                             )
                         )
                         st.plotly_chart(fig_km, use_container_width=True)
+            
+        with tab_kvalue:
+            st.subheader(t["kv_title"])
+            st.write(t["kv_intro"])
+            
+            points_data = None
+            if "km_df_points_df" in st.session_state:
+                points_data = st.session_state["km_df_points_df"]
+            elif "df_points" in locals() and df_points is not None:
+                points_data = df_points
+                
+            if points_data is not None:
+                points_clean = points_data.dropna(subset=["X", "Y"])
+                
+                if len(points_clean) >= 3:
+                    from sklearn.cluster import KMeans
+                    from sklearn.metrics import silhouette_score
+                    
+                    # Ensure numeric data types
+                    points_clean = points_clean.copy()
+                    points_clean["X"] = pd.to_numeric(points_clean["X"], errors='coerce')
+                    points_clean["Y"] = pd.to_numeric(points_clean["Y"], errors='coerce')
+                    points_clean = points_clean.dropna(subset=["X", "Y"])
+                    
+                    X_clust = points_clean[["X", "Y"]].values
+                    N_points = len(X_clust)
+                    
+                    k_max = min(8, N_points - 1)
+                    k_values = list(range(1, k_max + 1))
+                    
+                    wcss = []
+                    sil_scores = []
+                    
+                    for k in k_values:
+                        try:
+                            kmeans_model = KMeans(n_clusters=k, random_state=42, n_init=10)
+                            kmeans_model.fit(X_clust)
+                            wcss.append(kmeans_model.inertia_)
+                            
+                            if k > 1:
+                                if len(set(kmeans_model.labels_)) > 1:
+                                    score = silhouette_score(X_clust, kmeans_model.labels_)
+                                    sil_scores.append(score)
+                                else:
+                                    sil_scores.append(0.0)
+                            else:
+                                sil_scores.append(0.0)
+                        except Exception:
+                            wcss.append(0.0)
+                            sil_scores.append(0.0)
+                            
+                    metrics_data = {
+                        t["kv_col_k"]: k_values,
+                        t["kv_col_wcss"]: [f"{w:.4f}" for w in wcss]
+                    }
+                    if len(k_values) > 1:
+                        metrics_data[t["kv_col_silhouette"]] = [f"{s:.4f}" if k > 1 else "N/A" for k, s in zip(k_values, sil_scores)]
+                        
+                    metrics_df = pd.DataFrame(metrics_data)
+                    
+                    col_kv_left, col_kv_right = st.columns([1, 1])
+                    
+                    with col_kv_left:
+                        st.markdown(f"### 🎯 {t['kv_elbow_title']}")
+                        st.write(t["kv_elbow_desc"])
+                        
+                        st.markdown(f"### 👤 {t['kv_silhouette_title']}")
+                        st.write(t["kv_silhouette_desc"])
+                        
+                        if len(sil_scores) > 1:
+                            valid_sil_scores = sil_scores[1:]
+                            valid_k_values = k_values[1:]
+                            if valid_sil_scores:
+                                max_idx = np.argmax(valid_sil_scores)
+                                opt_k = valid_k_values[max_idx]
+                                st.markdown(f"### {t['kv_optimal_title']}")
+                                st.info(t["kv_optimal_desc"].format(opt_k))
+                                
+                        st.markdown(f"#### {t['kv_table_title']}")
+                        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+                        
+                    with col_kv_right:
+                        st.markdown(f"### {t['kv_plot_title']}")
+                        fig_kv = plgo.Figure()
+                        
+                        fig_kv.add_trace(plgo.Scatter(
+                            x=k_values,
+                            y=wcss,
+                            mode='lines+markers',
+                            name=t["kv_col_wcss"],
+                            marker=dict(color='#1f77b4', size=8),
+                            line=dict(color='#1f77b4', width=2),
+                            yaxis="y1"
+                        ))
+                        
+                        if len(k_values) > 1:
+                            fig_kv.add_trace(plgo.Scatter(
+                                x=k_values[1:],
+                                y=sil_scores[1:],
+                                mode='lines+markers',
+                                name=t["kv_col_silhouette"],
+                                marker=dict(color='orange', size=8),
+                                line=dict(color='orange', width=2),
+                                yaxis="y2"
+                            ))
+                            
+                        fig_kv.update_layout(
+                            xaxis=dict(title=t["kv_col_k"], tickmode='linear', tick0=1, dtick=1),
+                            yaxis=dict(
+                                title=dict(
+                                    text=t["kv_col_wcss"],
+                                    font=dict(color="#1f77b4")
+                                ),
+                                tickfont=dict(color="#1f77b4")
+                            ),
+                            yaxis2=dict(
+                                title=dict(
+                                    text=t["kv_col_silhouette"],
+                                    font=dict(color="orange")
+                                ),
+                                tickfont=dict(color="orange"),
+                                overlaying="y",
+                                side="right"
+                            ),
+                            template='plotly_white',
+                            height=500,
+                            margin=dict(l=20, r=20, t=30, b=20),
+                            legend=dict(
+                                yanchor="top",
+                                y=0.99,
+                                xanchor="left",
+                                x=0.01
+                            )
+                        )
+                        st.plotly_chart(fig_kv, use_container_width=True)
+                else:
+                    st.warning(t["kv_no_points_warn"])
+            else:
+                st.warning(t["kv_no_points_warn"])
+            
+        with tab_elbow:
+            st.subheader(t["el_title"])
+            st.write(t["el_intro"])
+            
+            points_data = None
+            if "km_df_points_df" in st.session_state:
+                points_data = st.session_state["km_df_points_df"]
+            elif "df_points" in locals() and df_points is not None:
+                points_data = df_points
+                
+            if points_data is not None:
+                points_clean = points_data.dropna(subset=["X", "Y"])
+                
+                if len(points_clean) >= 3:
+                    from sklearn.cluster import KMeans
+                    
+                    # Ensure numeric data types
+                    points_clean = points_clean.copy()
+                    points_clean["X"] = pd.to_numeric(points_clean["X"], errors='coerce')
+                    points_clean["Y"] = pd.to_numeric(points_clean["Y"], errors='coerce')
+                    points_clean = points_clean.dropna(subset=["X", "Y"])
+                    
+                    X_clust = points_clean[["X", "Y"]].values
+                    N_points = len(X_clust)
+                    
+                    # Calculate TSS (Total Sum of Squares)
+                    mean_x = np.mean(X_clust[:, 0])
+                    mean_y = np.mean(X_clust[:, 1])
+                    tss_val = np.sum((X_clust[:, 0] - mean_x)**2 + (X_clust[:, 1] - mean_y)**2)
+                    
+                    k_max = min(8, N_points - 1)
+                    k_values = list(range(1, k_max + 1))
+                    
+                    wcss = []
+                    bcss = []
+                    var_explained = []
+                    
+                    for k in k_values:
+                        try:
+                            kmeans_model = KMeans(n_clusters=k, random_state=42, n_init=10)
+                            kmeans_model.fit(X_clust)
+                            w_val = kmeans_model.inertia_
+                            wcss.append(w_val)
+                            
+                            b_val = max(0.0, tss_val - w_val)
+                            bcss.append(b_val)
+                            
+                            ve_val = (b_val / tss_val * 100.0) if tss_val > 0 else 0.0
+                            var_explained.append(ve_val)
+                        except Exception:
+                            wcss.append(0.0)
+                            bcss.append(0.0)
+                            var_explained.append(0.0)
+                            
+                    # Build metrics dataframe
+                    metrics_data = {
+                        t["el_col_k"]: k_values,
+                        t["el_col_wcss"]: [f"{w:.4f}" for w in wcss],
+                        t["el_col_bcss"]: [f"{b:.4f}" for b in bcss],
+                        t["el_col_tss"]: [f"{tss_val:.4f}"] * len(k_values),
+                        t["el_col_var"]: [f"{v:.2f}%" for v in var_explained]
+                    }
+                    metrics_df = pd.DataFrame(metrics_data)
+                    
+                    # Layout: 2 Columns (Formulas vs Table)
+                    col_el_left, col_el_right = st.columns([1, 1])
+                    
+                    with col_el_left:
+                        st.markdown(f"### 📐 {t['el_formula_wcss_title']}")
+                        st.latex(r"WCSS = \sum_{j=1}^{K} \sum_{i \in S_j} \| x_i - \mu_j \|^2")
+                        st.write(t["el_formula_wcss_desc"])
+                        
+                        st.markdown(f"### 🌐 {t['el_formula_tss_title']}")
+                        st.latex(r"TSS = \sum_{i=1}^{N} \| x_i - \bar{x} \|^2")
+                        st.write(t["el_formula_tss_desc"])
+                        
+                    with col_el_right:
+                        st.markdown(f"### 🔀 {t['el_formula_bcss_title']}")
+                        st.latex(r"BCSS = TSS - WCSS = \sum_{j=1}^{K} |S_j| \| \mu_j - \bar{x} \|^2")
+                        st.write(t["el_formula_bcss_desc"])
+                        
+                        st.markdown(f"### 📈 {t['el_formula_var_title']}")
+                        st.latex(r"\eta^2 = \frac{BCSS}{TSS} \times 100\%")
+                        st.write(t["el_formula_var_desc"])
+                        
+                    st.markdown("---")
+                    col_bottom_left, col_bottom_right = st.columns([1, 1])
+                    
+                    with col_bottom_left:
+                        st.subheader(t["el_table_title"])
+                        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+                        
+                    with col_bottom_right:
+                        st.subheader(t["el_plot_title"])
+                        fig_el = plgo.Figure()
+                        
+                        fig_el.add_trace(plgo.Scatter(
+                            x=k_values,
+                            y=wcss,
+                            mode='lines+markers',
+                            name="WCSS",
+                            marker=dict(color='#1f77b4', size=8),
+                            line=dict(color='#1f77b4', width=2)
+                        ))
+                        
+                        fig_el.update_layout(
+                            xaxis=dict(title=t["el_plot_x"], tickmode='linear', tick0=1, dtick=1),
+                            yaxis=dict(
+                                title=dict(
+                                    text=t["el_plot_y"],
+                                    font=dict(color="#1f77b4")
+                                ),
+                                tickfont=dict(color="#1f77b4")
+                            ),
+                            template='plotly_white',
+                            height=380,
+                            margin=dict(l=20, r=20, t=30, b=20),
+                            showlegend=False
+                        )
+                        st.plotly_chart(fig_el, use_container_width=True)
+                else:
+                    st.warning(t["kv_no_points_warn"])
+            else:
+                st.warning(t["kv_no_points_warn"])
             
         st.markdown("---")
         st.markdown(

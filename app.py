@@ -8,6 +8,9 @@ import plotly.graph_objects as plgo
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
+import importlib
+import translations
+importlib.reload(translations)
 from translations import TRANSLATIONS
 
 # --- IDIOMA / LANGUAGE SELECTOR ---
@@ -200,11 +203,13 @@ if df is not None and len(df) >= 2:
             
         # UI
         st.header(t["mlr_title"])
-        tab_stats, tab_kmean, tab_kvalue, tab_elbow, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
+        tab_stats, tab_kmean, tab_kvalue, tab_elbow, tab_silhouette, tab_dbscan, tab_formulas, tab_res_analysis, tab_prob_output, tab_normal, tab_plots = st.tabs([
             t["mlr_tab_stats"],
             t["mlr_tab_kmean"],
             t["mlr_tab_kvalue"],
             t["mlr_tab_elbow"],
+            t["mlr_tab_silhouette"],
+            t["mlr_tab_dbscan"],
             t["mlr_tab_formulas"],
             t["mlr_tab_res_analysis"],
             t["mlr_tab_prob_output"],
@@ -608,7 +613,7 @@ if df is not None and len(df) >= 2:
                             )
                         )
                         st.plotly_chart(fig_km, use_container_width=True)
-            
+
         with tab_kvalue:
             st.subheader(t["kv_title"])
             st.write(t["kv_intro"])
@@ -873,6 +878,143 @@ if df is not None and len(df) >= 2:
             else:
                 st.warning(t["kv_no_points_warn"])
             
+        with tab_silhouette:
+            st.subheader(t["sil_title"])
+            st.write(t["sil_intro"])
+            st.markdown(t["sil_interpretation"])
+            
+            st.markdown("---")
+            st.latex(r"s(i) = \frac{b(i) - a(i)}{\max\{a(i), b(i)\}}")
+            st.markdown("""
+            * **$a(i)$**: Distancia media entre el punto $i$ y todos los demás puntos en el **mismo** cluster (Cohesión intra-cluster).
+            * **$b(i)$**: Distancia media entre el punto $i$ y todos los puntos en el **cluster vecino más cercano** (Separación inter-cluster).
+            """)
+            st.info("💡 **Nota:** Puedes observar la aplicación práctica del cálculo del Coeficiente de Silueta en la pestaña **K-value**, donde se utiliza para determinar el número óptimo de clusters (K).")
+            
+        with tab_dbscan:
+            st.subheader(t["db_title"])
+            st.write(t["db_intro"])
+            
+            st.markdown(f"### {t['db_params_title']}")
+            st.markdown(t["db_eps"])
+            st.markdown(t["db_minpts"])
+            st.markdown(t["db_advantages"])
+            
+            st.markdown("---")
+            st.markdown("### 1. Entrada de Datos DBSCAN")
+            st.write("Inserta o modifica las coordenadas (X e Y) de los puntos:")
+            
+            if "db_df_points" not in st.session_state:
+                st.session_state.db_df_points = pd.DataFrame({
+                    "Punto": [f"P{i}" for i in range(1, 13)],
+                    "X": [3.0, 4.0, 5.0, 6.0, 7.0, 6.0, 7.0, 8.0, 3.0, 2.0, 3.0, 2.0],
+                    "Y": [7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 2.0, 4.0, 3.0, 6.0, 5.0, 4.0]
+                })
+                
+            edited_db_df = st.data_editor(
+                st.session_state.db_df_points,
+                num_rows="dynamic",
+                key="db_data_editor",
+                use_container_width=True
+            )
+            st.session_state.db_df_points = edited_db_df
+            
+            points_clean = edited_db_df.dropna(subset=["X", "Y"])
+            
+            if len(points_clean) >= 3:
+                from sklearn.cluster import DBSCAN
+                from sklearn.metrics import pairwise_distances
+                
+                points_clean = points_clean.copy()
+                points_clean["X"] = pd.to_numeric(points_clean["X"], errors='coerce')
+                points_clean["Y"] = pd.to_numeric(points_clean["Y"], errors='coerce')
+                points_clean = points_clean.dropna(subset=["X", "Y"])
+                
+                X_clust = points_clean[["X", "Y"]].values
+                point_labels = points_clean["Punto"].values
+                
+                st.markdown("### 2. Parámetros y Ejecución")
+                col_eps, col_minpts, col_btn = st.columns([1, 1, 1])
+                with col_eps:
+                    eps_val = st.number_input("Epsilon (eps)", min_value=0.1, max_value=100.0, value=2.0, step=0.5, key="db_eps_input")
+                with col_minpts:
+                    minpts_val = st.number_input("MinPts", min_value=2, max_value=20, value=4, step=1, key="db_minpts_input")
+                with col_btn:
+                    st.write("")
+                    st.write("")
+                    run_dbscan = st.button(t["db_btn_run"], key="btn_run_dbscan")
+                
+                if run_dbscan:
+                    # 1. DBSCAN Model
+                    dbscan_model = DBSCAN(eps=eps_val, min_samples=minpts_val)
+                    labels = dbscan_model.fit_predict(X_clust)
+                    points_clean["Cluster"] = labels
+                    
+                    # 2. Compute Distances and Neighborhoods
+                    dist_matrix = pairwise_distances(X_clust)
+                    neighborhoods = dist_matrix <= eps_val
+                    density_counts = np.sum(neighborhoods, axis=1)
+                    
+                    # 3. Create Full Detailed Table
+                    full_df = points_clean[["Punto", "X", "Y"]].copy()
+                    
+                    # Add distance columns
+                    for i, p_label in enumerate(point_labels):
+                        full_df[f"Dist a {p_label}"] = dist_matrix[:, i]
+                        
+                    # Add properties
+                    full_df["Densidad (puntos <= eps)"] = density_counts
+                    full_df["Core?"] = np.where(density_counts >= minpts_val, "CORE", "NO CORE")
+                    
+                    point_types = []
+                    for idx, label in enumerate(labels):
+                        if label == -1:
+                            point_types.append("NOISE")
+                        elif density_counts[idx] >= minpts_val:
+                            point_types.append("CORE")
+                        else:
+                            point_types.append("BORDER")
+                            
+                    full_df["Tipo (DBSCAN)"] = point_types
+                    full_df["Cluster ID"] = labels
+                    
+                    st.markdown("### 3. Matriz de Distancias y Resultados Detallados")
+                    st.dataframe(full_df, use_container_width=True, hide_index=True)
+                    
+                    st.subheader(t["db_plot_title"])
+                    fig_db = plgo.Figure()
+                    
+                    unique_labels = set(labels)
+                    for label in unique_labels:
+                        cluster_points = points_clean[points_clean["Cluster"] == label]
+                        if label == -1:
+                            fig_db.add_trace(plgo.Scatter(
+                                x=cluster_points["X"],
+                                y=cluster_points["Y"],
+                                mode="markers",
+                                name=t["db_noise_legend"],
+                                marker=dict(color="black", size=8, symbol="x")
+                            ))
+                        else:
+                            fig_db.add_trace(plgo.Scatter(
+                                x=cluster_points["X"],
+                                y=cluster_points["Y"],
+                                mode="markers",
+                                name=f"{t['db_cluster_legend']} {label}",
+                                marker=dict(size=10)
+                            ))
+                            
+                    fig_db.update_layout(
+                        xaxis_title="X",
+                        yaxis_title="Y",
+                        template="plotly_white",
+                        height=500,
+                        margin=dict(l=20, r=20, t=30, b=20)
+                    )
+                    st.plotly_chart(fig_db, use_container_width=True)
+            else:
+                st.warning(t["db_no_points_warn"])
+                
         st.markdown("---")
         st.markdown(
             "<p style='text-align: center; color: gray; font-size: 14px;'>"

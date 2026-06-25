@@ -84,11 +84,12 @@ if is_prob:
     st.header(t_prob["title"])
     
     # Define tabs
-    tab_intro, tab_class, tab_crud, tab_sturges = st.tabs([
+    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde = st.tabs([
         t_prob["tab_intro"],
         t_prob["tab_class"],
         t_prob["tab_crud"],
-        t_prob["tab_sturges"]
+        t_prob["tab_sturges"],
+        t_prob["tab_kde"]
     ])
     
     with tab_intro:
@@ -347,26 +348,119 @@ if is_prob:
         bins_edges[-1] = val_max + 1e-9
         
         counts_sturges, _ = np.histogram(nums, bins=bins_edges)
-        cum_counts = np.cumsum(counts_sturges)
-        rel_freqs = counts_sturges / n
-        cum_rel_freqs = np.cumsum(rel_freqs)
-        midpoints = [(bins_edges[i] + bins_edges[i+1]) / 2 for i in range(k)]
+        counts_sturges = counts_sturges.astype(float)
+        midpoints = np.array([(bins_edges[i] + bins_edges[i+1]) / 2 for i in range(k)], dtype=float)
         
+        # Apply edits from st.session_state to counts and midpoints before calculating other columns!
+        editor_key = "editable_freq_table_editor"
+        if editor_key in st.session_state and st.session_state[editor_key]:
+            edits = st.session_state[editor_key].get("edited_rows", {})
+            freq_col = t_prob["sturges_col_freq"]
+            midpoint_col = t_prob["sturges_col_midpoint"]
+            for row_idx_str, col_edits in edits.items():
+                try:
+                    row_idx = int(row_idx_str)
+                    if 0 <= row_idx < k:
+                        if freq_col in col_edits:
+                            counts_sturges[row_idx] = float(col_edits[freq_col])
+                        if midpoint_col in col_edits:
+                            midpoints[row_idx] = float(col_edits[midpoint_col])
+                except ValueError:
+                    pass
+                    
+        n_edited = np.sum(counts_sturges)
+        cum_counts = np.cumsum(counts_sturges)
+        
+        if n_edited > 0:
+            rel_freqs = counts_sturges / n_edited
+            cum_rel_freqs = np.cumsum(rel_freqs)
+            grouped_mean = np.sum(counts_sturges * midpoints) / n_edited
+            sq_diffs = (midpoints - grouped_mean) ** 2
+            weighted_sq_diffs = counts_sturges * sq_diffs
+            
+            # Recalculate variance and standard deviation
+            sum_f_x_mean2 = np.sum(weighted_sq_diffs)
+            grouped_variance = sum_f_x_mean2 / (n_edited - 1) if n_edited > 1 else 0.0
+            grouped_std = np.sqrt(grouped_variance)
+        else:
+            rel_freqs = np.zeros_like(counts_sturges)
+            cum_rel_freqs = np.zeros_like(counts_sturges)
+            grouped_mean = 0.0
+            sq_diffs = np.zeros_like(midpoints)
+            weighted_sq_diffs = np.zeros_like(counts_sturges)
+            grouped_variance = 0.0
+            grouped_std = 0.0
+            
         intervals_str = [f"[{bins_edges[i]:.4f}, {bins_edges[i+1]:.4f})" for i in range(k-1)]
         intervals_str.append(f"[{bins_edges[k-1]:.4f}, {val_max:.4f}]")
         
         freq_df = pd.DataFrame({
             t_prob["sturges_col_interval"]: intervals_str,
-            t_prob["sturges_col_midpoint"]: [f"{m:.4f}" for m in midpoints],
+            t_prob["sturges_col_midpoint"]: midpoints,
             t_prob["sturges_col_freq"]: counts_sturges,
             t_prob["sturges_col_cum_freq"]: cum_counts,
-            t_prob["sturges_col_rel_freq"]: [f"{rf:.4f}" for rf in rel_freqs],
-            t_prob["sturges_col_cum_rel_freq"]: [f"{crf:.4f}" for crf in cum_rel_freqs]
+            t_prob["sturges_col_rel_freq"]: rel_freqs,
+            t_prob["sturges_col_cum_rel_freq"]: cum_rel_freqs,
+            t_prob["sturges_col_prod"]: midpoints * counts_sturges,
+            t_prob["sturges_col_sq_diff"]: sq_diffs,
+            t_prob["sturges_col_weighted_sq_diff"]: weighted_sq_diffs
         })
         
         st.subheader(t_prob["sturges_table_title"])
-        edited_freq_df = st.data_editor(freq_df, use_container_width=True, num_rows="fixed", key="editable_freq_table_editor")
         
+        col_configs = {
+            t_prob["sturges_col_interval"]: st.column_config.TextColumn(disabled=True),
+            t_prob["sturges_col_cum_freq"]: st.column_config.NumberColumn(disabled=True),
+            t_prob["sturges_col_rel_freq"]: st.column_config.NumberColumn(disabled=True, format="%.4f"),
+            t_prob["sturges_col_cum_rel_freq"]: st.column_config.NumberColumn(disabled=True, format="%.4f"),
+            t_prob["sturges_col_prod"]: st.column_config.NumberColumn(disabled=True, format="%.4f"),
+            t_prob["sturges_col_sq_diff"]: st.column_config.NumberColumn(disabled=True, format="%.4f"),
+            t_prob["sturges_col_weighted_sq_diff"]: st.column_config.NumberColumn(disabled=True, format="%.4f"),
+        }
+        
+        edited_freq_df = st.data_editor(
+            freq_df, 
+            use_container_width=True, 
+            num_rows="fixed", 
+            key=editor_key,
+            column_config=col_configs
+        )
+        
+        # We read again from edited_freq_df to ensure any edits done in the *current* frame are processed for the chart/metrics immediately
+        edited_freqs = pd.to_numeric(edited_freq_df[t_prob["sturges_col_freq"]]).values
+        edited_midpoints = pd.to_numeric(edited_freq_df[t_prob["sturges_col_midpoint"]]).values
+        
+        n_edited = np.sum(edited_freqs)
+        if n_edited > 0:
+            mean_edited = np.sum(edited_freqs * edited_midpoints) / n_edited
+            sq_diffs_edited = (edited_midpoints - mean_edited) ** 2
+            weighted_sq_diffs_edited = edited_freqs * sq_diffs_edited
+            
+            # Update columns
+            edited_freq_df[t_prob["sturges_col_prod"]] = edited_midpoints * edited_freqs
+            edited_freq_df[t_prob["sturges_col_sq_diff"]] = sq_diffs_edited
+            edited_freq_df[t_prob["sturges_col_weighted_sq_diff"]] = weighted_sq_diffs_edited
+            edited_freq_df[t_prob["sturges_col_cum_freq"]] = np.cumsum(edited_freqs)
+            rel_freqs_edited = edited_freqs / n_edited
+            edited_freq_df[t_prob["sturges_col_rel_freq"]] = rel_freqs_edited
+            edited_freq_df[t_prob["sturges_col_cum_rel_freq"]] = np.cumsum(rel_freqs_edited)
+            
+            sum_f_x_mean2 = np.sum(weighted_sq_diffs_edited)
+            grouped_variance = sum_f_x_mean2 / (n_edited - 1) if n_edited > 1 else 0.0
+            grouped_std = np.sqrt(grouped_variance)
+        else:
+            grouped_variance = 0.0
+            grouped_std = 0.0
+            
+        st.markdown(f"### {t_prob['sturges_stats_header']}")
+        col_res1, col_res2, col_res3 = st.columns(3)
+        with col_res1:
+            st.metric(t_prob["sturges_lbl_sum_freq"], f"{n_edited:.2f}")
+        with col_res2:
+            st.metric(t_prob["sturges_lbl_grouped_variance"], f"{grouped_variance:.4f}")
+        with col_res3:
+            st.metric(t_prob["sturges_lbl_grouped_std"], f"{grouped_std:.4f}")
+            
         x_intervals = edited_freq_df[t_prob["sturges_col_interval"]].values
         y_counts = pd.to_numeric(edited_freq_df[t_prob["sturges_col_freq"]]).values
         
@@ -388,6 +482,144 @@ if is_prob:
             margin=dict(l=40, r=40, t=40, b=40)
         )
         st.plotly_chart(fig_hist, use_container_width=True)
+
+    with tab_kde:
+        st.subheader(t_prob["kde_section_title"])
+        st.markdown(t_prob["kde_section_desc"])
+        
+        default_raw_data = "1.2, 1.5, 1.7, 1.8, 2.0, 2.1, 2.3, 2.5, 2.7, 2.9, 3.0, 3.2, 3.5, 3.8, 4.0, 4.3, 4.7, 5.2, 6.0, 8.5"
+        kde_data_input = st.text_area(t_prob["kde_input_label"], value=default_raw_data, height=100, key="kde_raw_data_input")
+        
+        try:
+            kde_nums = np.array([float(x.strip()) for x in kde_data_input.split(",") if x.strip()])
+            if len(kde_nums) < 3:
+                st.warning(t_prob["sturges_invalid_warn"])
+                st.stop()
+        except ValueError:
+            st.warning(t_prob["sturges_invalid_warn"])
+            st.stop()
+            
+        col_kde1, col_kde2 = st.columns(2)
+        with col_kde1:
+            kernel_choice = st.selectbox(t_prob["kde_kernel_label"], ["Gaussian", "Epanechnikov", "Uniform", "Triangular"])
+        with col_kde2:
+            bw_method = st.radio(t_prob["kde_bandwidth_method"], [
+                t_prob["kde_bandwidth_silverman"], 
+                t_prob["kde_bandwidth_scott"], 
+                t_prob["kde_bandwidth_manual"]
+            ])
+            
+        std_dev = np.std(kde_nums, ddof=1) if len(kde_nums) > 1 else 1.0
+        n_points = len(kde_nums)
+        
+        if bw_method == t_prob["kde_bandwidth_silverman"]:
+            h = 1.06 * std_dev * (n_points ** (-0.2))
+            st.metric(label=f"{t_prob['kde_bandwidth_label']} ({t_prob['kde_bandwidth_silverman']})", value=f"{h:.4f}")
+        elif bw_method == t_prob["kde_bandwidth_scott"]:
+            h = 3.5 * std_dev * (n_points ** (-1/3))
+            st.metric(label=f"{t_prob['kde_bandwidth_label']} ({t_prob['kde_bandwidth_scott']})", value=f"{h:.4f}")
+        else:
+            h = st.slider(t_prob["kde_bandwidth_label"], min_value=0.05, max_value=5.0, value=0.5, step=0.05, key="kde_h_manual_slider")
+            
+        # Kernel functions
+        if kernel_choice == "Gaussian":
+            K = lambda u: np.exp(-0.5 * u**2) / np.sqrt(2 * np.pi)
+        elif kernel_choice == "Epanechnikov":
+            K = lambda u: np.where(np.abs(u) <= 1, 0.75 * (1 - u**2), 0.0)
+        elif kernel_choice == "Uniform":
+            K = lambda u: np.where(np.abs(u) <= 1, 0.5, 0.0)
+        elif kernel_choice == "Triangular":
+            K = lambda u: np.where(np.abs(u) <= 1, 1 - np.abs(u), 0.0)
+            
+        # Calculate density for each observed point
+        densities = []
+        for xi in kde_nums:
+            u = (kde_nums - xi) / h
+            dens_val = np.sum(K(u)) / (n_points * h)
+            densities.append(dens_val)
+            
+        kde_df = pd.DataFrame({
+            t_prob["kde_col_index"]: range(1, n_points + 1),
+            t_prob["kde_col_value"]: kde_nums,
+            t_prob["kde_col_density"]: densities
+        })
+        
+        st.subheader(t_prob["kde_table_title"])
+        st.dataframe(
+            kde_df,
+            use_container_width=True,
+            column_config={
+                t_prob["kde_col_index"]: st.column_config.NumberColumn(format="%d"),
+                t_prob["kde_col_value"]: st.column_config.NumberColumn(format="%.4f"),
+                t_prob["kde_col_density"]: st.column_config.NumberColumn(format="%.6f")
+            },
+            hide_index=True
+        )
+        
+        # Grid for plotting
+        x_grid = np.linspace(min(kde_nums) - 3 * h, max(kde_nums) + 3 * h, 500)
+        
+        # Calculate individual kernels
+        individual_kernels = []
+        for xi in kde_nums:
+            u = (x_grid - xi) / h
+            k_val = K(u) / (n_points * h)
+            individual_kernels.append(k_val)
+            
+        # Combined KDE
+        kde_curve = np.sum(individual_kernels, axis=0)
+        
+        # Plotly KDE chart
+        fig_kde = plgo.Figure()
+        
+        # Add Density Histogram
+        fig_kde.add_trace(plgo.Histogram(
+            x=kde_nums,
+            histnorm='probability density',
+            name=t_prob["kde_hist_label"],
+            marker=dict(color='rgba(100, 100, 100, 0.15)', line=dict(color='rgba(100, 100, 100, 0.3)', width=1)),
+            opacity=0.6,
+            nbinsx=10
+        ))
+        
+        # Add individual kernels
+        for i, xi in enumerate(kde_nums):
+            fig_kde.add_trace(plgo.Scatter(
+                x=x_grid,
+                y=individual_kernels[i],
+                mode='lines',
+                line=dict(color='rgba(255, 127, 14, 0.3)', width=1.5, dash='dash'),
+                name=t_prob["kde_individual_label"] if i == 0 else "",
+                showlegend=True if i == 0 else False,
+                legendgroup="individual"
+            ))
+            
+        # Add combined KDE curve
+        fig_kde.add_trace(plgo.Scatter(
+            x=x_grid,
+            y=kde_curve,
+            mode='lines',
+            name=t_prob["kde_combined_label"],
+            line=dict(color='#1f77b4', width=3)
+        ))
+        
+        # Add rug plot
+        fig_kde.add_trace(plgo.Scatter(
+            x=kde_nums,
+            y=[-0.005] * len(kde_nums),
+            mode='markers',
+            marker=dict(symbol='line-ns-open', size=10, color='black', line=dict(width=2)),
+            name=t_prob["kde_rug_label"]
+        ))
+        
+        fig_kde.update_layout(
+            title=t_prob["kde_plot_title"],
+            xaxis_title=t_prob["kde_plot_x"],
+            yaxis_title=t_prob["kde_plot_y"],
+            template='plotly_white',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        st.plotly_chart(fig_kde, use_container_width=True)
 
     # Render Footer and stop execution
     st.markdown("---")

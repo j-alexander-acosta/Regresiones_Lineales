@@ -420,6 +420,7 @@ TRANSLATIONS = {
             "tab_class": "📊 Clasificación (Discretas/Continuas)",
             "tab_crud": "📖 Diccionario Editable (CRUD)",
             "tab_sturges": "📈 Sturges (Histogramas)",
+            "tab_kde": "📈 Kernel Density",
             
             # Pestaña Introducción y Simulador de Dados
             "intro_title": "Concepto de Distribución de Probabilidad",
@@ -506,11 +507,40 @@ TRANSLATIONS = {
             "sturges_col_cum_freq": "Frecuencia Acumulada (F)",
             "sturges_col_rel_freq": "Frecuencia Relativa (fr)",
             "sturges_col_cum_rel_freq": "Frecuencia Relativa Acum. (Fr)",
+            "sturges_col_prod": "X_i * f_i",
+            "sturges_col_sq_diff": "(X_i - Media)²",
+            "sturges_col_weighted_sq_diff": "f_i * (X_i - Media)²",
+            "sturges_stats_header": "📊 Estadísticas del Conjunto Agrupado",
+            "sturges_lbl_sum_freq": "Suma de Frecuencias (N)",
+            "sturges_lbl_grouped_variance": "Varianza Agrupada (s²)",
+            "sturges_lbl_grouped_std": "Desviación Estándar Agrupada (s)",
             
             "sturges_plot_title": "Histograma de Frecuencias (Regla de Sturges)",
             "sturges_plot_x": "Rangos de Clase",
             "sturges_plot_y": "Frecuencia Absoluta",
-            "sturges_invalid_warn": "⚠️ Los datos ingresados no son válidos. Por favor, asegúrate de que sean números separados por comas y de tener al menos 3 datos."
+            "sturges_invalid_warn": "⚠️ Los datos ingresados no son válidos. Por favor, asegúrate de que sean números separados por comas y de tener al menos 3 datos.",
+            
+            # Pestaña Kernel Density
+            "kde_section_title": "Estimación de Densidad por Kernel (KDE)",
+            "kde_col_index": "Observación",
+            "kde_col_value": "Valor (X)",
+            "kde_col_density": "Densidad Estimada f(X)",
+            "kde_table_title": "Tabla de Datos y Densidades del Kernel",
+            "kde_section_desc": "La Estimación de Densidad por Kernel (KDE) es una técnica no paramétrica para estimar la función de densidad de probabilidad (PDF) de una variable aleatoria. Genera una curva suave sumando funciones de densidad individuales (kernels) centradas en cada punto de datos.",
+            "kde_input_label": "Datos para KDE (separados por comas):",
+            "kde_kernel_label": "Función del Kernel (K):",
+            "kde_bandwidth_method": "Método de Ancho de Banda (h):",
+            "kde_bandwidth_manual": "Manual",
+            "kde_bandwidth_silverman": "Regla de Silverman",
+            "kde_bandwidth_scott": "Regla de Scott",
+            "kde_bandwidth_label": "Valor del Ancho de Banda (h):",
+            "kde_plot_title": "Estimación de Densidad por Kernel (KDE) y Contribuciones",
+            "kde_plot_x": "Valores (X)",
+            "kde_plot_y": "Densidad",
+            "kde_rug_label": "Datos Observados (Rug)",
+            "kde_individual_label": "Kernel Individual",
+            "kde_combined_label": "KDE Combinado",
+            "kde_hist_label": "Histograma de Densidad"
         },
         
         "default_distributions": [
@@ -1007,6 +1037,7 @@ TRANSLATIONS = {
             "tab_class": "📊 Classification (Discrete/Continuous)",
             "tab_crud": "📖 Editable Dictionary (CRUD)",
             "tab_sturges": "📈 Sturges (Histograms)",
+            "tab_kde": "📈 Kernel Density",
             
             # Intro tab
             "intro_title": "Probability Distribution Concept",
@@ -1093,11 +1124,40 @@ TRANSLATIONS = {
             "sturges_col_cum_freq": "Cumulative Frequency (F)",
             "sturges_col_rel_freq": "Relative Frequency (fr)",
             "sturges_col_cum_rel_freq": "Cum. Relative Frequency (Fr)",
+            "sturges_col_prod": "X_i * f_i",
+            "sturges_col_sq_diff": "(X_i - Mean)²",
+            "sturges_col_weighted_sq_diff": "f_i * (X_i - Mean)²",
+            "sturges_stats_header": "📊 Grouped Statistics",
+            "sturges_lbl_sum_freq": "Sum of Frequencies (N)",
+            "sturges_lbl_grouped_variance": "Grouped Variance (s²)",
+            "sturges_lbl_grouped_std": "Grouped Standard Deviation (s)",
             
             "sturges_plot_title": "Frequency Histogram (Sturges' Rule)",
             "sturges_plot_x": "Class Ranges",
             "sturges_plot_y": "Absolute Frequency",
-            "sturges_invalid_warn": "⚠️ The entered data is not valid. Please make sure they are numbers separated by commas and that you have at least 3 data points."
+            "sturges_invalid_warn": "⚠️ The entered data is not valid. Please make sure they are numbers separated by commas and that you have at least 3 data points.",
+            
+            # Kernel Density tab
+            "kde_section_title": "Kernel Density Estimation (KDE)",
+            "kde_col_index": "Observation",
+            "kde_col_value": "Value (X)",
+            "kde_col_density": "Estimated Density f(X)",
+            "kde_table_title": "Kernel Data and Densities Table",
+            "kde_section_desc": "Kernel Density Estimation (KDE) is a non-parametric technique to estimate the probability density function (PDF) of a random variable. It creates a smooth curve by summing individual density functions (kernels) centered at each data point.",
+            "kde_input_label": "Data for KDE (comma-separated):",
+            "kde_kernel_label": "Kernel Function (K):",
+            "kde_bandwidth_method": "Bandwidth Method (h):",
+            "kde_bandwidth_manual": "Manual",
+            "kde_bandwidth_silverman": "Silverman's Rule",
+            "kde_bandwidth_scott": "Scott's Rule",
+            "kde_bandwidth_label": "Bandwidth Value (h):",
+            "kde_plot_title": "Kernel Density Estimation (KDE) and Contributions",
+            "kde_plot_x": "Values (X)",
+            "kde_plot_y": "Density",
+            "kde_rug_label": "Observed Data (Rug)",
+            "kde_individual_label": "Individual Kernel",
+            "kde_combined_label": "Combined KDE",
+            "kde_hist_label": "Density Histogram"
         },
         
         "default_distributions": [
@@ -1594,6 +1654,7 @@ TRANSLATIONS = {
             "tab_class": "📊 वर्गीकरण (विच्छिन्न/सतत)",
             "tab_crud": "📖 संपादन योग्य शब्दकोश (CRUD)",
             "tab_sturges": "📈 स्टर्जेस (हिस्टोग्राम)",
+            "tab_kde": "📈 कर्नेल घनत्व (KDE)",
             
             # Intro tab
             "intro_title": "संभाव्यता वितरण की अवधारणा",
@@ -1680,11 +1741,40 @@ TRANSLATIONS = {
             "sturges_col_cum_freq": "संचयी आवृत्ति (F)",
             "sturges_col_rel_freq": "सापेक्ष आवृत्ति (fr)",
             "sturges_col_cum_rel_freq": "संचयी सापेक्ष आवृत्ति (Fr)",
+            "sturges_col_prod": "X_i * f_i",
+            "sturges_col_sq_diff": "(X_i - माध्य)²",
+            "sturges_col_weighted_sq_diff": "f_i * (X_i - माध्य)²",
+            "sturges_stats_header": "📊 समूहीकृत आंकड़े",
+            "sturges_lbl_sum_freq": "आवृत्तियों का योग (N)",
+            "sturges_lbl_grouped_variance": "समूहीकृत विचरण (s²)",
+            "sturges_lbl_grouped_std": "समूहीकृत मानक विचलन (s)",
             
             "sturges_plot_title": "आवृत्ति हिस्टोग्राम (स्टर्जेस का नियम)",
             "sturges_plot_x": "वर्ग सीमाएँ",
             "sturges_plot_y": "परम आवृत्ति",
-            "sturges_invalid_warn": "⚠️ दर्ज किया गया डेटा मान्य नहीं है। कृपया सुनिश्चित करें कि वे अल्पविराम से अलग की गई संख्याएँ हैं और आपके पास कम से कम 3 डेटा बिंदु हैं।"
+            "sturges_invalid_warn": "⚠️ दर्ज किया गया डेटा मान्य नहीं है। कृपया सुनिश्चित करें कि वे अल्पविराम से अलग की गई संख्याएँ हैं और आपके पास कम से कम 3 डेटा बिंदु हैं।",
+            
+            # Kernel Density tab
+            "kde_section_title": "कर्नेल घनत्व अनुमान (KDE)",
+            "kde_col_index": "अवलोकन",
+            "kde_col_value": "मान (X)",
+            "kde_col_density": "अनुमानित घनत्व f(X)",
+            "kde_table_title": "कर्नेल डेटा और घनत्व तालिका",
+            "kde_section_desc": "कर्नेल घनत्व अनुमान (KDE) एक यादृच्छिक चर के संभाव्यता घनत्व कार्य (PDF) का अनुमान लगाने की एक गैर-पैरामीट्रिक तकनीक है। यह प्रत्येक डेटा बिंदु पर केंद्रित व्यक्तिगत घनत्व कार्यों (कर्नेल) को जोड़कर एक सहज वक्र उत्पन्न करता है।",
+            "kde_input_label": "KDE के लिए डेटा (अल्पविराम से अलग):",
+            "kde_kernel_label": "कर्नेल फ़ंक्शन (K):",
+            "kde_bandwidth_method": "बैंडविड्थ विधि (h):",
+            "kde_bandwidth_manual": "मैनुअल (Manual)",
+            "kde_bandwidth_silverman": "सिल्वरमैन का नियम (Silverman's Rule)",
+            "kde_bandwidth_scott": "स्कॉट का नियम (Scott's Rule)",
+            "kde_bandwidth_label": "बैंडविड्थ मान (h):",
+            "kde_plot_title": "कर्नेल घनत्व अनुमान (KDE) और योगदान",
+            "kde_plot_x": "मान (X)",
+            "kde_plot_y": "घनत्व",
+            "kde_rug_label": "प्रेक्षित डेटा (Rug)",
+            "kde_individual_label": "व्यक्तिगत कर्नेल",
+            "kde_combined_label": "संयुक्त KDE",
+            "kde_hist_label": "घनत्व हिस्टोग्राम"
         },
         
         "default_distributions": [

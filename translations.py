@@ -280,6 +280,7 @@ TRANSLATIONS = {
         "sb_analysis_type": "Tipo de Análisis:",
         "sb_simple_regression": "Regresión Simple (SLR / GOR / No Lineal)",
         "sb_multiple_regression": "Regresión Lineal Múltiple (MLR)",
+        "sb_probability_distributions": "Distribuciones de Probabilidad en el Modelado Matemático",
         "sb_col_x_multiple": "Variables Independientes (X):",
         "mlr_stats_title": "Estadísticas de la Regresión",
         "mlr_multiple_r": "Coeficiente de correlación múltiple",
@@ -410,7 +411,182 @@ TRANSLATIONS = {
         "el_col_var": "Varianza Explicada (%)",
         "el_plot_title": "Gráfico de la Curva del Codo (Elbow Curve)",
         "el_plot_x": "Número de Clusters (K)",
-        "el_plot_y": "Inercia (WCSS)"
+        "el_plot_y": "Inercia (WCSS)",
+        
+        # Módulo de Distribuciones de Probabilidad
+        "prob_module": {
+            "title": "Distribuciones de Probabilidad en el Modelado Matemático",
+            "tab_intro": "🎲 Introducción & Dados",
+            "tab_class": "📊 Clasificación (Discretas/Continuas)",
+            "tab_crud": "📖 Diccionario Editable (CRUD)",
+            "tab_sturges": "📈 Sturges (Histogramas)",
+            
+            # Pestaña Introducción y Simulador de Dados
+            "intro_title": "Concepto de Distribución de Probabilidad",
+            "intro_p1": "Una **distribución de probabilidad** es una función matemática que describe la probabilidad de que una variable aleatoria tome diferentes valores posibles. Es fundamental en el modelado matemático para cuantificar la incertidumbre y predecir el comportamiento de sistemas complejos.",
+            "intro_points_title": "Puntos Clave:",
+            "intro_p2": "1. **Rango de valores:** La probabilidad de cualquier resultado siempre está comprendida entre 0 y 1 ($0 \\le P(X=x) \\le 1$).\n2. **Suma total:** La suma de todas las probabilidades posibles para una variable discreta (o la integral para una continua) es exactamente igual a 1 ($\\sum P(X=x) = 1$).",
+            "dice_title": "Simulador de Lanzamiento de Dados (Ley de los Grandes Números)",
+            "dice_roll_num": "Cantidad de lanzamientos (N):",
+            "dice_roll_btn": "Lanzar Dados",
+            "dice_roll_success": "¡Simulación de {} lanzamientos completada!",
+            "dice_x_axis": "Resultado del Dado",
+            "dice_y_axis": "Frecuencia Relativa / Probabilidad",
+            "dice_legend_exp": "Frecuencia Experimental",
+            "dice_legend_theo": "Probabilidad Teórica (1/6)",
+            "dice_stats_title": "Análisis Estadístico de la Simulación",
+            "dice_stats_desc": "La **Ley de los Grandes Números** establece que a medida que aumenta el número de lanzamientos ($N$), las frecuencias observadas se aproximan cada vez más a la probabilidad teórica ($1/6 \\approx 0.1667$).",
+            
+            # Pestaña Clasificación (Normal)
+            "class_title": "Clasificación de Distribuciones",
+            "discrete_section": "Distribuciones Discretas (Función de Masa de Probabilidad - PMF)",
+            "continuous_section": "Distribuciones Continuas (Función de Densidad de Probabilidad - PDF)",
+            "discrete_desc": "Describen variables aleatorias con valores contables e individuales (ej. Bernoulli, Binomial, Poisson).",
+            "continuous_desc": "Describen variables aleatorias con infinitos valores posibles dentro de un intervalo continuo (ej. Normal, Uniforme, Exponencial, Gamma, Lognormal).",
+            
+            "norm_visualizer_title": "Visualizador Interactivo de la Campana de Gauss (Distribución Normal)",
+            "norm_params_header": "Parámetros de la Campana de Gauss",
+            "norm_mean_label": "Media (μ):",
+            "norm_sd_label": "Desviación Estándar (σ):",
+            "norm_shade_label": "Área de Sombreado bajo la Curva:",
+            "norm_shade_none": "Sin sombreado",
+            "norm_shade_1s": "1 Desviación Estándar (±1σ ≈ 68.27%)",
+            "norm_shade_2s": "2 Desviaciones Estándar (±2σ ≈ 95.45%)",
+            "norm_shade_3s": "3 Desviaciones Estándar (±3σ ≈ 99.73%)",
+            "norm_shade_custom": "Rango Personalizado [a, b]",
+            "norm_custom_a": "Límite Inferior (a):",
+            "norm_custom_b": "Límite Superior (b):",
+            "norm_prob_text": "Probabilidad calculada para el intervalo: $P({} \\le X \le {}) = {:.4f}$",
+            "norm_axis_x": "Variable Continua (X)",
+            "norm_axis_y": "Densidad de Probabilidad f(X)",
+            
+            # Pestaña CRUD
+            "crud_section_title": "Diccionario de Distribuciones de Probabilidad",
+            "crud_section_desc": "Puedes consultar la teoría y fórmulas de cada distribución en formato interactivo. Edita la información, elimina distribuciones o añade nuevas de ser necesario.",
+            "crud_add_header": "Agregar Nueva Distribución",
+            "crud_edit_header": "Editar Distribución: {}",
+            "crud_name_label": "Nombre de la Distribución:",
+            "crud_type_label": "Clasificación:",
+            "crud_type_discrete": "Discreta",
+            "crud_type_continuous": "Continua",
+            "crud_formula_label": "Fórmula matemática (en formato LaTeX/MathJax):",
+            "crud_desc_label": "Descripción general:",
+            "crud_chars_label": "Características principales (escribe cada punto en una nueva línea):",
+            "crud_examples_label": "Ejemplos de aplicación (escribe cada ejemplo en una nueva línea):",
+            
+            "crud_btn_edit": "Editar",
+            "crud_btn_delete": "Eliminar",
+            "crud_btn_add": "Añadir Distribución",
+            "crud_btn_save": "Guardar Cambios",
+            "crud_btn_cancel": "Cancelar",
+            "crud_btn_restore": "Restaurar Valores por Defecto",
+            
+            "crud_msg_saved": "¡Distribución '{}' actualizada con éxito!",
+            "crud_msg_deleted": "¡Distribución eliminada con éxito!",
+            "crud_msg_added": "¡Distribución '{}' agregada con éxito!",
+            "crud_msg_restored": "¡Diccionario restaurado a los valores predeterminados!",
+            "crud_confirm_delete": "¿Estás seguro de que deseas eliminar la distribución '{}'?",
+            
+            # Pestaña Sturges
+            "sturges_section_title": "Módulo Práctico: Generador de Histogramas (Regla de Sturges)",
+            "sturges_section_desc": "Ingresa un conjunto de datos numéricos. El sistema calculará automáticamente el número de intervalos (bins) óptimo según la **Regla de Sturges** y graficará su distribución de frecuencias.",
+            "sturges_input_label": "Datos del conjunto (separados por comas):",
+            "sturges_results_header": "Métricas del Conjunto de Datos",
+            "sturges_lbl_n": "Tamaño de muestra (n):",
+            "sturges_lbl_min": "Valor Mínimo (Min):",
+            "sturges_lbl_max": "Valor Máximo (Max):",
+            "sturges_lbl_range": "Rango de datos (R):",
+            "sturges_lbl_bins": "Número de Bins calculado (k):",
+            "sturges_lbl_width": "Ancho del intervalo (W):",
+            
+            "sturges_table_title": "Tabla de Distribución de Frecuencias",
+            "sturges_col_interval": "Intervalo de Clase",
+            "sturges_col_midpoint": "Marca de Clase (X)",
+            "sturges_col_freq": "Frecuencia Absoluta (f)",
+            "sturges_col_cum_freq": "Frecuencia Acumulada (F)",
+            "sturges_col_rel_freq": "Frecuencia Relativa (fr)",
+            "sturges_col_cum_rel_freq": "Frecuencia Relativa Acum. (Fr)",
+            
+            "sturges_plot_title": "Histograma de Frecuencias (Regla de Sturges)",
+            "sturges_plot_x": "Rangos de Clase",
+            "sturges_plot_y": "Frecuencia Absoluta",
+            "sturges_invalid_warn": "⚠️ Los datos ingresados no son válidos. Por favor, asegúrate de que sean números separados por comas y de tener al menos 3 datos."
+        },
+        
+        "default_distributions": [
+            {
+                "id": "bernoulli",
+                "name": "Distribución de Bernoulli",
+                "type": "Discreta",
+                "formula": "P(X = x) = p^x (1-p)^{1-x}, \\quad x \\in \\{0, 1\\}",
+                "desc": "Describe un experimento con exactamente dos resultados posibles (éxito o fracaso) en un solo ensayo.",
+                "chars": "Un solo ensayo con probabilidad de éxito p y de fracaso q = 1 - p.\nMedia: E(X) = p.\nVarianza: Var(X) = p(1 - p).",
+                "examples": "Lanzamiento de una moneda (cara o cruz).\nEstado de aprobación de un examen (aprobado o reprobado)."
+            },
+            {
+                "id": "binomial",
+                "name": "Distribución Binomial",
+                "type": "Discreta",
+                "formula": "P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}, \\quad k \\in \\{0, 1, \\dots, n\\}",
+                "desc": "Modela el número de éxitos al realizar n ensayos de Bernoulli independientes entre sí.",
+                "chars": "Consiste en n ensayos idénticos.\nCada ensayo tiene solo dos posibles resultados.\nLa probabilidad de éxito p permanece constante.",
+                "examples": "Cantidad de caras al lanzar una moneda 10 veces.\nNúmero de piezas defectuosas en un lote de producción de 100 artículos."
+            },
+            {
+                "id": "poisson",
+                "name": "Distribución de Poisson",
+                "type": "Discreta",
+                "formula": "P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}, \\quad k \\in \\{0, 1, 2, \\dots\\}",
+                "desc": "Expresa la probabilidad de que ocurra un determinado número de eventos independientes en un intervalo fijo de tiempo o espacio, dada una tasa media de ocurrencia.",
+                "chars": "Los eventos ocurren con una tasa promedio constante λ.\nLa ocurrencia de un evento no afecta la probabilidad de otro.\nMedia y Varianza son iguales a λ.",
+                "examples": "Número de llamadas que recibe un call center por minuto.\nCantidad de sismos registrados en una región durante un año."
+            },
+            {
+                "id": "normal",
+                "name": "Distribución Normal (Gaussiana)",
+                "type": "Continua",
+                "formula": "f(x) = \\frac{1}{\\sigma \\sqrt{2\\pi}} e^{-\\frac{1}{2}\\left(\\frac{x-\\mu}{\\sigma}\\right)^2}",
+                "desc": "Es la distribución continua más importante. Muchos fenómenos naturales y mediciones se aproximan a esta forma de campana simétrica debido al Teorema del Límite Central.",
+                "chars": "Es perfectamente simétrica respecto a su media μ.\nLa anchura está determinada por la desviación estándar σ.\nCumple la regla empírica: 68.27% de los datos a ±1σ, 95.45% a ±2σ, y 99.73% a ±3σ.",
+                "examples": "La estatura y peso de una población humana.\nLos errores de medición en experimentos científicos."
+            },
+            {
+                "id": "uniforme",
+                "name": "Distribución Uniforme Continua",
+                "type": "Continua",
+                "formula": "f(x) = \\frac{1}{b - a}, \\quad x \\in [a, b]",
+                "desc": "Distribución donde todos los valores dentro del intervalo cerrado [a, b] son igualmente probables.",
+                "chars": "Tiene una densidad constante en el soporte [a, b].\nLa probabilidad es directamente proporcional a la longitud del intervalo.\nMedia es el punto medio (a + b) / 2.",
+                "examples": "El tiempo de espera de un autobús si este pasa puntualmente cada 15 minutos.\nEl ángulo de parada de una ruleta de la fortuna."
+            },
+            {
+                "id": "exponencial",
+                "name": "Distribución Exponencial",
+                "type": "Continua",
+                "formula": "f(x) = \\lambda e^{-\\lambda x}, \\quad x \\ge 0",
+                "desc": "Modela el tiempo transcurrido entre eventos en un proceso de Poisson continuo a una tasa promedio constante λ.",
+                "chars": "Propiedad de 'falta de memoria': la probabilidad futura no depende del tiempo ya transcurrido.\nMedia: 1/λ.\nVarianza: 1/λ².",
+                "examples": "Tiempo que dura una llamada telefónica antes de colgar.\nTiempo transcurrido entre la llegada de dos clientes a una tienda."
+            },
+            {
+                "id": "gamma",
+                "name": "Distribución Gamma",
+                "type": "Continua",
+                "formula": "f(x) = \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)} x^{\\alpha-1} e^{-\\beta x}, \\quad x > 0",
+                "desc": "Distribución de probabilidad continua con dos parámetros (forma α y tasa β) que generaliza las distribuciones Exponencial y de Erlang.",
+                "chars": "Ampliamente usada para modelar tiempos de espera hasta que ocurran α eventos independientes.\nLa función Gamma Γ(α) actúa como factor de normalización.",
+                "examples": "Tiempo de espera total hasta que se registran 3 sismos en una falla geológica.\nVolumen acumulado de lluvia en una tormenta."
+            },
+            {
+                "id": "lognormal",
+                "name": "Distribución Lognormal",
+                "type": "Continua",
+                "formula": "f(x) = \\frac{1}{x \\sigma \\sqrt{2\\pi}} e^{-\\frac{(\\ln(x)-\\mu)^2}{2\\sigma^2}}, \\quad x > 0",
+                "desc": "Distribución de una variable aleatoria cuyo logaritmo natural sigue una distribución normal.",
+                "chars": "Siempre está sesgada positivamente (hacia la derecha) y tiene soporte en reales positivos (x > 0).\nMuy útil para modelar datos de escala que no pueden ser negativos.",
+                "examples": "Distribución de ingresos económicos de la población.\nTamaño de partículas en sedimentos o rocas sismogénicas."
+            }
+        ]
     },
     "en": {
         "page_title": "Linear Regression App",
@@ -691,6 +867,7 @@ TRANSLATIONS = {
         "sb_analysis_type": "Analysis Type:",
         "sb_simple_regression": "Simple Regression (SLR / GOR / Non-Linear)",
         "sb_multiple_regression": "Multiple Linear Regression (MLR)",
+        "sb_probability_distributions": "Probability Distributions in Mathematical Modeling",
         "sb_col_x_multiple": "Independent Variables (X):",
         "mlr_stats_title": "Regression Statistics",
         "mlr_multiple_r": "Multiple R",
@@ -821,7 +998,182 @@ TRANSLATIONS = {
         "el_col_var": "Variance Explained (%)",
         "el_plot_title": "Elbow Curve Plot",
         "el_plot_x": "Number of Clusters (K)",
-        "el_plot_y": "Inertia (WCSS)"
+        "el_plot_y": "Inertia (WCSS)",
+        
+        # Probability Distributions Module
+        "prob_module": {
+            "title": "Probability Distributions in Mathematical Modeling",
+            "tab_intro": "🎲 Introduction & Dice",
+            "tab_class": "📊 Classification (Discrete/Continuous)",
+            "tab_crud": "📖 Editable Dictionary (CRUD)",
+            "tab_sturges": "📈 Sturges (Histograms)",
+            
+            # Intro tab
+            "intro_title": "Probability Distribution Concept",
+            "intro_p1": "A **probability distribution** is a mathematical function that describes the likelihood of a random variable taking different possible values. It is fundamental in mathematical modeling to quantify uncertainty and predict complex system behaviors.",
+            "intro_points_title": "Key Points:",
+            "intro_p2": "1. **Range of values:** The probability of any outcome is always between 0 and 1 ($0 \\le P(X=x) \\le 1$).\n2. **Total sum:** The sum of all possible probabilities for a discrete variable (or the integral for a continuous one) is exactly equal to 1 ($\\sum P(X=x) = 1$).",
+            "dice_title": "Dice Rolling Simulator (Law of Large Numbers)",
+            "dice_roll_num": "Number of rolls (N):",
+            "dice_roll_btn": "Roll Dice",
+            "dice_roll_success": "Simulation of {} rolls completed!",
+            "dice_x_axis": "Die Outcome",
+            "dice_y_axis": "Relative Frequency / Probability",
+            "dice_legend_exp": "Experimental Frequency",
+            "dice_legend_theo": "Theoretical Probability (1/6)",
+            "dice_stats_title": "Statistical Analysis of the Simulation",
+            "dice_stats_desc": "The **Law of Large Numbers** states that as the number of rolls ($N$) increases, the observed frequencies converge closer to the theoretical probability ($1/6 \\approx 0.1667$).",
+            
+            # Classification tab
+            "class_title": "Classification of Distributions",
+            "discrete_section": "Discrete Distributions (Probability Mass Function - PMF)",
+            "continuous_section": "Continuous Distributions (Probability Density Function - PDF)",
+            "discrete_desc": "Describe random variables with countable, individual values (e.g., Bernoulli, Binomial, Poisson).",
+            "continuous_desc": "Describe random variables with infinite possible values within a continuous range (e.g., Normal, Uniform, Exponential, Gamma, Lognormal).",
+            
+            "norm_visualizer_title": "Interactive Gaussian Bell Curve Visualizer (Normal Distribution)",
+            "norm_params_header": "Gaussian Bell Curve Parameters",
+            "norm_mean_label": "Mean (μ):",
+            "norm_sd_label": "Standard Deviation (σ):",
+            "norm_shade_label": "Area Shading under the Curve:",
+            "norm_shade_none": "No shading",
+            "norm_shade_1s": "1 Standard Deviation (±1σ ≈ 68.27%)",
+            "norm_shade_2s": "2 Standard Deviations (±2σ ≈ 95.45%)",
+            "norm_shade_3s": "3 Standard Deviations (±3σ ≈ 99.73%)",
+            "norm_shade_custom": "Custom Range [a, b]",
+            "norm_custom_a": "Lower Limit (a):",
+            "norm_custom_b": "Upper Limit (b):",
+            "norm_prob_text": "Calculated probability for the interval: $P({} \\le X \\le {}) = {:.4f}$",
+            "norm_axis_x": "Continuous Variable (X)",
+            "norm_axis_y": "Probability Density f(X)",
+            
+            # CRUD tab
+            "crud_section_title": "Probability Distributions Dictionary",
+            "crud_section_desc": "You can consult the theory and formulas for each distribution in an interactive format. Edit the information, delete distributions, or add new ones if needed.",
+            "crud_add_header": "Add New Distribution",
+            "crud_edit_header": "Edit Distribution: {}",
+            "crud_name_label": "Distribution Name:",
+            "crud_type_label": "Classification:",
+            "crud_type_discrete": "Discrete",
+            "crud_type_continuous": "Continuous",
+            "crud_formula_label": "Mathematical Formula (LaTeX/MathJax format):",
+            "crud_desc_label": "General Description:",
+            "crud_chars_label": "Main Characteristics (write each point on a new line):",
+            "crud_examples_label": "Application Examples (write each example on a new line):",
+            
+            "crud_btn_edit": "Edit",
+            "crud_btn_delete": "Delete",
+            "crud_btn_add": "Add Distribution",
+            "crud_btn_save": "Save Changes",
+            "crud_btn_cancel": "Cancel",
+            "crud_btn_restore": "Restore Default Values",
+            
+            "crud_msg_saved": "Distribution '{}' updated successfully!",
+            "crud_msg_deleted": "Distribution deleted successfully!",
+            "crud_msg_added": "Distribution '{}' added successfully!",
+            "crud_msg_restored": "Dictionary restored to default values!",
+            "crud_confirm_delete": "Are you sure you want to delete the distribution '{}'?",
+            
+            # Sturges tab
+            "sturges_section_title": "Practical Module: Histogram Generator (Sturges' Rule)",
+            "sturges_section_desc": "Enter a set of numerical data. The system will automatically calculate the optimal number of bins using **Sturges' Rule** and plot its frequency distribution.",
+            "sturges_input_label": "Dataset values (comma-separated):",
+            "sturges_results_header": "Dataset Metrics",
+            "sturges_lbl_n": "Sample size (n):",
+            "sturges_lbl_min": "Minimum Value (Min):",
+            "sturges_lbl_max": "Maximum Value (Max):",
+            "sturges_lbl_range": "Data Range (R):",
+            "sturges_lbl_bins": "Calculated Bins (k):",
+            "sturges_lbl_width": "Interval width (W):",
+            
+            "sturges_table_title": "Frequency Distribution Table",
+            "sturges_col_interval": "Class Interval",
+            "sturges_col_midpoint": "Class Mark (X)",
+            "sturges_col_freq": "Absolute Frequency (f)",
+            "sturges_col_cum_freq": "Cumulative Frequency (F)",
+            "sturges_col_rel_freq": "Relative Frequency (fr)",
+            "sturges_col_cum_rel_freq": "Cum. Relative Frequency (Fr)",
+            
+            "sturges_plot_title": "Frequency Histogram (Sturges' Rule)",
+            "sturges_plot_x": "Class Ranges",
+            "sturges_plot_y": "Absolute Frequency",
+            "sturges_invalid_warn": "⚠️ The entered data is not valid. Please make sure they are numbers separated by commas and that you have at least 3 data points."
+        },
+        
+        "default_distributions": [
+            {
+                "id": "bernoulli",
+                "name": "Bernoulli Distribution",
+                "type": "Discrete",
+                "formula": "P(X = x) = p^x (1-p)^{1-x}, \\quad x \\in \\{0, 1\\}",
+                "desc": "Describes an experiment with exactly two possible outcomes (success or failure) in a single trial.",
+                "chars": "Single trial with success probability p and failure q = 1 - p.\nMean: E(X) = p.\nVariance: Var(X) = p(1 - p).",
+                "examples": "Losing/winning a game.\nPassing/failing an exam."
+            },
+            {
+                "id": "binomial",
+                "name": "Binomial Distribution",
+                "type": "Discrete",
+                "formula": "P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}, \\quad k \\in \\{0, 1, \\dots, n\\}",
+                "desc": "Models the number of successes in n independent Bernoulli trials.",
+                "chars": "Consists of n identical trials.\nEach trial has only two possible outcomes.\nSuccess probability p remains constant.",
+                "examples": "Number of heads in 10 coin flips.\nNumber of defective parts in a batch of 100 items."
+            },
+            {
+                "id": "poisson",
+                "name": "Poisson Distribution",
+                "type": "Discrete",
+                "formula": "P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}, \\quad k \\in \\{0, 1, 2, \\dots\\}",
+                "desc": "Expresses the probability of a given number of independent events occurring in a fixed interval of time or space, given a constant mean rate λ.",
+                "chars": "Events occur at a constant average rate λ.\nEvent occurrences are independent.\nMean and Variance are both equal to λ.",
+                "examples": "Number of telephone calls received per minute at a call center.\nNumber of earthquakes in a region per year."
+            },
+            {
+                "id": "normal",
+                "name": "Normal (Gaussian) Distribution",
+                "type": "Continuous",
+                "formula": "f(x) = \\frac{1}{\\sigma \\sqrt{2\\pi}} e^{-\\frac{1}{2}\\left(\\frac{x-\\mu}{\\sigma\\right)^2}",
+                "desc": "The most important continuous distribution. Many natural phenomena and measurements follow this symmetric bell-shaped curve due to the Central Limit Theorem.",
+                "chars": "Perfectymmetrical about its mean μ.\nWidth determined by the standard deviation σ.\nEmpirical rule: 68.27% of data within ±1σ, 95.45% within ±2σ, and 99.73% within ±3σ.",
+                "examples": "Height and weight of a human population.\nMeasurement errors in scientific experiments."
+            },
+            {
+                "id": "uniform",
+                "name": "Continuous Uniform Distribution",
+                "type": "Continuous",
+                "formula": "f(x) = \\frac{1}{b - a}, \\quad x \\in [a, b]",
+                "desc": "A distribution where all values in the closed interval [a, b] are equally likely.",
+                "chars": "Constant density across the support [a, b].\nProbability is proportional to interval length.\nMean is the midpoint (a + b) / 2.",
+                "examples": "Wait time for a bus if it arrives exactly every 15 minutes.\nStopping angle of a wheel of fortune."
+            },
+            {
+                "id": "exponential",
+                "name": "Exponential Distribution",
+                "type": "Continuous",
+                "formula": "f(x) = \\lambda e^{-\\lambda x}, \\quad x \\ge 0",
+                "desc": "Models the time elapsed between events in a continuous Poisson process at a constant average rate λ.",
+                "chars": "Memoryless property: future probability does not depend on elapsed time.\nMean: 1/λ.\nVariance: 1/λ².",
+                "examples": "Lifespan of an electronic component.\nTime between customer arrivals at a store."
+            },
+            {
+                "id": "gamma",
+                "name": "Gamma Distribution",
+                "type": "Continuous",
+                "formula": "f(x) = \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)} x^{\\alpha-1} e^{-\\beta x}, \\quad x > 0",
+                "desc": "A continuous probability distribution with two parameters (shape α and rate β) that generalizes Exponential and Erlang distributions.",
+                "chars": "Used to model total waiting times until α independent events occur.\nThe Gamma function Γ(α) acts as a normalizing constant.",
+                "examples": "Time until 3 earthquakes occur on a fault line.\nCumulative precipitation volume during a storm."
+            },
+            {
+                "id": "lognormal",
+                "name": "Lognormal Distribution",
+                "type": "Continuous",
+                "formula": "f(x) = \\frac{1}{x \\sigma \\sqrt{2\\pi}} e^{-\\frac{(\\ln(x)-\\mu)^2}{2\\sigma^2}}, \\quad x > 0",
+                "desc": "A distribution of a random variable whose natural logarithm is normally distributed.",
+                "chars": "Always positively skewed (right-skewed) and has support in positive reals (x > 0).\nVery useful for scale data that cannot be negative.",
+                "examples": "Distribution of incomes in a population.\nSediment or rock particle sizes in seismology."
+            }
+        ]
     },
     "hi": {
         "page_title": "रेखीय प्रतिगमन ऐप",
@@ -1102,6 +1454,7 @@ TRANSLATIONS = {
         "sb_analysis_type": "विश्लेषण का प्रकार:",
         "sb_simple_regression": "सरल प्रतिगमन (SLR / GOR / गैर-रेखीय)",
         "sb_multiple_regression": "बहु-रेखीय प्रतिगमन (MLR)",
+        "sb_probability_distributions": "गणितीय मॉडलिंग में संभाव्यता वितरण",
         "sb_col_x_multiple": "स्वतंत्र चर (X):",
         "mlr_stats_title": "प्रतिगमन सांख्यिकी",
         "mlr_multiple_r": "एकाधिक R (Multiple R)",
@@ -1232,6 +1585,181 @@ TRANSLATIONS = {
         "el_col_var": "स्पष्ट विचरण (%)",
         "el_plot_title": "एल्बो कर्व प्लॉट (Elbow Curve)",
         "el_plot_x": "क्लस्टर की संख्या (K)",
-        "el_plot_y": "जड़ता (WCSS)"
+        "el_plot_y": "जड़ता (WCSS)",
+        
+        # Probability Distributions Module
+        "prob_module": {
+            "title": "गणितीय मॉडलिंग में संभाव्यता वितरण",
+            "tab_intro": "🎲 परिचय और पासा",
+            "tab_class": "📊 वर्गीकरण (विच्छिन्न/सतत)",
+            "tab_crud": "📖 संपादन योग्य शब्दकोश (CRUD)",
+            "tab_sturges": "📈 स्टर्जेस (हिस्टोग्राम)",
+            
+            # Intro tab
+            "intro_title": "संभाव्यता वितरण की अवधारणा",
+            "intro_p1": "एक **संभाव्यता वितरण** एक गणितीय कार्य है जो किसी यादृच्छिक चर द्वारा विभिन्न संभावित मानों को लेने की संभावना का वर्णन करता है। गणितीय मॉडलिंग में अनिश्चितता को मापने और जटिल प्रणालियों के व्यवहार की भविष्यवाणी करने के लिए यह मौलिक है।",
+            "intro_points_title": "मुख्य बिंदु:",
+            "intro_p2": "1. **मानों की सीमा:** किसी भी परिणाम की संभावना हमेशा 0 और 1 के बीच होती है ($0 \\le P(X=x) \\le 1$).\n2. **कुल योग:** एक विच्छिन्न चर के लिए सभी संभावित संभावनाओं का योग (या एक सतत चर के लिए समाकलन) बिल्कुल 1 के बराबर होता है ($\\sum P(X=x) = 1$).",
+            "dice_title": "पासा फेंकने का सिम्युलेटर (बड़ी संख्याओं का नियम)",
+            "dice_roll_num": "फेंकने की संख्या (N):",
+            "dice_roll_btn": "पासा फेंकें",
+            "dice_roll_success": "{} बार पासा फेंकने का अनुकरण पूरा हुआ!",
+            "dice_x_axis": "पासे का परिणाम",
+            "dice_y_axis": "सापेक्ष आवृत्ति / संभाव्यता",
+            "dice_legend_exp": "प्रायोगिक आवृत्ति",
+            "dice_legend_theo": "सैद्धांतिक संभाव्यता (1/6)",
+            "dice_stats_title": "सिमुलेशन का सांख्यिकीय विश्लेषण",
+            "dice_stats_desc": "**बड़ी संख्याओं का नियम** यह स्थापित करता है कि जैसे-जैसे पासा फेंकने की संख्या ($N$) बढ़ती है, प्रेक्षित आवृत्तियां सैद्धांतिक संभाव्यता ($1/6 \\approx 0.1667$) के अधिक निकट आती जाती हैं।",
+            
+            # Classification tab
+            "class_title": "वितरणों का वर्गीकरण",
+            "discrete_section": "विच्छिन्न वितरण (संभाव्यता द्रव्यमान कार्य - PMF)",
+            "continuous_section": "सतत वितरण (संभाव्यता घनत्व कार्य - PDF)",
+            "discrete_desc": "गणनीय, व्यक्तिगत मानों वाले यादृच्छिक चरों का वर्णन करते हैं (जैसे, बरनौली, द्विपद, प्वासों)।",
+            "continuous_desc": "एक सतत सीमा के भीतर अनंत संभावित मानों वाले यादृच्छिक चरों का वर्णन करते हैं (जैसे, सामान्य, समान, घातांकीय, गामा, लॉग-नॉर्मल)।",
+            
+            "norm_visualizer_title": "इंटरैक्टिव गाऊसी बेल कर्व विज़ुअलाइज़र (सामान्य वितरण)",
+            "norm_params_header": "गाऊसी बेल कर्व के पैरामीटर",
+            "norm_mean_label": "माध्य (μ):",
+            "norm_sd_label": "मानक विचलन (σ):",
+            "norm_shade_label": "कर्व के तहत क्षेत्र शेडिंग:",
+            "norm_shade_none": "कोई शेडिंग नहीं",
+            "norm_shade_1s": "1 मानक विचलन (±1σ ≈ 68.27%)",
+            "norm_shade_2s": "2 मानक विचलन (±2σ ≈ 95.45%)",
+            "norm_shade_3s": "3 मानक विचलन (±3σ ≈ 99.73%)",
+            "norm_shade_custom": "कस्टम रेंज [a, b]",
+            "norm_custom_a": "निचली सीमा (a):",
+            "norm_custom_b": "ऊपरी सीमा (b):",
+            "norm_prob_text": "अंतराल के लिए परिकलित संभाव्यता: $P({} \\le X \\le {}) = {:.4f}$",
+            "norm_axis_x": "सतत चर (X)",
+            "norm_axis_y": "संभाव्यता घनत्व f(X)",
+            
+            # CRUD tab
+            "crud_section_title": "संभाव्यता वितरण शब्दकोश",
+            "crud_section_desc": "आप एक इंटरैक्टिव प्रारूप में प्रत्येक वितरण के सिद्धांत और सूत्रों से परामर्श कर सकते हैं। यदि आवश्यक हो तो जानकारी संपादित करें, वितरण हटाएं, या नए जोड़ें।",
+            "crud_add_header": "नया वितरण जोड़ें",
+            "crud_edit_header": "वितरण संपादित करें: {}",
+            "crud_name_label": "वितरण का नाम:",
+            "crud_type_label": "वर्गीकरण:",
+            "crud_type_discrete": "विच्छिन्न",
+            "crud_type_continuous": "सतत",
+            "crud_formula_label": "गणितीय सूत्र (LaTeX/MathJax प्रारूप में):",
+            "crud_desc_label": "सामान्य विवरण:",
+            "crud_chars_label": "मुख्य विशेषताएं (प्रत्येक बिंदु को एक नई पंक्ति में लिखें):",
+            "crud_examples_label": "अनुप्रयोग के उदाहरण (प्रत्येक उदाहरण को एक नई पंक्ति में लिखें):",
+            
+            "crud_btn_edit": "संपादित करें",
+            "crud_btn_delete": "हटाएं",
+            "crud_btn_add": "वितरण जोड़ें",
+            "crud_btn_save": "परिवर्तन सहेजें",
+            "crud_btn_cancel": "रद्द करें",
+            "crud_btn_restore": "डिफ़ॉल्ट मान पुनर्स्थापित करें",
+            
+            "crud_msg_saved": "वितरण '{}' सफलतापूर्वक अपडेट किया गया!",
+            "crud_msg_deleted": "वितरण सफलतापूर्वक हटा दिया गया!",
+            "crud_msg_added": "वितरण '{}' सफलतापूर्वक जोड़ा गया!",
+            "crud_msg_restored": "शब्दकोश डिफ़ॉल्ट मानों पर पुनर्स्थापित किया गया!",
+            "crud_confirm_delete": "क्या आप वाकई वितरण '{}' को हटाना चाहते हैं?",
+            
+            # Sturges tab
+            "sturges_section_title": "व्यावहारिक मॉड्यूल: हिस्टोग्राम जनरेटर (स्टर्जेस का नियम)",
+            "sturges_section_desc": "संख्यात्मक डेटा का एक सेट दर्ज करें। सिस्टम स्वचालित रूप से **स्टर्जेस के नियम** का उपयोग करके इष्टतम डिब्बों (bins) की गणना करेगा और इसके आवृत्ति वितरण को आरेखित करेगा।",
+            "sturges_input_label": "डेटासेट मान (अल्पविराम से अलग):",
+            "sturges_results_header": "डेटासेट मेट्रिक्स",
+            "sturges_lbl_n": "नमूना आकार (n):",
+            "sturges_lbl_min": "न्यूनतम मान (Min):",
+            "sturges_lbl_max": "अधिकतम मान (Max):",
+            "sturges_lbl_range": "डेटा रेंज (R):",
+            "sturges_lbl_bins": "परिकलित डिब्बे (k):",
+            "sturges_lbl_width": "अंतराल की चौड़ाई (W):",
+            
+            "sturges_table_title": "आवृत्ति वितरण तालिका",
+            "sturges_col_interval": "वर्ग अंतराल",
+            "sturges_col_midpoint": "वर्ग चिह्न (X)",
+            "sturges_col_freq": "परम आवृत्ति (f)",
+            "sturges_col_cum_freq": "संचयी आवृत्ति (F)",
+            "sturges_col_rel_freq": "सापेक्ष आवृत्ति (fr)",
+            "sturges_col_cum_rel_freq": "संचयी सापेक्ष आवृत्ति (Fr)",
+            
+            "sturges_plot_title": "आवृत्ति हिस्टोग्राम (स्टर्जेस का नियम)",
+            "sturges_plot_x": "वर्ग सीमाएँ",
+            "sturges_plot_y": "परम आवृत्ति",
+            "sturges_invalid_warn": "⚠️ दर्ज किया गया डेटा मान्य नहीं है। कृपया सुनिश्चित करें कि वे अल्पविराम से अलग की गई संख्याएँ हैं और आपके पास कम से कम 3 डेटा बिंदु हैं।"
+        },
+        
+        "default_distributions": [
+            {
+                "id": "bernoulli",
+                "name": "बरनौली वितरण (Bernoulli Distribution)",
+                "type": "विच्छिन्न",
+                "formula": "P(X = x) = p^x (1-p)^{1-x}, \\quad x \\in \\{0, 1\\}",
+                "desc": "एक ही परीक्षण में ठीक दो संभावित परिणामों (सफलता या विफलता) वाले प्रयोग का वर्णन करता है।",
+                "chars": "सफलता की संभावना p और विफलता q = 1 - p के साथ एकल परीक्षण।\nमाध्य: E(X) = p.\nविचरण: Var(X) = p(1 - p).",
+                "examples": "एक सिक्का उछालना (चित या पट)।\nपरीक्षा पास/फेल होना।"
+            },
+            {
+                "id": "binomial",
+                "name": "द्विपद वितरण (Binomial Distribution)",
+                "type": "विच्छिन्न",
+                "formula": "P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}, \\quad k \\in \\{0, 1, \\dots, n\\}",
+                "desc": "n स्वतंत्र बरनौली परीक्षणों में सफलताओं की संख्या का मॉडल तैयार करता है।",
+                "chars": "इसमें n समान परीक्षण शामिल हैं।\nप्रत्येक परीक्षण के केवल दो संभावित परिणाम होते हैं।\nसफलता की संभावना p स्थिर रहती है।",
+                "examples": "10 बार सिक्का उछालने में चित आने की संख्या।\n100 वस्तुओं के बैच में दोषपूर्ण भागों की संख्या।"
+            },
+            {
+                "id": "poisson",
+                "name": "प्वासों वितरण (Poisson Distribution)",
+                "type": "विच्छिन्न",
+                "formula": "P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}, \\quad k \\in \\{0, 1, 2, \\dots\\}",
+                "desc": "समय या स्थान के एक निश्चित अंतराल में होने वाली स्वतंत्र घटनाओं की संख्या की संभावना को व्यक्त करता है, जबकि घटनाओं की औसत दर λ स्थिर हो।",
+                "chars": "घटनाएँ एक स्थिर औसत दर λ पर घटित होती हैं।\nघटनाएँ स्वतंत्र रूप से होती हैं।\nमाध्य और विचरण दोनों λ के बराबर होते हैं।",
+                "examples": "एक कॉल सेंटर में प्रति मिनट प्राप्त होने वाली टेलीफोन कॉलों की संख्या।\nकिसी क्षेत्र में प्रति वर्ष आने वाले भूकंपों की संख्या।"
+            },
+            {
+                "id": "normal",
+                "name": "सामान्य वितरण (Normal Distribution)",
+                "type": "सतत",
+                "formula": "f(x) = \\frac{1}{\\sigma \\sqrt{2\\pi}} e^{-\\frac{1}{2}\\left(\\frac{x-\\mu}{\\sigma}\\right)^2}",
+                "desc": "यह सबसे महत्वपूर्ण सतत वितरण है। केंद्रीय सीमा प्रमेय (Central Limit Theorem) के कारण कई प्राकृतिक घटनाएं इस सममित बेल-आकार के वक्र का अनुसरण करती हैं।",
+                "chars": "यह अपने माध्य μ के परितः पूर्णतः सममित होता है।\nइसकी चौड़ाई मानक विचलन σ द्वारा निर्धारित होती है।\nअनुभवजन्य नियम: 68.27% डेटा ±1σ के भीतर, 95.45% डेटा ±2σ के भीतर, और 99.73% डेटा ±3σ के भीतर होता है।",
+                "examples": "मानव जनसंख्या की लंबाई और वजन।\nवैज्ञानिक प्रयोगों में मापन त्रुटियां।"
+            },
+            {
+                "id": "uniform",
+                "name": "सतत समान वितरण (Continuous Uniform)",
+                "type": "सतत",
+                "formula": "f(x) = \\frac{1}{b - a}, \\quad x \\in [a, b]",
+                "desc": "एक ऐसा वितरण जिसमें बंद अंतराल [a, b] में सभी मानों की संभावना समान होती है।",
+                "chars": "अंतराल [a, b] पर निरंतर घनत्व होता है।\nसंभाव्यता अंतराल की लंबाई के समानुपाती होती है।\nमाध्य मध्यबिंदु (a + b) / 2 होता है।",
+                "examples": "एक बस के लिए प्रतीक्षा समय यदि वह ठीक प्रत्येक 15 मिनट पर आती है।\nभाग्य के पहिये के रुकने का कोण।"
+            },
+            {
+                "id": "exponential",
+                "name": "घातांकीय वितरण (Exponential Distribution)",
+                "type": "सतत",
+                "formula": "f(x) = \\lambda e^{-\\lambda x}, \\quad x \\ge 0",
+                "desc": "एक निरंतर प्वासों प्रक्रिया में घटनाओं के बीच बीतने वाले समय का मॉडल तैयार करता है जहां औसत दर λ स्थिर हो।",
+                "chars": "स्मृतिहीनता गुण: भविष्य की संभावना बीते हुए समय पर निर्भर नहीं करती।\nमाध्य: 1/λ.\nविचरण: 1/λ².",
+                "examples": "एक इलेक्ट्रॉनिक घटक का जीवनकाल।\nएक स्टोर पर ग्राहकों के आगमन के बीच का समय।"
+            },
+            {
+                "id": "gamma",
+                "name": "गामा वितरण (Gamma Distribution)",
+                "type": "सतत",
+                "formula": "f(x) = \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)} x^{\\alpha-1} e^{-\\beta x}, \\quad x > 0",
+                "desc": "दो मापदंडों (आकार α और दर β) के साथ एक सतत संभाव्यता वितरण जो घातांकीय और एर्लांग वितरण का सामान्यीकरण करता है।",
+                "chars": "α स्वतंत्र घटनाओं के होने तक कुल प्रतीक्षा समय को दर्शाने के लिए उपयोग किया जाता है।\nगामा फ़ंक्शन Γ(α) एक सामान्यीकरण स्थिरांक के रूप में कार्य करता है।",
+                "examples": "एक फॉल्ट लाइन पर 3 भूकंप आने तक का समय।\nएक तूफान के दौरान संचित वर्षा की मात्रा।"
+            },
+            {
+                "id": "lognormal",
+                "name": "लॉग-नॉर्मल वितरण (Lognormal Distribution)",
+                "type": "सतत",
+                "formula": "f(x) = \\frac{1}{x \\sigma \\sqrt{2\\pi}} e^{-\\frac{(\\ln(x)-\\mu)^2}{2\\sigma^2}}, \\quad x > 0",
+                "desc": "एक यादृच्छिक चर का वितरण जिसका प्राकृतिक लघुगणक सामान्य रूप से वितरित होता है।",
+                "chars": "यह हमेशा दाहिनी ओर झुका (right-skewed) होता है और इसका समर्थन धनात्मक वास्तविक संख्याओं (x > 0) में होता है।\nउन पैमानों के डेटा के लिए बहुत उपयोगी है जो ऋणात्मक नहीं हो सकते।",
+                "examples": "जनसंख्या में आय का वितरण।\nभूकंप विज्ञान में तलछट या चट्टान के कणों का आकार।"
+            }
+        ]
     }
 }

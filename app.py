@@ -62,8 +62,343 @@ with col_lang3:
         st.rerun()
 
 st.sidebar.markdown("---")
-analysis_type = st.sidebar.selectbox(t["sb_analysis_type"], [t["sb_simple_regression"], t["sb_multiple_regression"]])
+analysis_type = st.sidebar.selectbox(t["sb_analysis_type"], [
+    t["sb_simple_regression"], 
+    t["sb_multiple_regression"],
+    t["sb_probability_distributions"]
+])
 is_mlr = (analysis_type == t["sb_multiple_regression"])
+is_prob = (analysis_type == t["sb_probability_distributions"])
+
+if is_prob:
+    t_prob = t["prob_module"]
+    
+    # Initialize distributions in session state
+    state_key = f"dists_{st.session_state.lang}"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = list(t["default_distributions"])
+        
+    if "editing_id" not in st.session_state:
+        st.session_state.editing_id = None
+        
+    st.header(t_prob["title"])
+    
+    # Define tabs
+    tab_intro, tab_class, tab_crud, tab_sturges = st.tabs([
+        t_prob["tab_intro"],
+        t_prob["tab_class"],
+        t_prob["tab_crud"],
+        t_prob["tab_sturges"]
+    ])
+    
+    with tab_intro:
+        st.subheader(t_prob["intro_title"])
+        st.markdown(t_prob["intro_p1"])
+        st.markdown(f"### {t_prob['intro_points_title']}")
+        st.markdown(t_prob["intro_p2"])
+        st.markdown("---")
+        
+        st.subheader(t_prob["dice_title"])
+        
+        # We can place N selector here
+        dice_n = st.number_input(t_prob["dice_roll_num"], min_value=1, max_value=1000000, value=100, step=100, key="dice_n_input")
+        
+        if "dice_results" not in st.session_state:
+            st.session_state.dice_results = np.random.randint(1, 7, size=100)
+            
+        col_roll_btn, _ = st.columns([1, 4])
+        with col_roll_btn:
+            if st.button(t_prob["dice_roll_btn"], key="roll_dice_btn_action"):
+                st.session_state.dice_results = np.random.randint(1, 7, size=int(dice_n))
+                st.success(t_prob["dice_roll_success"].format(dice_n))
+                
+        rolls = st.session_state.dice_results
+        N_curr = len(rolls)
+        counts = np.bincount(rolls, minlength=7)[1:]  # ensure length is 6 for faces 1-6
+        freqs = counts / N_curr
+        
+        # Plotly bar chart
+        fig_dice = plgo.Figure()
+        fig_dice.add_trace(plgo.Bar(
+            x=[1, 2, 3, 4, 5, 6],
+            y=freqs,
+            name=t_prob["dice_legend_exp"],
+            marker_color='#1f77b4',
+            opacity=0.75,
+            text=[f"{f:.4f}" for f in freqs],
+            textposition='auto'
+        ))
+        fig_dice.add_trace(plgo.Scatter(
+            x=[0.5, 6.5],
+            y=[1/6, 1/6],
+            mode='lines',
+            name=t_prob["dice_legend_theo"],
+            line=dict(color='red', width=3, dash='dash')
+        ))
+        fig_dice.update_layout(
+            xaxis_title=t_prob["dice_x_axis"],
+            yaxis_title=t_prob["dice_y_axis"],
+            xaxis=dict(tickmode='linear', tick0=1, dtick=1, range=[0.5, 6.5]),
+            yaxis=dict(range=[0, max(max(freqs) + 0.05, 0.25)]),
+            legend=dict(x=0.01, y=0.99),
+            template='plotly_white',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        st.plotly_chart(fig_dice, use_container_width=True)
+        
+        st.subheader(t_prob["dice_stats_title"])
+        st.markdown(t_prob["dice_stats_desc"])
+        dice_df = pd.DataFrame({
+            t_prob["dice_x_axis"]: [1, 2, 3, 4, 5, 6],
+            t_prob["dice_legend_exp"]: [f"{f:.4f}" for f in freqs],
+            t_prob["dice_legend_theo"]: [f"{1/6:.4f}"] * 6,
+            "Diferencia / Diff": [f"{abs(f - 1/6):.4f}" for f in freqs]
+        })
+        st.table(dice_df)
+        
+    with tab_class:
+        st.subheader(t_prob["class_title"])
+        
+        col_disc, col_cont = st.columns(2)
+        with col_disc:
+            st.markdown(f"### {t_prob['discrete_section']}")
+            st.info(t_prob["discrete_desc"])
+            
+            # Show discrete distributions from CRUD state
+            disc_dists = [d for d in st.session_state[state_key] if d["type"] in ["Discreta", "Discrete", t_prob["crud_type_discrete"]]]
+            for d in disc_dists:
+                st.markdown(f"**{d['name']}**")
+                st.latex(d["formula"])
+                
+        with col_cont:
+            st.markdown(f"### {t_prob['continuous_section']}")
+            st.info(t_prob["continuous_desc"])
+            
+            # Show continuous distributions from CRUD state
+            cont_dists = [d for d in st.session_state[state_key] if d["type"] in ["Continua", "Continuous", t_prob["crud_type_continuous"]]]
+            for d in cont_dists:
+                st.markdown(f"**{d['name']}**")
+                st.latex(d["formula"])
+                
+        st.markdown("---")
+        
+        # Gaussian Bell Curve Visualizer Parameters
+        st.sidebar.markdown(f"### {t_prob['norm_params_header']}")
+        mu = st.sidebar.slider(t_prob["norm_mean_label"], min_value=-10.0, max_value=10.0, value=0.0, step=0.1)
+        sigma = st.sidebar.slider(t_prob["norm_sd_label"], min_value=0.1, max_value=5.0, value=1.0, step=0.1)
+        
+        shade_option = st.sidebar.selectbox(t_prob["norm_shade_label"], [
+            t_prob["norm_shade_none"],
+            t_prob["norm_shade_1s"],
+            t_prob["norm_shade_2s"],
+            t_prob["norm_shade_3s"],
+            t_prob["norm_shade_custom"]
+        ])
+        
+        a_shade, b_shade = None, None
+        if shade_option == t_prob["norm_shade_1s"]:
+            a_shade, b_shade = mu - sigma, mu + sigma
+        elif shade_option == t_prob["norm_shade_2s"]:
+            a_shade, b_shade = mu - 2*sigma, mu + 2*sigma
+        elif shade_option == t_prob["norm_shade_3s"]:
+            a_shade, b_shade = mu - 3*sigma, mu + 3*sigma
+        elif shade_option == t_prob["norm_shade_custom"]:
+            col_in1, col_in2 = st.sidebar.columns(2)
+            with col_in1:
+                custom_a = st.number_input(t_prob["norm_custom_a"], value=float(mu - sigma), step=0.5, key="norm_cust_a_input")
+            with col_in2:
+                custom_b = st.number_input(t_prob["norm_custom_b"], value=float(mu + sigma), step=0.5, key="norm_cust_b_input")
+            a_shade, b_shade = custom_a, custom_b
+            
+        x_vals = np.linspace(mu - 4*sigma, mu + 4*sigma, 500)
+        y_vals = stats.norm.pdf(x_vals, mu, sigma)
+        
+        fig_norm = plgo.Figure()
+        fig_norm.add_trace(plgo.Scatter(
+            x=x_vals, y=y_vals,
+            mode='lines',
+            name='f(X)',
+            line=dict(color='#2ca02c', width=3)
+        ))
+        
+        if a_shade is not None and b_shade is not None:
+            area_prob = stats.norm.cdf(b_shade, mu, sigma) - stats.norm.cdf(a_shade, mu, sigma)
+            x_shade = np.linspace(a_shade, b_shade, 200)
+            y_shade = stats.norm.pdf(x_shade, mu, sigma)
+            
+            fig_norm.add_trace(plgo.Scatter(
+                x=np.concatenate([[a_shade], x_shade, [b_shade]]),
+                y=np.concatenate([[0], y_shade, [0]]),
+                fill='tozeroy',
+                fillcolor='rgba(44, 160, 44, 0.3)',
+                line=dict(color='rgba(255,255,255,0)'),
+                name=f'P({a_shade:.2f} <= X <= {b_shade:.2f})',
+                hoverinfo='skip'
+            ))
+            
+        fig_norm.update_layout(
+            xaxis_title=t_prob["norm_axis_x"],
+            yaxis_title=t_prob["norm_axis_y"],
+            template='plotly_white',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        
+        st.subheader(t_prob["norm_visualizer_title"])
+        st.plotly_chart(fig_norm, use_container_width=True)
+        
+        if a_shade is not None and b_shade is not None:
+            st.info(t_prob["norm_prob_text"].format(f"{a_shade:.2f}", f"{b_shade:.2f}", area_prob))
+            
+    with tab_crud:
+        st.subheader(t_prob["crud_section_title"])
+        st.markdown(t_prob["crud_section_desc"])
+        
+        # Render each distribution card
+        for idx, dist in enumerate(st.session_state[state_key]):
+            with st.expander(f"{'📊' if dist['type'] in ['Discreta', 'Discrete', t_prob['crud_type_discrete']] else '📈'} {dist['name']} ({dist['type']})"):
+                st.markdown(f"**{t_prob['crud_desc_label']}:** {dist['desc']}")
+                st.markdown(f"**{t_prob['crud_formula_label']}:**")
+                st.latex(dist["formula"])
+                
+                col_chars, col_ex = st.columns(2)
+                with col_chars:
+                    st.markdown(f"**{t_prob['crud_chars_label']}**")
+                    chars_list = dist["chars"].split("\n")
+                    for item in chars_list:
+                        if item.strip():
+                            st.markdown(f"- {item.strip()}")
+                with col_ex:
+                    st.markdown(f"**{t_prob['crud_examples_label']}**")
+                    ex_list = dist["examples"].split("\n")
+                    for item in ex_list:
+                        if item.strip():
+                            st.markdown(f"- {item.strip()}")
+                            
+        st.markdown("---")
+        with st.expander(f"➕ {t_prob['crud_add_header']}", expanded=False):
+            with st.form(key="form_add_dist_action"):
+                add_name = st.text_input(t_prob["crud_name_label"])
+                add_type = st.selectbox(t_prob["crud_type_label"], [t_prob["crud_type_discrete"], t_prob["crud_type_continuous"]])
+                add_formula = st.text_input(t_prob["crud_formula_label"], placeholder="f(x) = ...")
+                add_desc = st.text_area(t_prob["crud_desc_label"])
+                add_chars = st.text_area(t_prob["crud_chars_label"])
+                add_examples = st.text_area(t_prob["crud_examples_label"])
+                
+                submit_add = st.form_submit_button(t_prob["crud_btn_add"])
+                if submit_add:
+                    if add_name:
+                        new_id = add_name.lower().replace(" ", "_")
+                        st.session_state[state_key].append({
+                            "id": new_id,
+                            "name": add_name,
+                            "type": add_type,
+                            "formula": add_formula,
+                            "desc": add_desc,
+                            "chars": add_chars,
+                            "examples": add_examples
+                        })
+                        st.success(t_prob["crud_msg_added"].format(add_name))
+                        st.rerun()
+                    else:
+                        st.error("Por favor ingresa un nombre para la distribución.")
+                        
+        if st.button(t_prob["crud_btn_restore"], key="restore_defaults_action_btn"):
+            st.session_state[state_key] = list(t["default_distributions"])
+            st.session_state.editing_id = None
+            st.success(t_prob["crud_msg_restored"])
+            st.rerun()
+            
+    with tab_sturges:
+        st.subheader(t_prob["sturges_section_title"])
+        st.markdown(t_prob["sturges_section_desc"])
+        
+        default_raw_data = "1.2, 1.5, 1.7, 1.8, 2.0, 2.1, 2.3, 2.5, 2.7, 2.9, 3.0, 3.2, 3.5, 3.8, 4.0, 4.3, 4.7, 5.2, 6.0, 8.5"
+        data_input = st.text_area(t_prob["sturges_input_label"], value=default_raw_data, height=100, key="sturges_raw_data_input")
+        
+        try:
+            nums = [float(x.strip()) for x in data_input.split(",") if x.strip()]
+            if len(nums) < 3:
+                st.warning(t_prob["sturges_invalid_warn"])
+                st.stop()
+        except ValueError:
+            st.warning(t_prob["sturges_invalid_warn"])
+            st.stop()
+            
+        n = len(nums)
+        val_min = min(nums)
+        val_max = max(nums)
+        val_range = val_max - val_min
+        k = int(np.ceil(1 + 3.322 * np.log10(n)))
+        w = val_range / k if k > 0 else 0.0
+        
+        st.subheader(t_prob["sturges_results_header"])
+        col_st1, col_st2, col_st3 = st.columns(3)
+        with col_st1:
+            st.metric(t_prob["sturges_lbl_n"], n)
+            st.metric(t_prob["sturges_lbl_min"], f"{val_min:.4f}")
+        with col_st2:
+            st.metric(t_prob["sturges_lbl_max"], f"{val_max:.4f}")
+            st.metric(t_prob["sturges_lbl_range"], f"{val_range:.4f}")
+        with col_st3:
+            st.metric(t_prob["sturges_lbl_bins"], k)
+            st.metric(t_prob["sturges_lbl_width"], f"{w:.4f}")
+            
+        bins_edges = [val_min + i * w for i in range(k + 1)]
+        bins_edges[-1] = val_max + 1e-9
+        
+        counts_sturges, _ = np.histogram(nums, bins=bins_edges)
+        cum_counts = np.cumsum(counts_sturges)
+        rel_freqs = counts_sturges / n
+        cum_rel_freqs = np.cumsum(rel_freqs)
+        midpoints = [(bins_edges[i] + bins_edges[i+1]) / 2 for i in range(k)]
+        
+        intervals_str = [f"[{bins_edges[i]:.4f}, {bins_edges[i+1]:.4f})" for i in range(k-1)]
+        intervals_str.append(f"[{bins_edges[k-1]:.4f}, {val_max:.4f}]")
+        
+        freq_df = pd.DataFrame({
+            t_prob["sturges_col_interval"]: intervals_str,
+            t_prob["sturges_col_midpoint"]: [f"{m:.4f}" for m in midpoints],
+            t_prob["sturges_col_freq"]: counts_sturges,
+            t_prob["sturges_col_cum_freq"]: cum_counts,
+            t_prob["sturges_col_rel_freq"]: [f"{rf:.4f}" for rf in rel_freqs],
+            t_prob["sturges_col_cum_rel_freq"]: [f"{crf:.4f}" for crf in cum_rel_freqs]
+        })
+        
+        st.subheader(t_prob["sturges_table_title"])
+        edited_freq_df = st.data_editor(freq_df, use_container_width=True, num_rows="fixed", key="editable_freq_table_editor")
+        
+        x_intervals = edited_freq_df[t_prob["sturges_col_interval"]].values
+        y_counts = pd.to_numeric(edited_freq_df[t_prob["sturges_col_freq"]]).values
+        
+        fig_hist = plgo.Figure()
+        fig_hist.add_trace(plgo.Bar(
+            x=x_intervals,
+            y=y_counts,
+            name=t_prob["sturges_col_freq"],
+            marker_color='#d62728',
+            opacity=0.8,
+            text=y_counts,
+            textposition='auto'
+        ))
+        fig_hist.update_layout(
+            title=t_prob["sturges_plot_title"],
+            xaxis_title=t_prob["sturges_plot_x"],
+            yaxis_title=t_prob["sturges_plot_y"],
+            template='plotly_white',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
+
+    # Render Footer and stop execution
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: gray; font-size: 14px;'>"
+        "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+        "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+        "</p>", 
+        unsafe_allow_html=True
+    )
+    st.stop()
 
 st.sidebar.header(t["sb_header_data"])
 data_source = st.sidebar.radio(t["sb_data_source"], (t["sb_manual"], t["sb_upload"]))

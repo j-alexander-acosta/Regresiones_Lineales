@@ -84,12 +84,13 @@ if is_prob:
     st.header(t_prob["title"])
     
     # Define tabs
-    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde = st.tabs([
+    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde, tab_chi = st.tabs([
         t_prob["tab_intro"],
         t_prob["tab_class"],
         t_prob["tab_crud"],
         t_prob["tab_sturges"],
-        t_prob["tab_kde"]
+        t_prob["tab_kde"],
+        t_prob["tab_chi"]
     ])
     
     with tab_intro:
@@ -675,6 +676,207 @@ if is_prob:
             margin=dict(l=40, r=40, t=40, b=40)
         )
         st.plotly_chart(fig_kde, use_container_width=True)
+
+    with tab_chi:
+        st.subheader(t_prob["chi_title"])
+        st.markdown(t_prob["chi_desc"])
+        
+        default_raw_data = "63.123, 64.654, 65.234, 65.567, 65.789, 65.432, 65.876, 66.123, 66.456, 66.789, 66.234, 66.567, 66.89, 67.123, 67.456, 67.789, 67.234, 67.567, 67.89, 67.543, 67.876, 67.898, 67.321, 67.654, 67.987, 67.432, 67.765, 68.123, 68.456, 68.789, 68.234, 68.567, 68.89, 68.543, 68.876, 68.098, 69.123, 69.456, 69.789, 69.234, 69.567, 69.89, 69.543, 70.123, 70.456, 70.789, 71.456, 71.789, 71.234, 71.123"
+        default_intervals = "63, 66, 67, 68, 69, 70, 72"
+        
+        col_input1, col_input2 = st.columns(2)
+        with col_input1:
+            chi_data_input = st.text_area(t_prob["chi_data_input"], value=default_raw_data, height=120, key="chi_raw_data_input")
+        with col_input2:
+            chi_intervals_input = st.text_input(t_prob["chi_intervals_input"], value=default_intervals, key="chi_intervals_input")
+            chi_alpha = st.slider(t_prob["chi_alpha_label"], min_value=0.01, max_value=0.20, value=0.05, step=0.01, key="chi_alpha_slider")
+            
+        try:
+            chi_nums = np.array([float(x.strip()) for x in chi_data_input.split(",") if x.strip()])
+            bin_edges = np.array(sorted([float(x.strip()) for x in chi_intervals_input.split(",") if x.strip()]))
+            if len(chi_nums) < 5:
+                st.warning(t_prob["sturges_invalid_warn"])
+                st.stop()
+            if len(bin_edges) < 3:
+                st.warning("⚠️ Ingresa al menos 3 límites de intervalos (por ejemplo: 63, 66, 68).")
+                st.stop()
+        except ValueError:
+            st.warning("⚠️ Asegúrate de ingresar números separados por comas.")
+            st.stop()
+            
+        n_points = len(chi_nums)
+        mean_val = np.mean(chi_nums)
+        std_val = np.std(chi_nums, ddof=1) if n_points > 1 else 1.0
+        k = len(bin_edges) - 1
+        
+        # Calculate Observed Frequencies and Normal Probabilities
+        lows = []
+        upps = []
+        intervals_col = []
+        frequencies_col = []
+        z_lows = []
+        p_lows = []
+        p_lows_adj = []
+        p_upps = []
+        p_intervals = []
+        expecteds = []
+        chi_squares = []
+        
+        for i in range(k):
+            low = bin_edges[i]
+            upp = bin_edges[i+1]
+            lows.append(low)
+            upps.append(upp)
+            
+            # Label
+            intervals_col.append(f"{low} < Height <= {upp}")
+            
+            # Observed counts in (low, upp]
+            if i == 0:
+                freq = np.sum(chi_nums <= upp)
+            else:
+                freq = np.sum((chi_nums > low) & (chi_nums <= upp))
+            frequencies_col.append(int(freq))
+            
+            # Z-scores and probabilities
+            z_l = (low - mean_val) / std_val
+            z_u = (upp - mean_val) / std_val
+            z_lows.append(z_l)
+            
+            p_l = stats.norm.cdf(z_l)
+            p_u = stats.norm.cdf(z_u)
+            p_lows.append(p_l)
+            p_upps.append(p_u)
+            
+            # Adjusted low probability: first is 0, rest are previous row's P(HEIGHT<U)
+            if i == 0:
+                p_l_adj = 0.0
+            else:
+                p_l_adj = p_upps[i-1]
+            p_lows_adj.append(p_l_adj)
+            
+            # Probability in interval: N_i - M_i
+            p_int = p_u - p_l_adj
+            p_intervals.append(p_int)
+            
+            # Expected value: n * p_int
+            exp_val = n_points * p_int
+            expecteds.append(exp_val)
+            
+            # Chi-square term: (O - E)^2 / E
+            if exp_val > 0:
+                chi_sq = ((freq - exp_val) ** 2) / exp_val
+            else:
+                chi_sq = 0.0
+            chi_squares.append(chi_sq)
+            
+        sum_freq = np.sum(frequencies_col)
+        sum_expected = np.sum(expecteds)
+        sum_chi_square = np.sum(chi_squares)
+        
+        # Build pandas dataframe
+        chi_df = pd.DataFrame({
+            "LOW": lows,
+            "UPP": upps,
+            "Interval": intervals_col,
+            "Frequency": frequencies_col,
+            "Mean": [mean_val] + [None] * (k - 1),
+            "Standard Deviation": [std_val] + [None] * (k - 1),
+            "Z": z_lows,
+            "P(HEIGHT<L)": p_lows,
+            "P(HEIGHT<L) adj": p_lows_adj,
+            "P(HEIGHT<U)": p_upps,
+            "P(L<HEIGHT<=U)": p_intervals,
+            "expected Value": expecteds,
+            "Chi Square": chi_squares
+        })
+        
+        st.subheader(t_prob["chi_table_title"])
+        
+        # Display the dataframe with custom formatting
+        st.dataframe(
+            chi_df,
+            use_container_width=True,
+            column_config={
+                "LOW": st.column_config.NumberColumn(format="%.1f"),
+                "UPP": st.column_config.NumberColumn(format="%.1f"),
+                "Interval": st.column_config.TextColumn(),
+                "Frequency": st.column_config.NumberColumn(format="%d"),
+                "Mean": st.column_config.NumberColumn(format="%.5f"),
+                "Standard Deviation": st.column_config.NumberColumn(format="%.9f"),
+                "Z": st.column_config.NumberColumn(format="%.9f"),
+                "P(HEIGHT<L)": st.column_config.NumberColumn(format="%.9f"),
+                "P(HEIGHT<L) adj": st.column_config.NumberColumn(format="%.9f"),
+                "P(HEIGHT<U)": st.column_config.NumberColumn(format="%.9f"),
+                "P(L<HEIGHT<=U)": st.column_config.NumberColumn(format="%.9f"),
+                "expected Value": st.column_config.NumberColumn(format="%.8f"),
+                "Chi Square": st.column_config.NumberColumn(format="%.7f")
+            },
+            hide_index=True
+        )
+        
+        # Degrees of Freedom and Hypothesis Testing
+        df = k - 3  # Bins - Parameters - 1 (since k bins, 2 parameters estimated, df = k - 2 - 1 = k - 3)
+        
+        col_res_l, col_res_r = st.columns([1, 1])
+        with col_res_l:
+            st.subheader(t_prob["chi_results_title"])
+            
+            st.metric(t_prob["chi_mean_label"], f"{mean_val:.5f}")
+            st.metric(t_prob["chi_std_label"], f"{std_val:.9f}")
+            
+            if df > 0:
+                # Critical Chi2 value at alpha
+                chi_crit = stats.chi2.ppf(1.0 - chi_alpha, df)
+                p_val = stats.chi2.sf(sum_chi_square, df)
+                
+                st.metric(t_prob["chi_df_label"], f"{df}")
+                st.metric(t_prob["chi_stat_label"], f"{sum_chi_square:.7f}")
+                st.metric(t_prob["chi_crit_label"], f"{chi_crit:.4f}")
+                st.metric(t_prob["chi_p_label"], f"{p_val:.6f}")
+                
+                # Hypothesis test conclusion
+                st.markdown("---")
+                st.markdown(f"**{t_prob['chi_h0_text']}**")
+                st.markdown(f"**{t_prob['chi_h1_text']}**")
+                
+                if sum_chi_square >= chi_crit:
+                    st.error(t_prob["chi_reject_msg"])
+                else:
+                    st.success(t_prob["chi_accept_msg"])
+            else:
+                st.info("⚠️ Los grados de libertad son menores o iguales a 0 (gl = Bins - 3). Por favor, define más intervalos para calcular el estadístico de prueba.")
+                
+        with col_res_r:
+            st.subheader("Visualización de Frecuencias")
+            
+            # Double bar chart
+            fig_chi = plgo.Figure()
+            fig_chi.add_trace(plgo.Bar(
+                x=intervals_col,
+                y=frequencies_col,
+                name="Observado / Observed",
+                marker_color='#1f77b4',
+                text=frequencies_col,
+                textposition='auto'
+            ))
+            fig_chi.add_trace(plgo.Bar(
+                x=intervals_col,
+                y=expecteds,
+                name="Esperado / Expected",
+                marker_color='#ff7f0e',
+                text=[f"{e:.2f}" for e in expecteds],
+                textposition='auto'
+            ))
+            fig_chi.update_layout(
+                xaxis_title="Intervalos",
+                yaxis_title="Frecuencias",
+                barmode='group',
+                legend=dict(x=0.01, y=0.99),
+                template='plotly_white',
+                margin=dict(l=40, r=40, t=40, b=40)
+            )
+            st.plotly_chart(fig_chi, use_container_width=True)
 
     # Render Footer and stop execution
     st.markdown("---")

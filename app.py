@@ -538,23 +538,78 @@ if is_prob:
             dens_val = np.sum(K(u)) / (n_points * h)
             densities.append(dens_val)
             
+        # Create columns for layout: Left for the detailed table, Right for reference point, formulas, and extra stats.
+        col_table, col_formulas = st.columns([3, 2])
+        
+        with col_formulas:
+            st.markdown(f"### {t_prob['kde_ref_x_label']}")
+            x_ref = st.selectbox(
+                t_prob["kde_ref_x_label"],
+                options=kde_nums,
+                index=0,
+                format_func=lambda val: f"{val:.4f}",
+                label_visibility="collapsed",
+                key="kde_x_ref_selectbox"
+            )
+            
+            st.markdown("### Fórmulas / Formulas")
+            st.latex(r"u = \frac{x - x_i}{h}")
+            
+            if kernel_choice == "Gaussian":
+                st.latex(r"K(u) = \frac{1}{\sqrt{2\pi}} e^{-u^2 / 2}")
+            elif kernel_choice == "Epanechnikov":
+                st.latex(r"K(u) = \frac{3}{4}(1 - u^2) \quad \text{for } |u| \le 1")
+            elif kernel_choice == "Uniform":
+                st.latex(r"K(u) = \frac{1}{2} \quad \text{for } |u| \le 1")
+            elif kernel_choice == "Triangular":
+                st.latex(r"K(u) = 1 - |u| \quad \text{for } |u| \le 1")
+                
+            st.latex(r"f(x) = \frac{1}{n \cdot h} \sum_{i=1}^{n} K(u_i)")
+            
+            # Compute sum of K(u) and the final density at the selected reference x
+            u_for_ref = (x_ref - kde_nums) / h
+            k_for_ref = K(u_for_ref)
+            sum_k_ref = np.sum(k_for_ref)
+            f_x_ref = sum_k_ref / (n_points * h)
+            
+            col_met1, col_met2 = st.columns(2)
+            with col_met1:
+                st.metric(label=t_prob["kde_sum_k_label"], value=f"{sum_k_ref:.7f}")
+            with col_met2:
+                st.metric(label=t_prob["kde_val_f_x_label"], value=f"{f_x_ref:.7f}")
+                
+        # Compute u and K using the selected x_ref for the table
+        u_vals = (x_ref - kde_nums) / h
+        k_vals = K(u_vals)
+        
         kde_df = pd.DataFrame({
             t_prob["kde_col_index"]: range(1, n_points + 1),
             t_prob["kde_col_value"]: kde_nums,
-            t_prob["kde_col_density"]: densities
+            "u": u_vals,
+            "K": k_vals,
+            t_prob["kde_col_density"]: densities,
+            t_prob["kde_col_std"]: [std_dev] + [None] * (n_points - 1),
+            t_prob["kde_col_n"]: [n_points] + [None] * (n_points - 1),
+            t_prob["kde_col_h"]: [h] + [None] * (n_points - 1)
         })
         
-        st.subheader(t_prob["kde_table_title"])
-        st.dataframe(
-            kde_df,
-            use_container_width=True,
-            column_config={
-                t_prob["kde_col_index"]: st.column_config.NumberColumn(format="%d"),
-                t_prob["kde_col_value"]: st.column_config.NumberColumn(format="%.4f"),
-                t_prob["kde_col_density"]: st.column_config.NumberColumn(format="%.6f")
-            },
-            hide_index=True
-        )
+        with col_table:
+            st.subheader(t_prob["kde_table_title"])
+            st.dataframe(
+                kde_df,
+                use_container_width=True,
+                column_config={
+                    t_prob["kde_col_index"]: st.column_config.NumberColumn(format="%d"),
+                    t_prob["kde_col_value"]: st.column_config.NumberColumn(format="%.4f"),
+                    "u": st.column_config.NumberColumn(format="%.9f"),
+                    "K": st.column_config.NumberColumn(format="%.7f"),
+                    t_prob["kde_col_density"]: st.column_config.NumberColumn(format="%.7f"),
+                    t_prob["kde_col_std"]: st.column_config.NumberColumn(format="%.7f"),
+                    t_prob["kde_col_n"]: st.column_config.NumberColumn(format="%d"),
+                    t_prob["kde_col_h"]: st.column_config.NumberColumn(format="%.7f")
+                },
+                hide_index=True
+            )
         
         # Grid for plotting
         x_grid = np.linspace(min(kde_nums) - 3 * h, max(kde_nums) + 3 * h, 500)

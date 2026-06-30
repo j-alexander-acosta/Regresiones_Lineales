@@ -540,7 +540,13 @@ TRANSLATIONS = {
             "kde_rug_label": "Datos Observados (Rug)",
             "kde_individual_label": "Kernel Individual",
             "kde_combined_label": "KDE Combinado",
-            "kde_hist_label": "Histograma de Densidad"
+            "kde_hist_label": "Histograma de Densidad",
+            "kde_col_std": "Desv. Estándar",
+            "kde_col_n": "n",
+            "kde_col_h": "h",
+            "kde_ref_x_label": "Punto de Referencia (x) para u y K:",
+            "kde_sum_k_label": "Suma de K(u) (Σ):",
+            "kde_val_f_x_label": "Densidad f(x) final:"
         },
         
         "default_distributions": [
@@ -1157,7 +1163,13 @@ TRANSLATIONS = {
             "kde_rug_label": "Observed Data (Rug)",
             "kde_individual_label": "Individual Kernel",
             "kde_combined_label": "Combined KDE",
-            "kde_hist_label": "Density Histogram"
+            "kde_hist_label": "Density Histogram",
+            "kde_col_std": "Std. Dev.",
+            "kde_col_n": "n",
+            "kde_col_h": "h",
+            "kde_ref_x_label": "Reference Point (x) for u and K:",
+            "kde_sum_k_label": "Sum of K(u) (Σ):",
+            "kde_val_f_x_label": "Final density f(x):"
         },
         
         "default_distributions": [
@@ -1774,7 +1786,13 @@ TRANSLATIONS = {
             "kde_rug_label": "प्रेक्षित डेटा (Rug)",
             "kde_individual_label": "व्यक्तिगत कर्नेल",
             "kde_combined_label": "संयुक्त KDE",
-            "kde_hist_label": "घनत्व हिस्टोग्राम"
+            "kde_hist_label": "घनत्व हिस्टोग्राम",
+            "kde_col_std": "मानक विचलन (Std Dev)",
+            "kde_col_n": "n",
+            "kde_col_h": "h",
+            "kde_ref_x_label": "u और K के लिए संदर्भ बिंदु (x):",
+            "kde_sum_k_label": "K(u) का योग (Σ):",
+            "kde_val_f_x_label": "अंतिम घनत्व f(x):"
         },
         
         "default_distributions": [

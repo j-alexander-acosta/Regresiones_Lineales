@@ -681,8 +681,8 @@ if is_prob:
         st.subheader(t_prob["chi_title"])
         st.markdown(t_prob["chi_desc"])
         
-        default_raw_data = "63.123, 64.654, 65.234, 65.567, 65.789, 65.432, 65.876, 66.123, 66.456, 66.789, 66.234, 66.567, 66.89, 67.123, 67.456, 67.789, 67.234, 67.567, 67.89, 67.543, 67.876, 67.898, 67.321, 67.654, 67.987, 67.432, 67.765, 68.123, 68.456, 68.789, 68.234, 68.567, 68.89, 68.543, 68.876, 68.098, 69.123, 69.456, 69.789, 69.234, 69.567, 69.89, 69.543, 70.123, 70.456, 70.789, 71.456, 71.789, 71.234, 71.123"
-        default_intervals = "63, 66, 67, 68, 69, 70, 72"
+        default_raw_data = "63.123, 64.654, 65.234, 65.567, 65.789, 65.432, 65.876, 66.123, 66.456, 66.789, 66.234, 66.567, 66.89, 67.123, 67.456, 67.789, 67.234, 67.567, 67.89, 67.543, 67.876, 67.098, 67.321, 67.654, 67.987, 67.432, 67.765, 68.123, 68.456, 68.789, 68.234, 68.567, 68.89, 68.543, 68.876, 68.098, 69.123, 69.456, 69.789, 69.234, 69.567, 69.89, 69.543, 70.123, 70.456, 70.789, 71.456, 71.789, 71.234, 71.123"
+        default_intervals = "63, 65, 67, 69, 71, 73"
         
         col_input1, col_input2 = st.columns(2)
         with col_input1:
@@ -729,13 +729,14 @@ if is_prob:
             upps.append(upp)
             
             # Label
-            intervals_col.append(f"{low} < Height <= {upp}")
+            intervals_col.append(f"{low:.2f} - {upp:.2f}")
             
-            # Observed counts in (low, upp]
-            if i == 0:
-                freq = np.sum(chi_nums <= upp)
+            # Observed counts in [low, upp)
+            # Last bin includes upper boundary: [low, upp]
+            if i == k - 1:
+                freq = np.sum((chi_nums >= low) & (chi_nums <= upp))
             else:
-                freq = np.sum((chi_nums > low) & (chi_nums <= upp))
+                freq = np.sum((chi_nums >= low) & (chi_nums < upp))
             frequencies_col.append(int(freq))
             
             # Z-scores and probabilities
@@ -755,8 +756,8 @@ if is_prob:
                 p_l_adj = p_upps[i-1]
             p_lows_adj.append(p_l_adj)
             
-            # Probability in interval: N_i - M_i
-            p_int = p_u - p_l_adj
+            # Probability in interval: P(HEIGHT<U) - P(HEIGHT<L)
+            p_int = p_u - p_l
             p_intervals.append(p_int)
             
             # Expected value: n * p_int

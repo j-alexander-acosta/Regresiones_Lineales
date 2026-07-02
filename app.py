@@ -84,13 +84,14 @@ if is_prob:
     st.header(t_prob["title"])
     
     # Define tabs
-    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde, tab_chi = st.tabs([
+    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde, tab_chi, tab_ks = st.tabs([
         t_prob["tab_intro"],
         t_prob["tab_class"],
         t_prob["tab_crud"],
         t_prob["tab_sturges"],
         t_prob["tab_kde"],
-        t_prob["tab_chi"]
+        t_prob["tab_chi"],
+        t_prob["tab_ks"]
     ])
     
     with tab_intro:
@@ -878,6 +879,166 @@ if is_prob:
                 margin=dict(l=40, r=40, t=40, b=40)
             )
             st.plotly_chart(fig_chi, use_container_width=True)
+
+    with tab_ks:
+        st.subheader(t_prob["ks_title"])
+        st.markdown(t_prob["ks_desc"])
+        
+        default_ks_data = pd.DataFrame({
+            "x": [1.2, 1.6, 1.8, 1.9, 1.9, 2.0, 2.2, 2.6, 3.0, 3.5, 4.0, 4.8, 5.6, 6.6, 7.6]
+        })
+        
+        col_ks_input1, col_ks_input2 = st.columns([1, 1])
+        with col_ks_input1:
+            st.markdown(f"**{t_prob['ks_data_input']}**")
+            ks_df_input = st.data_editor(
+                default_ks_data, 
+                num_rows="dynamic", 
+                use_container_width=True, 
+                key="ks_data_editor_table"
+            )
+        with col_ks_input2:
+            ks_alpha = st.slider(
+                t_prob["ks_alpha_label"],
+                min_value=0.01,
+                max_value=0.20,
+                value=0.05,
+                step=0.01,
+                key="ks_alpha_slider"
+            )
+            
+            if ks_df_input is not None and not ks_df_input.empty:
+                try:
+                    ks_nums = pd.to_numeric(ks_df_input["x"], errors="coerce").dropna().values
+                except Exception:
+                    st.warning("⚠️ Asegúrate de ingresar números válidos.")
+                    st.stop()
+            else:
+                ks_nums = np.array([])
+                
+            if len(ks_nums) < 3:
+                st.warning("⚠️ Ingresa al menos 3 valores numéricos en la tabla.")
+                st.stop()
+                
+            ks_nums = np.sort(ks_nums)
+            n_ks = len(ks_nums)
+            
+            mean_ks = np.mean(ks_nums)
+            std_ks = np.std(ks_nums, ddof=1) if n_ks > 1 else 1.0
+            
+            if abs(ks_alpha - 0.01) < 1e-4:
+                c_alpha = 1.63
+            elif abs(ks_alpha - 0.02) < 1e-4:
+                c_alpha = 1.52
+            elif abs(ks_alpha - 0.05) < 1e-4:
+                c_alpha = 1.36
+            elif abs(ks_alpha - 0.10) < 1e-4:
+                c_alpha = 1.22
+            elif abs(ks_alpha - 0.15) < 1e-4:
+                c_alpha = 1.14
+            elif abs(ks_alpha - 0.20) < 1e-4:
+                c_alpha = 1.07
+            else:
+                c_alpha = np.sqrt(-0.5 * np.log(ks_alpha / 2.0))
+                
+            d_crit_asymp = c_alpha / np.sqrt(n_ks)
+            
+            st.markdown(f"**{t_prob['ks_crit_formula_label'].format(ks_alpha, f'{c_alpha:.2f}')}**")
+            st.latex(rf"D_c = \frac{{{c_alpha:.2f}}}{{\sqrt{{{n_ks}}}}} = {d_crit_asymp:.4f}")
+            
+        cummulative_col = np.arange(1, n_ks + 1)
+        obs_cdf_col = cummulative_col / n_ks
+        z_col = (ks_nums - mean_ks) / std_ks
+        fx_col = stats.norm.cdf(z_col)
+        diff_col = np.abs(obs_cdf_col - fx_col)
+        
+        ks_calc_df = pd.DataFrame({
+            "x": ks_nums,
+            "fre": [1] * n_ks,
+            "cummulative": cummulative_col,
+            "obs cdf": obs_cdf_col,
+            "mean": [mean_ks] * n_ks,
+            "stdev": [std_ks] * n_ks,
+            "zcore": z_col,
+            "FX": fx_col,
+            "DIFFERENCE": diff_col
+        })
+        
+        st.subheader(t_prob["ks_table_title"])
+        
+        st.dataframe(
+            ks_calc_df,
+            use_container_width=True,
+            column_config={
+                "x": st.column_config.NumberColumn(format="%.2f"),
+                "fre": st.column_config.NumberColumn(format="%d"),
+                "cummulative": st.column_config.NumberColumn(format="%d"),
+                "obs cdf": st.column_config.NumberColumn(format="%.6f"),
+                "mean": st.column_config.NumberColumn(format="%.6f"),
+                "stdev": st.column_config.NumberColumn(format="%.6f"),
+                "zcore": st.column_config.NumberColumn(format="%.5f"),
+                "FX": st.column_config.NumberColumn(format="%.6f"),
+                "DIFFERENCE": st.column_config.NumberColumn(format="%.6f")
+            },
+            hide_index=True
+        )
+        
+        d_max = np.max(diff_col)
+        
+        col_ks_res1, col_ks_res2 = st.columns([1, 1])
+        with col_ks_res1:
+            st.subheader(t_prob["ks_results_title"])
+            st.metric(t_prob["ks_mean_label"], f"{mean_ks:.5f}")
+            st.metric(t_prob["ks_std_label"], f"{std_ks:.6f}")
+            st.metric(t_prob["ks_stat_label"], f"{d_max:.6f}")
+            st.metric(t_prob["ks_crit_label"], f"{d_crit_asymp:.4f}")
+            
+            st.markdown("---")
+            st.markdown(f"**{t_prob['ks_h0_text']}**")
+            st.markdown(f"**{t_prob['ks_h1_text']}**")
+            
+            if d_max >= d_crit_asymp:
+                st.error(t_prob["ks_reject_msg"])
+            else:
+                st.success(t_prob["ks_accept_msg"])
+                
+        with col_ks_res2:
+            st.subheader("ECDF vs. CDF Teórica")
+            
+            fig_ks = plgo.Figure()
+            
+            x_ecdf = np.concatenate(([ks_nums[0] - 0.5], ks_nums, [ks_nums[-1] + 0.5]))
+            y_ecdf = np.concatenate(([0.0], obs_cdf_col, [1.0]))
+            
+            fig_ks.add_trace(plgo.Scatter(
+                x=x_ecdf,
+                y=y_ecdf,
+                mode='lines+markers',
+                name="ECDF (Empírica / Empirical)",
+                line=dict(color='#1f77b4', width=3, shape='hv'),
+                marker=dict(size=6)
+            ))
+            
+            x_smooth = np.linspace(ks_nums[0] - 1.0, ks_nums[-1] + 1.0, 200)
+            y_theoretical = stats.norm.cdf((x_smooth - mean_ks) / std_ks)
+            
+            fig_ks.add_trace(plgo.Scatter(
+                x=x_smooth,
+                y=y_theoretical,
+                mode='lines',
+                name="CDF Teórica (Normal / Theoretical)",
+                line=dict(color='#ff7f0e', width=2, dash='dash')
+            ))
+            
+            fig_ks.update_layout(
+                xaxis_title="Valores (X)",
+                yaxis_title="Probabilidad Acumulada / Cumulative Probability",
+                template='plotly_white',
+                margin=dict(l=40, r=40, t=40, b=40),
+                legend=dict(x=0.01, y=0.99)
+            )
+            
+            st.plotly_chart(fig_ks, use_container_width=True)
 
     # Render Footer and stop execution
     st.markdown("---")

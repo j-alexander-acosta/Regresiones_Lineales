@@ -564,7 +564,23 @@ TRANSLATIONS = {
             "chi_h0_text": "H₀: Los datos de la muestra siguen una Distribución Normal.",
             "chi_h1_text": "H₁: Los datos de la muestra no siguen una Distribución Normal.",
             "chi_reject_msg": "❌ Se rechaza la hipótesis nula (H₀). Los datos no siguen una distribución Normal.",
-            "chi_accept_msg": "✅ No se puede rechazar la hipótesis nula (H₀). Los datos siguen una distribución Normal."
+            "chi_accept_msg": "✅ No se puede rechazar la hipótesis nula (H₀). Los datos siguen una distribución Normal.",
+            "tab_ks": "📈 Kolmogorov-Smirnov",
+            "ks_title": "Prueba de Kolmogorov-Smirnov para Normalidad",
+            "ks_desc": "La prueba de Kolmogorov-Smirnov (K-S) de una muestra se utiliza para determinar si una muestra de datos sigue una distribución teórica (en este caso, una distribución Normal). Compara la función de distribución acumulada empírica (ECDF) con la función de distribución acumulada teórica (CDF).",
+            "ks_data_input": "Tabla de Datos de Entrada (puedes agregar/eliminar filas):",
+            "ks_alpha_label": "Nivel de Significancia (α):",
+            "ks_table_title": "Tabla de Cálculos de Kolmogorov-Smirnov",
+            "ks_results_title": "Resultados del Análisis de Hipótesis (K-S)",
+            "ks_stat_label": "Estadístico D (Máxima Diferencia):",
+            "ks_crit_label": "Valor Crítico (D_crit):",
+            "ks_mean_label": "Media Muestral (μ):",
+            "ks_std_label": "Desviación Estándar Muestral (s):",
+            "ks_h0_text": "H₀: Los datos de la muestra siguen una Distribución Normal.",
+            "ks_h1_text": "H₁: Los datos de la muestra no siguen una Distribución Normal.",
+            "ks_reject_msg": "❌ Se rechaza la hipótesis nula (H₀). Los datos no siguen una distribución Normal.",
+            "ks_accept_msg": "✅ No se puede rechazar la hipótesis nula (H₀). Los datos siguen una distribución Normal.",
+            "ks_crit_formula_label": "Fórmula del valor crítico aproximado: D_c = {} / √n"
         },
         
         "default_distributions": [
@@ -1205,7 +1221,23 @@ TRANSLATIONS = {
             "chi_h0_text": "H₀: The sample data follows a Normal Distribution.",
             "chi_h1_text": "H₁: The sample data does not follow a Normal Distribution.",
             "chi_reject_msg": "❌ Reject the null hypothesis (H₀). The data does not follow a Normal Distribution.",
-            "chi_accept_msg": "✅ Fail to reject the null hypothesis (H₀). The data follows a Normal Distribution."
+            "chi_accept_msg": "✅ Fail to reject the null hypothesis (H₀). The data follows a Normal Distribution.",
+            "tab_ks": "📈 Kolmogorov-Smirnov",
+            "ks_title": "Kolmogorov-Smirnov Test for Normality",
+            "ks_desc": "The one-sample Kolmogorov-Smirnov (K-S) test is used to determine if a sample follows a theoretical distribution (in this case, a Normal distribution). It compares the empirical cumulative distribution function (ECDF) of the sample with the theoretical cumulative distribution function (CDF).",
+            "ks_data_input": "Input Data Table (you can add/remove rows):",
+            "ks_alpha_label": "Significance Level (α):",
+            "ks_table_title": "Kolmogorov-Smirnov Calculation Table",
+            "ks_results_title": "Hypothesis Analysis Results (K-S)",
+            "ks_stat_label": "Statistic D (Max Difference):",
+            "ks_crit_label": "Critical Value (D_crit):",
+            "ks_mean_label": "Sample Mean (μ):",
+            "ks_std_label": "Sample Std. Dev (s):",
+            "ks_h0_text": "H₀: The sample data follows a Normal Distribution.",
+            "ks_h1_text": "H₁: The sample data does not follow a Normal Distribution.",
+            "ks_reject_msg": "❌ Reject the null hypothesis (H₀). The data does not follow a Normal Distribution.",
+            "ks_accept_msg": "✅ Fail to reject the null hypothesis (H₀). The data follows a Normal Distribution.",
+            "ks_crit_formula_label": "Approximate critical value formula: D_c = {} / √n"
         },
         
         "default_distributions": [
@@ -1846,7 +1878,23 @@ TRANSLATIONS = {
             "chi_h0_text": "H₀: नमूना डेटा सामान्य वितरण का अनुसरण करता है।",
             "chi_h1_text": "H₁: नमूना डेटा सामान्य वितरण का अनुसरण नहीं करता है।",
             "chi_reject_msg": "❌ शून्य परिकल्पना (H₀) को अस्वीकार करें। डेटा सामान्य वितरण का अनुसरण नहीं करता है।",
-            "chi_accept_msg": "✅ शून्य परिकल्पना (H₀) को अस्वीकार करने में असमर्थ। डेटा सामान्य वितरण का अनुसरण करता है।"
+            "chi_accept_msg": "✅ शून्य परिकल्पना (H₀) को अस्वीकार करने में असमर्थ। डेटा सामान्य वितरण का अनुसरण करता है।",
+            "tab_ks": "📈 कोलमोगोरोव-स्मिरनोव",
+            "ks_title": "सामान्य वितरण के लिए कोलमोगोरोव-स्मिरनोव (K-S) परीक्षण",
+            "ks_desc": "एक-नमूना कोलमोगोरोव-स्मिरनोव (K-S) परीक्षण का उपयोग यह निर्धारित करने के लिए किया जाता है कि क्या कोई नमूना डेटा एक सैद्धांतिक वितरण (इस मामले में, सामान्य वितरण) का अनुसरण करता है। यह नमूने के आनुभविक संचयी वितरण फलन (ECDF) की तुलना सैद्धांतिक संचयी वितरण फलन (CDF) से करता है।",
+            "ks_data_input": "इनपुट डेटा तालिका (आप पंक्तियाँ जोड़/हटा सकते हैं):",
+            "ks_alpha_label": "सार्थकता स्तर (α):",
+            "ks_table_title": "कोलमोगोरोव-स्मिरनोव गणना तालिका",
+            "ks_results_title": "परिकल्पना विश्लेषण परिणाम (K-S)",
+            "ks_stat_label": "सांख्यिकी D (अधिकतम अंतर):",
+            "ks_crit_label": "क्रांतिक मान (D_crit):",
+            "ks_mean_label": "नमूना माध्य (μ):",
+            "ks_std_label": "नमूना मानक विचलन (s):",
+            "ks_h0_text": "H₀: नमूना डेटा सामान्य वितरण का अनुसरण करता है।",
+            "ks_h1_text": "H₁: नमूना डेटा सामान्य वितरण का अनुसरण नहीं करता है।",
+            "ks_reject_msg": "❌ शून्य परिकल्पना (H₀) को अस्वीकार करें। डेटा सामान्य वितरण का अनुसरण नहीं करता है।",
+            "ks_accept_msg": "✅ शून्य परिकल्पना (H₀) को अस्वीकार करने में असमर्थ। डेटा सामान्य वितरण का अनुसरण करता है।",
+            "ks_crit_formula_label": "अनुमानित क्रांतिक मान सूत्र: D_c = {} / √n"
         },
         
         "default_distributions": [

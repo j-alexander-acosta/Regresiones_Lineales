@@ -3,7 +3,6 @@
 Selecciona tu idioma / Select your language:
 *   [🇪🇸 Español](#-español)
 *   [🇺🇸 English](#-english)
-*   [🇮🇳 हिन्दी](#-हिन्दी)
 
 ---
 
@@ -17,8 +16,8 @@ Esta es una herramienta educativa y profesional construida con Python y [Streaml
 
 ### 🚀 Características Principales
 
-*   🌐 **Selector de Idioma Interactivo (Trilingüe)**:
-    *   Cambio de inmediato entre **Español**, **Inglés** y **Hindi** desde la barra lateral.
+*   🌐 **Selector de Idioma Interactivo (Bilingüe)**:
+    *   Cambio de inmediato entre **Español** e **Inglés** desde la barra lateral.
     *   Traducción completa en tiempo real de toda la interfaz (explicaciones LaTeX, sumatorias, calculadoras y gráficos interactivos).
     *   Reportes exportados (PDF y Excel) adaptados 100% al idioma activo.
 *   📊 **Módulo de Regresión Lineal Múltiple (MLR)**:
@@ -150,8 +149,8 @@ This is an educational and professional tool built with Python and [Streamlit](h
 
 ### 🚀 Key Features
 
-*   🌐 **Interactive Language Selector (Trilingual)**:
-    *   Switch instantly between **Spanish**, **English**, and **Hindi** using buttons in the sidebar.
+*   🌐 **Interactive Language Selector (Bilingual)**:
+    *   Switch instantly between **Spanish** and **English** using buttons in the sidebar.
     *   Real-time translation of the entire interface (LaTeX math explanations, intermediate sums, calculators, and interactive plots).
     *   Exported reports (PDF and Excel) fully adapted to the selected language.
 *   📊 **Multiple Linear Regression (MLR) Module**:

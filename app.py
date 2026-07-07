@@ -47,7 +47,7 @@ st.markdown(t["st_desc"])
 
 # --- BARRA LATERAL: ENTRADA DE DATOS ---
 st.sidebar.markdown("### 🌐 Idioma / Language")
-col_lang1, col_lang2, col_lang3 = st.sidebar.columns(3)
+col_lang1, col_lang2 = st.sidebar.columns(2)
 with col_lang1:
     if st.button("Español", use_container_width=True, type="primary" if st.session_state.lang == 'es' else "secondary"):
         st.session_state.lang = 'es'
@@ -55,10 +55,6 @@ with col_lang1:
 with col_lang2:
     if st.button("English", use_container_width=True, type="primary" if st.session_state.lang == 'en' else "secondary"):
         st.session_state.lang = 'en'
-        st.rerun()
-with col_lang3:
-    if st.button("हिन्दी", use_container_width=True, type="primary" if st.session_state.lang == 'hi' else "secondary"):
-        st.session_state.lang = 'hi'
         st.rerun()
 
 st.sidebar.markdown("---")
@@ -84,14 +80,15 @@ if is_prob:
     st.header(t_prob["title"])
     
     # Define tabs
-    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde, tab_chi, tab_ks = st.tabs([
+    tab_intro, tab_class, tab_crud, tab_sturges, tab_kde, tab_chi, tab_ks, tab_monte_carlo = st.tabs([
         t_prob["tab_intro"],
         t_prob["tab_class"],
         t_prob["tab_crud"],
         t_prob["tab_sturges"],
         t_prob["tab_kde"],
         t_prob["tab_chi"],
-        t_prob["tab_ks"]
+        t_prob["tab_ks"],
+        t_prob["tab_monte_carlo"]
     ])
     
     with tab_intro:
@@ -1039,6 +1036,277 @@ if is_prob:
             )
             
             st.plotly_chart(fig_ks, use_container_width=True)
+
+    with tab_monte_carlo:
+        st.subheader(t_prob["mc_title"])
+        st.markdown(t_prob["mc_desc"])
+        
+        col_mc_conf, col_mc_func = st.columns([1, 1])
+        
+        with col_mc_conf:
+            st.markdown(f"**{t_prob['mc_dist_label']}**")
+            dist_options = {
+                "es": ["Normal (Gaussiana)", "Uniforme", "Exponencial", "Poisson", "Binomial"],
+                "en": ["Normal", "Uniform", "Exponential", "Poisson", "Binomial"]
+            }
+            lang = st.session_state.lang if st.session_state.lang in dist_options else "en"
+            selected_dist_label = st.selectbox(t_prob["mc_dist_label"], dist_options[lang], key="mc_dist_select", label_visibility="collapsed")
+            idx = dist_options[lang].index(selected_dist_label)
+            dist_ids = ["normal", "uniform", "exponential", "poisson", "binomial"]
+            dist_id = dist_ids[idx]
+            
+            # Dynamic parameters
+            if dist_id == "normal":
+                mc_mu = st.number_input(t_prob["mc_normal_mu"], value=0.0, step=0.1, key="mc_mu")
+                mc_sigma = st.number_input(t_prob["mc_normal_sigma"], value=1.0, min_value=0.001, step=0.1, key="mc_sigma")
+            elif dist_id == "uniform":
+                mc_a = st.number_input(t_prob["mc_uniform_a"], value=0.0, step=0.1, key="mc_a")
+                mc_b = st.number_input(t_prob["mc_uniform_b"], value=1.0, step=0.1, key="mc_b")
+                if mc_b <= mc_a:
+                    st.error(t_prob["mc_uniform_error"])
+                    st.stop()
+            elif dist_id == "exponential":
+                mc_beta = st.number_input(t_prob["mc_exponential_beta"], value=1.0, min_value=0.001, step=0.1, key="mc_beta")
+            elif dist_id == "poisson":
+                mc_lam = st.number_input(t_prob["mc_poisson_lambda"], value=3.0, min_value=0.001, step=0.1, key="mc_lam")
+            elif dist_id == "binomial":
+                mc_n_trials = st.number_input(t_prob["mc_binomial_n"], value=10, min_value=1, step=1, key="mc_n_trials")
+                mc_prob = st.slider(t_prob["mc_binomial_p"], min_value=0.0, max_value=1.0, value=0.5, step=0.01, key="mc_p")
+                
+            mc_n_sims = st.number_input(t_prob["mc_num_sims"], min_value=10, max_value=500000, value=10000, step=1000, key="mc_nsims")
+
+        with col_mc_func:
+            st.markdown(f"**{t_prob['mc_presets']}**")
+            preset_options = ["g(x) = x", "g(x) = x^2", "g(x) = exp(x)", "g(x) = sin(x)", t_prob["mc_custom_option"]]
+            preset_sel = st.selectbox(t_prob["mc_presets"], preset_options, key="mc_preset", label_visibility="collapsed")
+            
+            if preset_sel == "g(x) = x":
+                func_expr_default = "x"
+            elif preset_sel == "g(x) = x^2":
+                func_expr_default = "x**2"
+            elif preset_sel == "g(x) = exp(x)":
+                func_expr_default = "exp(x)"
+            elif preset_sel == "g(x) = sin(x)":
+                func_expr_default = "sin(x)"
+            else:
+                func_expr_default = "x"
+                
+            st.markdown(f"**{t_prob['mc_func_label']}**")
+            mc_expr = st.text_input(t_prob["mc_func_label"], value=func_expr_default, help=t_prob["mc_func_desc"], key="mc_expr_input", label_visibility="collapsed")
+
+        # Sample generation
+        np.random.seed(42)
+        N = int(mc_n_sims)
+        
+        if dist_id == "normal":
+            x_samples = np.random.normal(loc=mc_mu, scale=mc_sigma, size=N)
+            true_mean_val = mc_mu
+            true_mean_lbl = f"μ = {mc_mu:.4f}"
+        elif dist_id == "uniform":
+            x_samples = np.random.uniform(low=mc_a, high=mc_b, size=N)
+            true_mean_val = (mc_a + mc_b) / 2
+            true_mean_lbl = f"(a+b)/2 = {true_mean_val:.4f}"
+        elif dist_id == "exponential":
+            x_samples = np.random.exponential(scale=mc_beta, size=N)
+            true_mean_val = mc_beta
+            true_mean_lbl = f"β = {mc_beta:.4f}"
+        elif dist_id == "poisson":
+            x_samples = np.random.poisson(lam=mc_lam, size=N)
+            true_mean_val = mc_lam
+            true_mean_lbl = f"λ = {mc_lam:.4f}"
+        elif dist_id == "binomial":
+            x_samples = np.random.binomial(n=int(mc_n_trials), p=mc_prob, size=N)
+            true_mean_val = int(mc_n_trials) * mc_prob
+            true_mean_lbl = f"n*p = {true_mean_val:.4f}"
+
+        # Evaluate g(x)
+        safe_dict = {
+            "x": x_samples,
+            "np": np,
+            "sin": np.sin,
+            "cos": np.cos,
+            "tan": np.tan,
+            "exp": np.exp,
+            "log": np.log,
+            "log10": np.log10,
+            "sqrt": np.sqrt,
+            "abs": np.abs,
+            "pi": np.pi,
+            "e": np.e
+        }
+        
+        try:
+            expr_cleaned = mc_expr.replace("^", "**").strip()
+            y_samples = eval(expr_cleaned, {"__builtins__": None}, safe_dict)
+            if not isinstance(y_samples, np.ndarray):
+                y_samples = np.full_like(x_samples, float(y_samples))
+        except Exception as e:
+            st.error(t_prob["mc_invalid_func"] + f"\nError: {e}")
+            st.stop()
+            
+        # Calculation of stats
+        y_mean = np.mean(y_samples)
+        y_std = np.std(y_samples, ddof=1) if N > 1 else 0.0
+        se = y_std / np.sqrt(N)
+        me = 1.96 * se
+        ci_lower = y_mean - me
+        ci_upper = y_mean + me
+        
+        st.markdown("---")
+        st.subheader(t_prob["mc_stats_title"])
+        
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
+            st.metric(t_prob["mc_est_mean"], f"{y_mean:.6f}")
+        with col_m2:
+            if mc_expr.strip().lower() in ["x", "g(x) = x"]:
+                st.metric(t_prob["mc_true_mean"], true_mean_lbl)
+            else:
+                st.metric(t_prob["mc_true_mean"], "N/A")
+        with col_m3:
+            st.metric(t_prob["mc_std_dev"], f"{y_std:.6f}")
+        with col_m4:
+            st.metric(t_prob["mc_std_error"], f"{se:.6f}")
+            
+        st.info(f"**{t_prob['mc_ci']}** `[{ci_lower:.6f}, {ci_upper:.6f}]`")
+        
+        # Interactive plots
+        col_g1, col_g2 = st.columns(2)
+        
+        with col_g1:
+            st.subheader(t_prob["mc_plot_x_title"])
+            fig_x = plgo.Figure()
+            # Samples histogram
+            fig_x.add_trace(plgo.Histogram(
+                x=x_samples,
+                nbinsx=50,
+                histnorm='probability density',
+                name=t_prob["mc_plot_samples"],
+                marker_color='#1f77b4',
+                opacity=0.6
+            ))
+            
+            # Theoretical density if continuous
+            if dist_id in ["normal", "uniform", "exponential"]:
+                x_eval = np.linspace(np.min(x_samples), np.max(x_samples), 200)
+                if dist_id == "normal":
+                    y_eval = stats.norm.pdf(x_eval, loc=mc_mu, scale=mc_sigma)
+                elif dist_id == "uniform":
+                    y_eval = stats.uniform.pdf(x_eval, loc=mc_a, scale=mc_b - mc_a)
+                elif dist_id == "exponential":
+                    y_eval = stats.expon.pdf(x_eval, scale=mc_beta)
+                fig_x.add_trace(plgo.Scatter(
+                    x=x_eval,
+                    y=y_eval,
+                    mode='lines',
+                    name=t_prob["mc_plot_theo"],
+                    line=dict(color='red', width=3)
+                ))
+            elif dist_id in ["poisson", "binomial"]:
+                x_eval = np.unique(x_samples)
+                if dist_id == "poisson":
+                    y_eval = stats.poisson.pmf(x_eval, mu=mc_lam)
+                elif dist_id == "binomial":
+                    y_eval = stats.binom.pmf(x_eval, n=int(mc_n_trials), p=mc_prob)
+                fig_x.add_trace(plgo.Bar(
+                    x=x_eval,
+                    y=y_eval,
+                    name=t_prob["mc_plot_theo_pmf"],
+                    marker_color='red',
+                    opacity=0.8,
+                    width=0.3
+                ))
+                
+            fig_x.update_layout(
+                xaxis_title="X",
+                yaxis_title=t_prob["mc_plot_density"],
+                template='plotly_white',
+                margin=dict(l=30, r=30, t=30, b=30),
+                legend=dict(x=0.01, y=0.99)
+            )
+            st.plotly_chart(fig_x, use_container_width=True)
+
+        with col_g2:
+            st.subheader(t_prob["mc_plot_y_title"])
+            fig_y = plgo.Figure()
+            # Transformed samples histogram
+            fig_y.add_trace(plgo.Histogram(
+                x=y_samples,
+                nbinsx=50,
+                histnorm='probability density',
+                name="Y = g(X)",
+                marker_color='#ff7f0e',
+                opacity=0.6
+            ))
+            
+            # Estimated mean
+            hist_y_vals, _ = np.histogram(y_samples, bins=50, density=True)
+            max_y_density = np.max(hist_y_vals) if len(hist_y_vals) > 0 else 1.0
+            
+            fig_y.add_trace(plgo.Scatter(
+                x=[y_mean, y_mean],
+                y=[0, 1.1 * max_y_density],
+                mode='lines',
+                name=t_prob["mc_plot_est_mean"],
+                line=dict(color='blue', width=3, dash='dash')
+            ))
+            
+            # Confidence interval boundaries
+            fig_y.add_trace(plgo.Scatter(
+                x=[ci_lower, ci_lower],
+                y=[0, 1.1 * max_y_density],
+                mode='lines',
+                name=t_prob["mc_plot_ci_lower"],
+                line=dict(color='purple', width=1.5, dash='dot')
+            ))
+            fig_y.add_trace(plgo.Scatter(
+                x=[ci_upper, ci_upper],
+                y=[0, 1.1 * max_y_density],
+                mode='lines',
+                name=t_prob["mc_plot_ci_upper"],
+                line=dict(color='purple', width=1.5, dash='dot')
+            ))
+            
+            fig_y.update_layout(
+                xaxis_title="Y = g(X)",
+                yaxis_title=t_prob["mc_plot_density"],
+                template='plotly_white',
+                margin=dict(l=30, r=30, t=30, b=30),
+                legend=dict(x=0.01, y=0.99)
+            )
+            st.plotly_chart(fig_y, use_container_width=True)
+
+        st.markdown("---")
+        st.subheader(t_prob["mc_math_title"])
+        
+        # Latex details
+        st.markdown(t_prob["mc_math_p1"])
+        st.latex(r"\mathbb{E}[g(X)] = \int_{-\infty}^{\infty} g(x)f(x)\,dx \quad \text{o} \quad \sum_{x} g(x)P(X=x)")
+        
+        st.markdown(t_prob["mc_math_p2"])
+        st.latex(r"\bar{Y} = \frac{1}{N} \sum_{i=1}^{N} g(X_i)")
+        
+        st.markdown(t_prob["mc_math_p3"])
+        st.latex(r"\text{SE} = \frac{S_Y}{\sqrt{N}} = \sqrt{\frac{1}{N(N-1)} \sum_{i=1}^{N} (g(X_i) - \bar{Y})^2}")
+        
+        st.markdown(t_prob["mc_math_p4"])
+        st.latex(r"\text{IC}_{95\%} = \left[ \bar{Y} - 1.96 \cdot \text{SE}, \,\, \bar{Y} + 1.96 \cdot \text{SE} \right]")
+        
+        # CSV export
+        df_export = pd.DataFrame({
+            "Index": np.arange(1, N + 1),
+            "X_Sample": x_samples,
+            "Y_Transformed": y_samples
+        })
+        csv_data = df_export.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label=t_prob["mc_download_lbl"],
+            data=csv_data,
+            file_name="simulacion_monte_carlo.csv",
+            mime="text/csv",
+            key="mc_download_btn"
+        )
 
     # Render Footer and stop execution
     st.markdown("---")
@@ -2166,8 +2434,6 @@ if df is not None and len(df) >= 2:
             exp_asymp_valid = False
             if st.session_state.lang == 'es':
                 exp_asymp_error_msg = f"La asíntota a ({a_nl_exp:.4f}) debe ser estrictamente menor que el valor mínimo de Y ({min_y:.4f}) para calcular ln(y - a)."
-            elif st.session_state.lang == 'hi':
-                exp_asymp_error_msg = f"एसिम्पटोट a ({a_nl_exp:.4f}) ln(y - a) की गणना करने के लिए Y के न्यूनतम मान ({min_y:.4f}) से कड़ाई से कम होना चाहिए।"
             else:
                 exp_asymp_error_msg = f"Asymptote a ({a_nl_exp:.4f}) must be strictly less than the minimum value of Y ({min_y:.4f}) to calculate ln(y - a)."
         else:
@@ -2206,8 +2472,6 @@ if df is not None and len(df) >= 2:
         exp_asymp_valid = False
         if st.session_state.lang == 'es':
             exp_asymp_error_msg = f"Error en los cálculos del modelo Exponencial con Asíntota: {e}"
-        elif st.session_state.lang == 'hi':
-            exp_asymp_error_msg = f"एसिम्पटोट मॉडल गणनाओं के साथ घातांकीय में त्रुटि: {e}"
         else:
             exp_asymp_error_msg = f"Error in Exponential with Asymptote model calculations: {e}"
 
@@ -2225,8 +2489,6 @@ if df is not None and len(df) >= 2:
         log_valid = False
         if st.session_state.lang == 'es':
             log_error_msg = "El modelo Logarítmico requiere que todos los valores de X sean estrictamente mayores a cero (X > 0) para calcular ln(X)."
-        elif st.session_state.lang == 'hi':
-            log_error_msg = "लघुगणकीय मॉडल के लिए सभी X मान शून्य से अधिक होने चाहिए (X > 0) ताकि ln(X) की गणना की जा सके।"
         else:
             log_error_msg = "Logarithmic model requires all X values to be strictly greater than zero (X > 0) to calculate ln(X)."
     else:
@@ -2247,8 +2509,6 @@ if df is not None and len(df) >= 2:
             log_valid = False
             if st.session_state.lang == 'es':
                 log_error_msg = f"Error en los cálculos del modelo Logarítmico: {e}"
-            elif st.session_state.lang == 'hi':
-                log_error_msg = f"लघुगणकीय मॉडल की गणना में त्रुटि: {e}"
             else:
                 log_error_msg = f"Error in Logarithmic model calculations: {e}"
 
@@ -2267,8 +2527,6 @@ if df is not None and len(df) >= 2:
         pot_valid = False
         if st.session_state.lang == 'es':
             pot_error_msg = "El modelo Potencial requiere que todos los valores tanto de X como de Y sean estrictamente mayores a cero (X > 0, Y > 0) para aplicar ln(X) y ln(Y)."
-        elif st.session_state.lang == 'hi':
-            pot_error_msg = "घातीय मॉडल को ln(X) और ln(Y) लागू करने के लिए X और Y दोनों के सभी मानों को शून्य से कड़ाई से अधिक (X > 0, Y > 0) होना आवश्यक है।"
         else:
             pot_error_msg = "Power model requires all values of both X and Y to be strictly greater than zero (X > 0, Y > 0) to apply ln(X) and ln(Y)."
     else:
@@ -2292,8 +2550,6 @@ if df is not None and len(df) >= 2:
             pot_valid = False
             if st.session_state.lang == 'es':
                 pot_error_msg = f"Error en los cálculos del modelo Potencial: {e}"
-            elif st.session_state.lang == 'hi':
-                pot_error_msg = f"घातीय (पावर) मॉडल की गणना में त्रुटि: {e}"
             else:
                 pot_error_msg = f"Error in Power model calculations: {e}"
 
@@ -2311,8 +2567,6 @@ if df is not None and len(df) >= 2:
         quad_valid = False
         if st.session_state.lang == 'es':
             quad_error_msg = "El modelo Cuadrático requiere al menos 3 puntos de datos para calcular un ajuste único. Por favor, agrega más puntos en la barra lateral."
-        elif st.session_state.lang == 'hi':
-            quad_error_msg = "द्विघात मॉडल को एक विशिष्ट फिट की गणना करने के लिए कम से कम 3 डेटा बिंदुओं की आवश्यकता होती है। कृपया साइडबार में और बिंदु जोड़ें।"
         else:
             quad_error_msg = "Quadratic model requires at least 3 data points to calculate a unique fit. Please add more points in the sidebar."
     else:
@@ -2329,8 +2583,6 @@ if df is not None and len(df) >= 2:
             quad_valid = False
             if st.session_state.lang == 'es':
                 quad_error_msg = f"Error en los cálculos del modelo Cuadrático: {e}"
-            elif st.session_state.lang == 'hi':
-                quad_error_msg = f"द्विघात मॉडल की गणना में त्रुटि: {e}"
             else:
                 quad_error_msg = f"Error in Quadratic model calculations: {e}"
 
@@ -2432,8 +2684,6 @@ if df is not None and len(df) >= 2:
         fun_pot_valid = False
         if st.session_state.lang == 'es':
             fun_pot_error_msg = "⚠️ El modelo Función Potencia requiere que todos los valores de X e Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo base 10 (log10)."
-        elif st.session_state.lang == 'hi':
-            fun_pot_error_msg = "⚠️ पावर फंक्शन मॉडल को बेस 10 लघुगणक (log10) लागू करने के लिए X और Y के सभी मानों को शून्य से कड़ाई से अधिक (>0) होना आवश्यक है।"
         else:
             fun_pot_error_msg = "⚠️ The Power Function model requires all X and Y values to be strictly greater than zero (>0) to apply base 10 logarithm (log10)."
     else:
@@ -2471,8 +2721,6 @@ if df is not None and len(df) >= 2:
             fun_pot_valid = False
             if st.session_state.lang == 'es':
                 fun_pot_error_msg = f"Error en los cálculos de Función Potencia (base 10): {e}"
-            elif st.session_state.lang == 'hi':
-                fun_pot_error_msg = f"पावर फंक्शन (बेस 10) की गणना में त्रुटि: {e}"
             else:
                 fun_pot_error_msg = f"Error in Power Function (base 10) calculations: {e}"
 
@@ -2494,8 +2742,6 @@ if df is not None and len(df) >= 2:
         fun_exp_valid = False
         if st.session_state.lang == 'es':
             fun_exp_error_msg = "⚠️ El modelo Exponencial requiere que todos los valores de Y sean estrictamente mayores a cero (>0) para aplicar el logaritmo natural (ln)."
-        elif st.session_state.lang == 'hi':
-            fun_exp_error_msg = "⚠️ घातांकीय मॉडल को प्राकृतिक लघुगणक (ln) लागू करने के लिए Y के सभी मानों को शून्य से कड़ाई से अधिक (>0) होना आवश्यक है।"
         else:
             fun_exp_error_msg = "⚠️ The Exponential model requires all Y values to be strictly greater than zero (>0) to apply natural logarithm (ln)."
     else:
@@ -2522,8 +2768,6 @@ if df is not None and len(df) >= 2:
             fun_exp_valid = False
             if st.session_state.lang == 'es':
                 fun_exp_error_msg = f"Error en los cálculos de Función Exponencial: {e}"
-            elif st.session_state.lang == 'hi':
-                fun_exp_error_msg = f"घातांकीय फंक्शन की गणना में त्रुटि: {e}"
             else:
                 fun_exp_error_msg = f"Error in Exponential Function calculations: {e}"
 
@@ -2896,12 +3140,6 @@ if df is not None and len(df) >= 2:
                     "Regresión Lineal": ["Línea recta (Straight line)", "Constante (Constant)", "y = mx + c", "Simple", "Salario vs Experiencia"],
                     "Regresión No Lineal": ["Curva (Curve)", "Cambiante (Changing)", "y = a + be^(cx), etc.", "Más compleja (More complex)", "Sistemas de decaimiento/crecimiento"]
                 })
-            elif st.session_state.lang == 'hi':
-                diff_df = pd.DataFrame({
-                    "विशेषता (Feature)": ["आकार (Shape)", "परिवर्तन की दर (Rate of change)", "समीकरण (Equation)", "जटिलता (Complexity)", "उदाहरण (Example)"],
-                    "रेखीय प्रतिगमन (Linear Regression)": ["सीधी रेखा (Straight line)", "स्थिर (Constant)", "y = mx + c", "सरल (Simple)", "वेतन बनाम अनुभव (Salary vs Experience)"],
-                    "गैर-रेखीय प्रतिगमन (Non-Linear Regression)": ["वक्र (Curve)", "परिवर्तनशील (Changing)", "y = a + be^(cx), etc.", "अधिक जटिल (More complex)", "क्षय/वृद्धि प्रणालियां (Decay/growth systems)"]
-                })
             else:
                 diff_df = pd.DataFrame({
                     "Feature": ["Shape", "Rate of change", "Equation", "Complexity", "Example"],
@@ -2922,7 +3160,7 @@ if df is not None and len(df) >= 2:
             col_f1, col_f2 = st.columns(2)
             
             if selected_nl_key == "Exponential":
-                cols_lin = ["x", "Y", "y-a", "ln(y-a)", "Y est", "Residual"] if st.session_state.lang == 'en' else (["x", "Y", "y-a", "ln(y-a)", "Y अनुमानित", "अवशेष"] if st.session_state.lang == 'hi' else ["x", "Y", "y-a", "ln(y-a)", "Y estima", "Residuo"])
+                cols_lin = ["x", "Y", "y-a", "ln(y-a)", "Y est", "Residual"] if st.session_state.lang == 'en' else ["x", "Y", "y-a", "ln(y-a)", "Y estima", "Residuo"]
                 df_linearized = pd.DataFrame({
                     cols_lin[0]: X,
                     cols_lin[1]: Y,
@@ -3014,8 +3252,6 @@ if df is not None and len(df) >= 2:
                     st.latex(r"Y = a + b \ln(X)")
                     if st.session_state.lang == 'es':
                         st.markdown("Definiendo $X' = \\ln(X)$, ajustamos la recta:")
-                    elif st.session_state.lang == 'hi':
-                        st.markdown("$X' = \\ln(X)$ परिभाषित करते हुए, हम रेखा को फिट करते हैं:")
                     else:
                         st.markdown("Defining $X' = \\ln(X)$, we fit the line:")
                     st.latex(r"Y = a + b X'")
@@ -3046,8 +3282,6 @@ if df is not None and len(df) >= 2:
                     st.latex(r"Y = a \cdot X^b \implies \ln(Y) = \ln(a) + b \ln(X)")
                     if st.session_state.lang == 'es':
                         st.markdown("Definiendo $X' = \\ln(X)$, $Y' = \\ln(Y)$ y $A = \\ln(a)$, ajustamos:")
-                    elif st.session_state.lang == 'hi':
-                        st.markdown("$X' = \\ln(X)$, $Y' = \\ln(Y)$ और $A = \\ln(a)$ परिभाषित करते हुए, हम फिट करते हैं:")
                     else:
                         st.markdown("Defining $X' = \\ln(X)$, $Y' = \\ln(Y)$ and $A = \\ln(a)$, we fit:")
                     st.latex(r"Y' = A + b X'")
@@ -3077,7 +3311,7 @@ if df is not None and len(df) >= 2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
                     st.markdown(t["t4_quad_eq"])
                     st.latex(r"Y = a X^2 + b X + c")
-                    st.markdown("A pesar de ser curvilíneo, es **lineal en sus parámetros** ($a, b, c$)." if st.session_state.lang == 'es' else ("वक्राकार होने के बावजूद, यह अपने मापदंडों ($a, b, c$) में **रेखीय** है।" if st.session_state.lang == 'hi' else "Despite being curvilinear, it is **linear in its parameters** ($a, b, c$)."))
+                    st.markdown("A pesar de ser curvilíneo, es **lineal en sus parámetros** ($a, b, c$)." if st.session_state.lang == 'es' else "Despite being curvilinear, it is **linear in its parameters** ($a, b, c$).")
                     st.markdown("</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
@@ -3090,7 +3324,7 @@ if df is not None and len(df) >= 2:
                     st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
                     st.markdown(t["t4_normal_eq_sys"])
                     st.latex(r"\begin{pmatrix} \sum X_i^4 & \sum X_i^3 & \sum X_i^2 \\ \sum X_i^3 & \sum X_i^2 & \sum X_i \\ \sum X_i^2 & \sum X_i & n \end{pmatrix} \begin{pmatrix} a \\ b \\ c \end{pmatrix} = \begin{pmatrix} \sum X_i^2 Y_i \\ \sum X_i Y_i \\ \sum Y_i \end{pmatrix}")
-                    st.markdown("Se resuelve directamente por álgebra matricial lineal." if st.session_state.lang == 'es' else ("यह सीधे रेखीय आव्यूह बीजगणित द्वारा हल किया जाता है।" if st.session_state.lang == 'hi' else "It is solved directly by linear matrix algebra."))
+                    st.markdown("Se resuelve directamente por álgebra matricial lineal." if st.session_state.lang == 'es' else "It is solved directly by linear matrix algebra.")
                     st.markdown("</div>", unsafe_allow_html=True)
 
             st.success(t["t4_eq_adjusted_generic"].format(nl_equation))
@@ -3893,7 +4127,7 @@ if df is not None and len(df) >= 2:
                 st.download_button(
                     label=t["t8_export_excel_btn"],
                     data=excel_data,
-                    file_name="Reporte_Comparacion_Regresiones.xlsx" if st.session_state.lang == 'es' else ("प्रतिगमन_तुलना_रिपोर्ट.xlsx" if st.session_state.lang == 'hi' else "Regression_Comparison_Report.xlsx"),
+                    file_name="Reporte_Comparacion_Regresiones.xlsx" if st.session_state.lang == 'es' else "Regression_Comparison_Report.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             except Exception as e:
@@ -3903,8 +4137,7 @@ if df is not None and len(df) >= 2:
             st.markdown(f"**{t['t8_export_pdf_lbl']}**")
             
             def create_pdf():
-                # Use English translations for PDF if the current language is Hindi to avoid Unicode encoding errors in fpdf2
-                t_pdf = TRANSLATIONS["en"] if st.session_state.lang == "hi" else t
+                t_pdf = t
                 
                 # Rebuild comparison dataframe for PDF using t_pdf to avoid language conflicts
                 comp_data_pdf = {
@@ -4073,7 +4306,7 @@ if df is not None and len(df) >= 2:
                 st.download_button(
                     label=t["t8_export_pdf_btn"],
                     data=pdf_data,
-                    file_name="Reporte_Comparacion_Regresiones.pdf" if st.session_state.lang == 'es' else ("प्रतिगमन_तुलना_रिपोर्ट.pdf" if st.session_state.lang == 'hi' else "Regression_Comparison_Report.pdf"),
+                    file_name="Reporte_Comparacion_Regresiones.pdf" if st.session_state.lang == 'es' else "Regression_Comparison_Report.pdf",
                     mime="application/pdf"
                 )
             except Exception as e:

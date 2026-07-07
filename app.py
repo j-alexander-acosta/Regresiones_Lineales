@@ -61,10 +61,262 @@ st.sidebar.markdown("---")
 analysis_type = st.sidebar.selectbox(t["sb_analysis_type"], [
     t["sb_simple_regression"], 
     t["sb_multiple_regression"],
-    t["sb_probability_distributions"]
+    t["sb_probability_distributions"],
+    t["sb_monte_carlo_regression"]
 ])
 is_mlr = (analysis_type == t["sb_multiple_regression"])
 is_prob = (analysis_type == t["sb_probability_distributions"])
+is_mc_reg = (analysis_type == t["sb_monte_carlo_regression"])
+
+if is_mc_reg:
+    st.header(t["mc_reg_title"])
+    st.markdown(t["mc_reg_desc"])
+    
+    st.sidebar.markdown(f"### {t['mc_reg_sidebar_header']}")
+    mc_sigma_x = st.sidebar.number_input(t["mc_reg_sigma_x"], value=0.20, min_value=0.0001, step=0.05, format="%.4f", key="mc_reg_sig_x")
+    mc_sigma_y = st.sidebar.number_input(t["mc_reg_sigma_y"], value=0.15, min_value=0.0001, step=0.05, format="%.4f", key="mc_reg_sig_y")
+    
+    default_true_x = [4.0 + 0.05 * i for i in range(40)]
+    default_true_y = [
+        4.10, 4.14, 4.19, 4.23, 4.27, 4.31, 4.36, 4.40, 4.44, 4.48,
+        4.53, 4.57, 4.61, 4.65, 4.70, 4.74, 4.78, 4.82, 4.87, 4.91,
+        4.95, 4.99, 5.04, 5.08, 5.12, 5.16, 5.21, 5.25, 5.29, 5.33,
+        5.38, 5.42, 5.46, 5.50, 5.55, 5.59, 5.63, 5.67, 5.72, 5.76
+    ]
+    
+    if "mc_true_df" not in st.session_state:
+        st.session_state.mc_true_df = pd.DataFrame({
+            "True X (mbm_bmb)": default_true_x,
+            "True Y (MwM_wMw)": default_true_y
+        })
+        
+    if "mc_errors" not in st.session_state:
+        np.random.seed(42)
+        n_rows = len(st.session_state.mc_true_df)
+        err_x = np.random.normal(0, mc_sigma_x, n_rows)
+        err_y = np.random.normal(0, mc_sigma_y, n_rows)
+        st.session_state.mc_errors = {
+            "err_x": err_x,
+            "err_y": err_y
+        }
+        
+    if st.sidebar.button(t["mc_reg_generate_btn"], key="mc_reg_gen_btn"):
+        n_rows = len(st.session_state.mc_true_df)
+        err_x = np.random.normal(0, mc_sigma_x, n_rows)
+        err_y = np.random.normal(0, mc_sigma_y, n_rows)
+        st.session_state.mc_errors = {
+            "err_x": err_x,
+            "err_y": err_y
+        }
+        st.rerun()
+        
+    n_rows = len(st.session_state.mc_true_df)
+    current_err_len = len(st.session_state.mc_errors["err_x"])
+    if current_err_len < n_rows:
+        extra_x = np.random.normal(0, mc_sigma_x, n_rows - current_err_len)
+        extra_y = np.random.normal(0, mc_sigma_y, n_rows - current_err_len)
+        st.session_state.mc_errors["err_x"] = np.concatenate([st.session_state.mc_errors["err_x"], extra_x])
+        st.session_state.mc_errors["err_y"] = np.concatenate([st.session_state.mc_errors["err_y"], extra_y])
+    elif current_err_len > n_rows:
+        st.session_state.mc_errors["err_x"] = st.session_state.mc_errors["err_x"][:n_rows]
+        st.session_state.mc_errors["err_y"] = st.session_state.mc_errors["err_y"][:n_rows]
+        
+    df_display = pd.DataFrame({
+        "True mbm_bmb": st.session_state.mc_true_df["True X (mbm_bmb)"],
+        "True MwM_wMw": st.session_state.mc_true_df["True Y (MwM_wMw)"],
+        "mbm_bmb Error": st.session_state.mc_errors["err_x"],
+        "MwM_wMw Error": st.session_state.mc_errors["err_y"]
+    })
+    
+    df_display["OBSERVED MB"] = df_display["True mbm_bmb"] + df_display["mbm_bmb Error"]
+    df_display["OBSERVED MW"] = df_display["True MwM_wMw"] + df_display["MwM_wMw Error"]
+    
+    df_display.insert(0, "No.", np.arange(1, len(df_display) + 1))
+    
+    st.subheader(t["mc_reg_table_title"])
+    st.markdown(t["mc_reg_table_desc"])
+    
+    edited_df = st.data_editor(
+        df_display,
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "No.": st.column_config.NumberColumn(disabled=True),
+            "True mbm_bmb": st.column_config.NumberColumn(format="%.2f"),
+            "True MwM_wMw": st.column_config.NumberColumn(format="%.2f"),
+            "mbm_bmb Error": st.column_config.NumberColumn(disabled=True, format="%.6f"),
+            "MwM_wMw Error": st.column_config.NumberColumn(disabled=True, format="%.6f"),
+            "OBSERVED MB": st.column_config.NumberColumn(disabled=True, format="%.6f"),
+            "OBSERVED MW": st.column_config.NumberColumn(disabled=True, format="%.6f"),
+        },
+        key="mc_editor"
+    )
+    
+    st.session_state.mc_true_df = pd.DataFrame({
+        "True X (mbm_bmb)": edited_df["True mbm_bmb"],
+        "True Y (MwM_wMw)": edited_df["True MwM_wMw"]
+    })
+    
+    X = edited_df["OBSERVED MB"].values
+    Y = edited_df["OBSERVED MW"].values
+    n = len(edited_df)
+    
+    if n >= 2:
+        x_mean = np.mean(X)
+        y_mean = np.mean(Y)
+        
+        Sxx = np.sum((X - x_mean)**2)
+        Syy = np.sum((Y - y_mean)**2)
+        Sxy = np.sum((X - x_mean) * (Y - y_mean))
+        
+        eta = (mc_sigma_y ** 2) / (mc_sigma_x ** 2) if mc_sigma_x != 0 else 1.0
+        
+        # --- SLR (OLS) ---
+        m_slr = Sxy / Sxx if Sxx != 0 else 0.0
+        c_slr = y_mean - m_slr * x_mean
+        y_pred_slr = m_slr * X + c_slr
+        sse_slr = np.sum((Y - y_pred_slr)**2)
+        s2_e_slr = sse_slr / (n - 2) if n > 2 else 0.0
+        se_m_slr = np.sqrt(s2_e_slr / Sxx) if Sxx != 0 and n > 2 else 0.0
+        se_c_slr = se_m_slr * np.sqrt(np.sum(X**2) / n) if n > 0 else 0.0
+        rmse_slr = np.sqrt(sse_slr / n)
+        r2_slr = 1.0 - (sse_slr / Syy) if Syy != 0 else 0.0
+        
+        # --- GOR Convencional ---
+        if Sxy != 0:
+            beta1_num = (Syy - eta * Sxx) + np.sqrt((Syy - eta * Sxx)**2 + 4 * eta * Sxy**2)
+            beta1_den = 2.0 * Sxy
+            m_gor = beta1_num / beta1_den
+        else:
+            m_gor = 0.0
+        b_gor = y_mean - m_gor * x_mean
+        y_pred_gor = m_gor * X + b_gor
+        
+        X_t = (m_gor * (Y - b_gor) + eta * X) / (eta + m_gor**2)
+        Y_t = b_gor + m_gor * X_t
+        
+        sse_gor = np.sum((Y - y_pred_gor)**2)
+        s2_e_pseudo_gor = sse_gor / (n - 2) if n > 2 else 0.0
+        se_m_gor = np.sqrt(s2_e_pseudo_gor / Sxx) if Sxx != 0 and n > 2 else 0.0
+        se_b_gor = se_m_gor * np.sqrt(np.sum(X**2) / n) if n > 0 else 0.0
+        rmse_gor = np.sqrt(sse_gor / n)
+        r2_gor = 1.0 - (sse_gor / Syy) if Syy != 0 else 0.0
+        
+        # --- GOR Propuesto ---
+        Y_t_mean = np.mean(Y_t)
+        if Sxx != 0:
+            m_prop = np.sum((X - x_mean) * (Y_t - Y_t_mean)) / Sxx
+        else:
+            m_prop = 0.0
+        b_prop = Y_t_mean - m_prop * x_mean
+        y_pred_prop = m_prop * X + b_prop
+        
+        sse_prop = np.sum((Y - y_pred_prop)**2)
+        s2_e_prop = sse_prop / (n - 2) if n > 2 else 0.0
+        se_m_prop = np.sqrt(s2_e_prop / Sxx) if Sxx != 0 and n > 2 else 0.0
+        se_b_prop = se_m_prop * np.sqrt(np.sum(X**2) / n) if n > 0 else 0.0
+        rmse_prop = np.sqrt(sse_prop / n)
+        r2_prop = 1.0 - (sse_prop / Syy) if Syy != 0 else 0.0
+        
+        st.subheader(t["mc_reg_results_title"])
+        results_data = {
+            t["table_col_method"]: [t["methods_names"]["SLR"], t["methods_names"]["GOR Conv"], t["methods_names"]["GOR Prop"]],
+            t["table_col_slope"]: [m_slr, m_gor, m_prop],
+            t["table_col_intercept"]: [c_slr, b_gor, b_prop],
+            t["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop],
+            t["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop],
+            t["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop],
+            t["table_col_r2"]: [r2_slr, r2_gor, r2_prop]
+        }
+        df_results = pd.DataFrame(results_data)
+        st.dataframe(df_results.style.format({
+            t["table_col_slope"]: "{:.6f}",
+            t["table_col_intercept"]: "{:.6f}",
+            t["table_col_se_m"]: "{:.6f}",
+            t["table_col_se_c"]: "{:.6f}",
+            t["table_col_rmse"]: "{:.6f}",
+            t["table_col_r2"]: "{:.6f}"
+        }), use_container_width=True)
+        
+        x_min = float(np.min(X))
+        x_max = float(np.max(X))
+        x_line = np.linspace(x_min, x_max, 100)
+        y_line_slr = m_slr * x_line + c_slr
+        y_line_gor = m_gor * x_line + b_gor
+        y_line_prop = m_prop * x_line + b_prop
+        
+        fig = plgo.Figure()
+        
+        fig.add_trace(plgo.Scatter(
+            x=X, y=Y,
+            mode='markers',
+            name=t["mc_reg_obs_lbl"],
+            marker=dict(color='#1f77b4', size=8),
+            hovertemplate='Observed MB: %{x:.4f}<br>Observed MW: %{y:.4f}<extra></extra>'
+        ))
+        
+        fig.add_trace(plgo.Scatter(
+            x=edited_df["True mbm_bmb"], y=edited_df["True MwM_wMw"],
+            mode='markers',
+            name=t["mc_reg_true_lbl"],
+            marker=dict(color='#7f7f7f', size=6, symbol='x'),
+            hovertemplate='True MB: %{x:.4f}<br>True MW: %{y:.4f}<extra></extra>'
+        ))
+        
+        fig.add_trace(plgo.Scatter(
+            x=x_line, y=y_line_slr,
+            mode='lines',
+            name=t["methods_names"]["SLR"],
+            line=dict(color='#2ca02c', width=2),
+            hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+        ))
+        
+        fig.add_trace(plgo.Scatter(
+            x=x_line, y=y_line_gor,
+            mode='lines',
+            name=t["methods_names"]["GOR Conv"],
+            line=dict(color='#d62728', width=2),
+            hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+        ))
+        
+        fig.add_trace(plgo.Scatter(
+            x=x_line, y=y_line_prop,
+            mode='lines',
+            name=t["methods_names"]["GOR Prop"],
+            line=dict(color='#9467bd', width=2, dash='dash'),
+            hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title=t["mc_reg_plot_title"],
+            xaxis_title="MB",
+            yaxis_title="MW",
+            template='plotly_white',
+            legend=dict(x=0.01, y=0.99)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning(t["info_data_points"])
+        
+    csv_data = edited_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label=t["mc_reg_download_lbl"],
+        data=csv_data,
+        file_name="simulacion_monte_carlo_regresion.csv",
+        mime="text/csv",
+        key="mc_reg_download_btn"
+    )
+    
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: gray; font-size: 14px;'>"
+        "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+        "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+        "</p>", 
+        unsafe_allow_html=True
+    )
+    st.stop()
 
 if is_prob:
     t_prob = t["prob_module"]

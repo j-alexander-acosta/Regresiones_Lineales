@@ -13,6 +13,126 @@ import translations
 importlib.reload(translations)
 from translations import TRANSLATIONS
 
+# --- CLASE HELPER PARA ERRORES EN LAS VARIABLES (CARROLL & RUPPERT, 1996) ---
+class LinearErrorsInVariables:
+    """
+    Clase para el cálculo de regresiones lineales considerando errores de medición.
+    Calcula OLS, Método de Momentos (corregido por atenuación) y Regresión de Deming.
+    """
+    def __init__(self, W, Y, sigma_u, sigma_e):
+        self.W = np.asarray(W, dtype=float)
+        self.Y = np.asarray(Y, dtype=float)
+        self.sigma_u = float(sigma_u)
+        self.sigma_e = float(sigma_e)
+        self.n = len(self.W)
+        
+        # A. Estimadores Base de la Muestra
+        self.mean_w = np.mean(self.W) if self.n > 0 else 0.0
+        self.mean_y = np.mean(self.Y) if self.n > 0 else 0.0
+        self.s2_w = np.var(self.W, ddof=1) if self.n > 1 else 0.0
+        self.s2_y = np.var(self.Y, ddof=1) if self.n > 1 else 0.0
+        
+        # Covarianza muestral
+        if self.n > 1:
+            cov_mat = np.cov(self.W, self.Y)
+            self.s_wy = cov_mat[0, 1]
+        else:
+            self.s_wy = 0.0
+            
+        # B. Mínimos Cuadrados Ordinarios (OLS)
+        self.beta1_ols = self.s_wy / self.s2_w if self.s2_w != 0.0 else 0.0
+        self.beta0_ols = self.mean_y - self.beta1_ols * self.mean_w
+        
+        # C. Método de Momentos (MoM) Corregido por Atenuación
+        # Varianza estimada de la variable verdadera X (s2_x = s2_w - sigma_u^2)
+        s2_x_est = self.s2_w - self.sigma_u**2
+        if s2_x_est <= 0.0001:
+            s2_x_est = 0.0001  # Límite inferior para evitar división por cero o pendientes extremas
+            
+        self.beta1_mom = self.s_wy / s2_x_est
+        self.beta0_mom = self.mean_y - self.beta1_mom * self.mean_w
+        # Factor de confiabilidad (reliability ratio)
+        self.lambda_ratio = s2_x_est / self.s2_w if self.s2_w != 0.0 else 1.0
+        
+        # D. Regresión Ortogonal (Deming)
+        self.eta = (self.sigma_e**2) / (self.sigma_u**2) if self.sigma_u != 0.0 else 1.0
+        if self.s_wy != 0.0:
+            beta1_num = (self.s2_y - self.eta * self.s2_w) + np.sqrt((self.s2_y - self.eta * self.s2_w)**2 + 4.0 * self.eta * self.s_wy**2)
+            beta1_den = 2.0 * self.s_wy
+            self.beta1_dem = beta1_num / beta1_den
+        else:
+            self.beta1_dem = 0.0
+        self.beta0_dem = self.mean_y - self.beta1_dem * self.mean_w
+        
+    def compute_all_metrics(self):
+        # OLS
+        y_pred_ols = self.beta1_ols * self.W + self.beta0_ols
+        sse_ols = np.sum((self.Y - y_pred_ols)**2) if self.n > 0 else 0.0
+        s2_e_ols = sse_ols / (self.n - 2) if self.n > 2 else 0.0
+        se_beta1_ols = np.sqrt(s2_e_ols / ((self.n - 1) * self.s2_w)) if self.s2_w != 0.0 and self.n > 2 else 0.0
+        se_beta0_ols = se_beta1_ols * np.sqrt(np.sum(self.W**2) / self.n) if self.n > 0 else 0.0
+        rmse_ols = np.sqrt(sse_ols / self.n) if self.n > 0 else 0.0
+        r2_ols = 1.0 - (sse_ols / ((self.n - 1) * self.s2_y)) if self.s2_y != 0.0 and self.n > 1 else 0.0
+        
+        # MoM (Atenuación)
+        y_pred_mom = self.beta1_mom * self.W + self.beta0_mom
+        sse_mom = np.sum((self.Y - y_pred_mom)**2) if self.n > 0 else 0.0
+        # SE aproximado por el delta method simplificado (inflación del SE de OLS por lambda)
+        se_beta1_mom = se_beta1_ols / self.lambda_ratio if self.n > 2 else 0.0
+        se_beta0_mom = se_beta1_mom * np.sqrt(np.sum(self.W**2) / self.n) if self.n > 0 else 0.0
+        rmse_mom = np.sqrt(sse_mom / self.n) if self.n > 0 else 0.0
+        r2_mom = 1.0 - (sse_mom / ((self.n - 1) * self.s2_y)) if self.s2_y != 0.0 and self.n > 1 else 0.0
+        
+        # Deming
+        y_pred_dem = self.beta1_dem * self.W + self.beta0_dem
+        sse_dem = np.sum((self.Y - y_pred_dem)**2) if self.n > 0 else 0.0
+        s2_e_pseudo_dem = sse_dem / (self.n - 2) if self.n > 2 else 0.0
+        se_beta1_dem = np.sqrt(s2_e_pseudo_dem / ((self.n - 1) * self.s2_w)) if self.s2_w != 0.0 and self.n > 2 else 0.0
+        se_beta0_dem = se_beta1_dem * np.sqrt(np.sum(self.W**2) / self.n) if self.n > 0 else 0.0
+        rmse_dem = np.sqrt(sse_dem / self.n) if self.n > 0 else 0.0
+        r2_dem = 1.0 - (sse_dem / ((self.n - 1) * self.s2_y)) if self.s2_y != 0.0 and self.n > 1 else 0.0
+        
+        # Proyecciones Ortogonales verdaderas para Deming
+        X_t = (self.beta1_dem * (self.Y - self.beta0_dem) + self.eta * self.W) / (self.eta + self.beta1_dem**2) if (self.eta + self.beta1_dem**2) != 0.0 else self.W
+        Y_t = self.beta0_dem + self.beta1_dem * X_t
+        s2_e_dem_ort = (1.0 / (self.n - 2)) * np.sum(((self.Y - self.beta0_dem - self.beta1_dem * self.W)**2) / (self.beta1_dem**2 + self.eta)) if self.n > 2 else 0.0
+        sigma_dem_ort = np.sqrt(s2_e_dem_ort)
+        
+        return {
+            "ols": {
+                "slope": self.beta1_ols,
+                "intercept": self.beta0_ols,
+                "se_slope": se_beta1_ols,
+                "se_intercept": se_beta0_ols,
+                "rmse": rmse_ols,
+                "r2": r2_ols,
+                "y_pred": y_pred_ols
+            },
+            "mom": {
+                "slope": self.beta1_mom,
+                "intercept": self.beta0_mom,
+                "se_slope": se_beta1_mom,
+                "se_intercept": se_beta0_mom,
+                "rmse": rmse_mom,
+                "r2": r2_mom,
+                "y_pred": y_pred_mom,
+                "lambda": self.lambda_ratio
+            },
+            "deming": {
+                "slope": self.beta1_dem,
+                "intercept": self.beta0_dem,
+                "se_slope": se_beta1_dem,
+                "se_intercept": se_beta0_dem,
+                "rmse": rmse_dem,
+                "r2": r2_dem,
+                "y_pred": y_pred_dem,
+                "X_t": X_t,
+                "Y_t": Y_t,
+                "s2_e_ort": s2_e_dem_ort,
+                "sigma_ort": sigma_dem_ort
+            }
+        }
+
 # --- IDIOMA / LANGUAGE SELECTOR ---
 if 'lang' not in st.session_state:
     st.session_state.lang = 'es'
@@ -162,47 +282,40 @@ if is_mc_reg:
     n = len(edited_df)
     
     if n >= 2:
-        x_mean = np.mean(X)
-        y_mean = np.mean(Y)
+        # Calcular usando la nueva clase helper
+        model_mc = LinearErrorsInVariables(X, Y, mc_sigma_x, mc_sigma_y)
+        metrics_mc = model_mc.compute_all_metrics()
         
-        Sxx = np.sum((X - x_mean)**2)
-        Syy = np.sum((Y - y_mean)**2)
-        Sxy = np.sum((X - x_mean) * (Y - y_mean))
+        m_slr = metrics_mc["ols"]["slope"]
+        c_slr = metrics_mc["ols"]["intercept"]
+        y_pred_slr = metrics_mc["ols"]["y_pred"]
+        se_m_slr = metrics_mc["ols"]["se_slope"]
+        se_c_slr = metrics_mc["ols"]["se_intercept"]
+        rmse_slr = metrics_mc["ols"]["rmse"]
+        r2_slr = metrics_mc["ols"]["r2"]
         
-        eta = (mc_sigma_y ** 2) / (mc_sigma_x ** 2) if mc_sigma_x != 0 else 1.0
+        m_gor = metrics_mc["deming"]["slope"]
+        b_gor = metrics_mc["deming"]["intercept"]
+        y_pred_gor = metrics_mc["deming"]["y_pred"]
+        se_m_gor = metrics_mc["deming"]["se_slope"]
+        se_b_gor = metrics_mc["deming"]["se_intercept"]
+        rmse_gor = metrics_mc["deming"]["rmse"]
+        r2_gor = metrics_mc["deming"]["r2"]
+        X_t = metrics_mc["deming"]["X_t"]
+        Y_t = metrics_mc["deming"]["Y_t"]
         
-        # --- SLR (OLS) ---
-        m_slr = Sxy / Sxx if Sxx != 0 else 0.0
-        c_slr = y_mean - m_slr * x_mean
-        y_pred_slr = m_slr * X + c_slr
-        sse_slr = np.sum((Y - y_pred_slr)**2)
-        s2_e_slr = sse_slr / (n - 2) if n > 2 else 0.0
-        se_m_slr = np.sqrt(s2_e_slr / Sxx) if Sxx != 0 and n > 2 else 0.0
-        se_c_slr = se_m_slr * np.sqrt(np.sum(X**2) / n) if n > 0 else 0.0
-        rmse_slr = np.sqrt(sse_slr / n)
-        r2_slr = 1.0 - (sse_slr / Syy) if Syy != 0 else 0.0
+        m_mom = metrics_mc["mom"]["slope"]
+        b_mom = metrics_mc["mom"]["intercept"]
+        y_pred_mom = metrics_mc["mom"]["y_pred"]
+        se_m_mom = metrics_mc["mom"]["se_slope"]
+        se_b_mom = metrics_mc["mom"]["se_intercept"]
+        rmse_mom = metrics_mc["mom"]["rmse"]
+        r2_mom = metrics_mc["mom"]["r2"]
         
-        # --- GOR Convencional ---
-        if Sxy != 0:
-            beta1_num = (Syy - eta * Sxx) + np.sqrt((Syy - eta * Sxx)**2 + 4 * eta * Sxy**2)
-            beta1_den = 2.0 * Sxy
-            m_gor = beta1_num / beta1_den
-        else:
-            m_gor = 0.0
-        b_gor = y_mean - m_gor * x_mean
-        y_pred_gor = m_gor * X + b_gor
-        
-        X_t = (m_gor * (Y - b_gor) + eta * X) / (eta + m_gor**2)
-        Y_t = b_gor + m_gor * X_t
-        
-        sse_gor = np.sum((Y - y_pred_gor)**2)
-        s2_e_pseudo_gor = sse_gor / (n - 2) if n > 2 else 0.0
-        se_m_gor = np.sqrt(s2_e_pseudo_gor / Sxx) if Sxx != 0 and n > 2 else 0.0
-        se_b_gor = se_m_gor * np.sqrt(np.sum(X**2) / n) if n > 0 else 0.0
-        rmse_gor = np.sqrt(sse_gor / n)
-        r2_gor = 1.0 - (sse_gor / Syy) if Syy != 0 else 0.0
-        
-        # --- GOR Propuesto ---
+        # --- GOR Propuesto (Das et al.) ---
+        x_mean = model_mc.mean_w
+        Sxx = (n - 1) * model_mc.s2_w
+        Syy = (n - 1) * model_mc.s2_y
         Y_t_mean = np.mean(Y_t)
         if Sxx != 0:
             m_prop = np.sum((X - x_mean) * (Y_t - Y_t_mean)) / Sxx
@@ -220,13 +333,13 @@ if is_mc_reg:
         
         st.subheader(t["mc_reg_results_title"])
         results_data = {
-            t["table_col_method"]: [t["methods_names"]["SLR"], t["methods_names"]["GOR Conv"], t["methods_names"]["GOR Prop"]],
-            t["table_col_slope"]: [m_slr, m_gor, m_prop],
-            t["table_col_intercept"]: [c_slr, b_gor, b_prop],
-            t["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop],
-            t["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop],
-            t["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop],
-            t["table_col_r2"]: [r2_slr, r2_gor, r2_prop]
+            t["table_col_method"]: [t["methods_names"]["SLR"], t["methods_names"]["GOR Conv"], t["methods_names"]["GOR Prop"], t["methods_names"]["MoM"]],
+            t["table_col_slope"]: [m_slr, m_gor, m_prop, m_mom],
+            t["table_col_intercept"]: [c_slr, b_gor, b_prop, b_mom],
+            t["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop, se_m_mom],
+            t["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop, se_b_mom],
+            t["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop, rmse_mom],
+            t["table_col_r2"]: [r2_slr, r2_gor, r2_prop, r2_mom]
         }
         df_results = pd.DataFrame(results_data)
         st.dataframe(df_results.style.format({
@@ -244,6 +357,7 @@ if is_mc_reg:
         y_line_slr = m_slr * x_line + c_slr
         y_line_gor = m_gor * x_line + b_gor
         y_line_prop = m_prop * x_line + b_prop
+        y_line_mom = m_mom * x_line + b_mom
         
         fig = plgo.Figure()
         
@@ -284,6 +398,14 @@ if is_mc_reg:
             mode='lines',
             name=t["methods_names"]["GOR Prop"],
             line=dict(color='#9467bd', width=2, dash='dash'),
+            hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+        ))
+        
+        fig.add_trace(plgo.Scatter(
+            x=x_line, y=y_line_mom,
+            mode='lines',
+            name=t["methods_names"]["MoM"],
+            line=dict(color='#ff7f0e', width=2, dash='dashdot'),
             hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
         ))
         
@@ -1593,6 +1715,12 @@ if not is_mlr:
                 else:
                     df_raw = pd.read_excel(uploaded_file)
                 
+                # Detectar errores de medición y guardarlos en session_state ( Carroll & Ruppert )
+                if "MB_ERROR" in df_raw.columns:
+                    st.session_state.detected_sigma_u = float(np.mean(df_raw["MB_ERROR"]) / 2.0)
+                if "MW_ERROR" in df_raw.columns:
+                    st.session_state.detected_sigma_e = float(np.mean(df_raw["MW_ERROR"]) / 2.0)
+                
                 st.sidebar.markdown(t["sb_select_cols"])
                 x_col = st.sidebar.selectbox(t["sb_col_x"], df_raw.columns)
                 y_col = st.sidebar.selectbox(t["sb_col_y"], df_raw.columns)
@@ -2533,7 +2661,28 @@ if df is not None and len(df) >= 2:
 
     st.sidebar.markdown("---")
     st.sidebar.header(t["sb_header_params"])
-    eta = st.sidebar.number_input(t["sb_eta"], value=0.2000, step=0.1, format="%.4f")
+    
+    # Obtener valores predeterminados o detectados para errores de medición
+    val_sig_u = st.session_state.get("detected_sigma_u", 0.2000)
+    val_sig_e = st.session_state.get("detected_sigma_e", 0.1500)
+    
+    sigma_u = st.sidebar.number_input(
+        t["sb_sigma_u"],
+        value=val_sig_u,
+        step=0.05,
+        format="%.4f",
+        key="sig_u_input"
+    )
+    sigma_e = st.sidebar.number_input(
+        t["sb_sigma_e"],
+        value=val_sig_e,
+        step=0.05,
+        format="%.4f",
+        key="sig_e_input"
+    )
+    
+    eta = (sigma_e ** 2) / (sigma_u ** 2) if sigma_u != 0.0 else 1.0
+    st.sidebar.markdown(f"**Relación de varianzas (Calculado η):** `{eta:.4f}`" if st.session_state.lang == 'es' else f"**Variance ratio (Calculated η):** `{eta:.4f}`")
 
     st.sidebar.markdown("---")
     st.sidebar.header(t["sb_header_nl"])
@@ -2591,57 +2740,44 @@ if df is not None and len(df) >= 2:
     Syy = np.sum((Y - y_mean)**2)
     Sxy = np.sum((X - x_mean)*(Y - y_mean))
 
+    # Calcular usando la nueva clase helper para variables con error
+    model_global = LinearErrorsInVariables(X, Y, sigma_u, sigma_e)
+    metrics_global = model_global.compute_all_metrics()
+    
     # ==================================================
     # MÓDULO 1: SLR (Standard Linear Regression / OLS)
     # ==================================================
-    # Pendiente (m_slr) e intercepción (c_slr)
-    m_slr = Sxy / Sxx if Sxx != 0 else 0
-    c_slr = y_mean - m_slr * x_mean
-    y_pred_slr = m_slr * X + c_slr
-    
-    # Métricas de Error SLR
+    m_slr = metrics_global["ols"]["slope"]
+    c_slr = metrics_global["ols"]["intercept"]
+    y_pred_slr = metrics_global["ols"]["y_pred"]
     sse_slr = np.sum((Y - y_pred_slr)**2)
-    s2_e_slr = sse_slr / (n - 2) if n > 2 else 0 # Varianza Residual
-    se_m_slr = np.sqrt(s2_e_slr / Sxx) if Sxx != 0 and n > 2 else 0 # Error estándar de la pendiente
-    se_c_slr = se_m_slr * np.sqrt(np.sum(X**2) / n) if n > 0 else 0 # Error estándar de la intercepción
-    rmse_slr = np.sqrt(sse_slr / n)
-    r2_slr = 1 - (sse_slr / Syy) if Syy != 0 else 0
+    s2_e_slr = sse_slr / (n - 2) if n > 2 else 0
+    se_m_slr = metrics_global["ols"]["se_slope"]
+    se_c_slr = metrics_global["ols"]["se_intercept"]
+    rmse_slr = metrics_global["ols"]["rmse"]
+    r2_slr = metrics_global["ols"]["r2"]
 
     # ==================================================
     # MÓDULO 2: GOR Convencional
     # ==================================================
-    # Pendiente GOR (m_gor)
-    if Sxy != 0:
-        beta1_num = (Syy - eta * Sxx) + np.sqrt((Syy - eta * Sxx)**2 + 4 * eta * Sxy**2)
-        beta1_den = 2 * Sxy
-        m_gor = beta1_num / beta1_den
-    else:
-        m_gor = 0
-    b_gor = y_mean - m_gor * x_mean
-    y_pred_gor = m_gor * X + b_gor
-
-    # Proyecciones Ortogonales verdaderas (X_t, Y_t)
-    X_t = (m_gor * (Y - b_gor) + eta * X) / (eta + m_gor**2)
-    Y_t = b_gor + m_gor * X_t
-    
-    # Métricas de Error GOR Convencional
-    # Varianza Residual Ortogonal
-    s2_e_gor = (1 / (n - 2)) * np.sum(((Y - b_gor - m_gor * X)**2) / (m_gor**2 + eta)) if n > 2 else 0
-    sigma_gor = np.sqrt(s2_e_gor) # Desviación Estándar Residual Ortogonal (Error Típico GOR)
-    
-    # Pseudo-métricas para la tabla comparativa (Ajuste sobre Y observado)
+    m_gor = metrics_global["deming"]["slope"]
+    b_gor = metrics_global["deming"]["intercept"]
+    y_pred_gor = metrics_global["deming"]["y_pred"]
+    X_t = metrics_global["deming"]["X_t"]
+    Y_t = metrics_global["deming"]["Y_t"]
+    s2_e_gor = metrics_global["deming"]["s2_e_ort"]
+    sigma_gor = metrics_global["deming"]["sigma_ort"]
     sse_gor = np.sum((Y - y_pred_gor)**2)
     s2_e_pseudo_gor = sse_gor / (n - 2) if n > 2 else 0
-    se_m_gor = np.sqrt(s2_e_pseudo_gor / Sxx) if Sxx != 0 and n > 2 else 0
-    se_b_gor = se_m_gor * np.sqrt(np.sum(X**2) / n) if n > 0 else 0
-    rmse_gor = np.sqrt(sse_gor / n)
-    r2_gor = 1 - (sse_gor / Syy) if Syy != 0 else 0
+    se_m_gor = metrics_global["deming"]["se_slope"]
+    se_b_gor = metrics_global["deming"]["se_intercept"]
+    rmse_gor = metrics_global["deming"]["rmse"]
+    r2_gor = metrics_global["deming"]["r2"]
 
     # ==================================================
     # MÓDULO 3: GOR Propuesto (Ranjit Das et al.)
     # ==================================================
     Y_t_mean = np.mean(Y_t)
-    # Pendiente Propuesta (m_prop) e intersección (b_prop)
     if Sxx != 0:
         m_prop = np.sum((X - x_mean) * (Y_t - Y_t_mean)) / Sxx
     else:
@@ -2649,13 +2785,24 @@ if df is not None and len(df) >= 2:
     b_prop = Y_t_mean - m_prop * x_mean
     y_pred_prop = m_prop * X + b_prop
 
-    # Métricas de Error GOR Propuesto (comparado con datos reales observados Y)
     sse_prop = np.sum((Y - y_pred_prop)**2)
     s2_e_prop = sse_prop / (n - 2) if n > 2 else 0
     se_m_prop = np.sqrt(s2_e_prop / Sxx) if Sxx != 0 and n > 2 else 0
     se_b_prop = se_m_prop * np.sqrt(np.sum(X**2) / n) if n > 0 else 0
     rmse_prop = np.sqrt(sse_prop / n)
     r2_prop = 1 - (sse_prop / Syy) if Syy != 0 else 0
+
+    # ==================================================
+    # MÓDULO ADICIONAL: Método de Momentos (MoM)
+    # ==================================================
+    m_mom = metrics_global["mom"]["slope"]
+    b_mom = metrics_global["mom"]["intercept"]
+    y_pred_mom = metrics_global["mom"]["y_pred"]
+    se_m_mom = metrics_global["mom"]["se_slope"]
+    se_b_mom = metrics_global["mom"]["se_intercept"]
+    rmse_mom = metrics_global["mom"]["rmse"]
+    r2_mom = metrics_global["mom"]["r2"]
+    lambda_ratio = metrics_global["mom"]["lambda"]
 
     # ==================================================
     # MÓDULO 4: Regresión No Lineal (Cálculos Globales para Todos los Modelos)
@@ -3037,6 +3184,9 @@ if df is not None and len(df) >= 2:
     df_results["Y_est (GOR Prop)"] = y_pred_prop
     df_results["Residuo (GOR Prop)"] = Y - y_pred_prop
 
+    df_results["Y_est (MoM)"] = y_pred_mom
+    df_results["Residuo (MoM)"] = Y - y_pred_mom
+
     if exp_asymp_valid:
         df_results["Y_est (No Lin. Exponencial Asintota)"] = y_pred_nl_exp
         df_results["Residuo (No Lin. Exponencial Asintota)"] = Y - y_pred_nl_exp
@@ -3103,6 +3253,12 @@ if df is not None and len(df) >= 2:
             hovertemplate='X: %{x:.2f}<br>Y (Prop): %{y:.2f}<extra></extra>'
         ))
 
+        fig_plotly.add_trace(plgo.Scatter(
+            x=x_line, y=m_mom * x_line + b_mom, mode='lines', name=t["methods_names"]["MoM"],
+            line=dict(color='magenta', width=2, dash='dashdot'),
+            hovertemplate='X: %{x:.2f}<br>Y (MoM): %{y:.2f}<extra></extra>'
+        ))
+
         if nl_valid:
             x_line_nl = np.linspace(min(X), max(X), 200)
             if selected_nl_key == "Exponential":
@@ -3146,13 +3302,13 @@ if df is not None and len(df) >= 2:
     with col2:
         # Tabla Comparativa de Parámetros
         comp_data = {
-            t["table_col_method"]: [t["methods_names"]["SLR"], t["methods_names"]["GOR Conv"], t["methods_names"]["GOR Prop"]],
-            t["table_col_slope"]: [m_slr, m_gor, m_prop],
-            t["table_col_intercept"]: [c_slr, b_gor, b_prop],
-            t["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop],
-            t["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop],
-            t["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop],
-            t["table_col_r2"]: [r2_slr, r2_gor, r2_prop]
+            t["table_col_method"]: [t["methods_names"]["SLR"], t["methods_names"]["GOR Conv"], t["methods_names"]["GOR Prop"], t["methods_names"]["MoM"]],
+            t["table_col_slope"]: [m_slr, m_gor, m_prop, m_mom],
+            t["table_col_intercept"]: [c_slr, b_gor, b_prop, b_mom],
+            t["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop, se_m_mom],
+            t["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop, se_b_mom],
+            t["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop, rmse_mom],
+            t["table_col_r2"]: [r2_slr, r2_gor, r2_prop, r2_mom]
         }
         if exp_asymp_valid:
             comp_data[t["table_col_method"]].append(t["methods_names"]["No Lin. Exponencial Asintota"])
@@ -3235,7 +3391,7 @@ if df is not None and len(df) >= 2:
     # --- MÓDULOS EDUCATIVOS ---
     st.header(t["edu_header"])
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(t["tab_titles"])
+    tab1, tab2, tab3, tab_mom, tab4, tab5, tab6, tab7, tab8 = st.tabs(t["tab_titles"])
 
 
 
@@ -3368,6 +3524,39 @@ if df is not None and len(df) >= 2:
             st.markdown(t["t3_f_rmse"])
             st.latex(r"RMSE = \sqrt{\frac{\sum (Y_{obs} - Y_{t\_propuesto})^2}{n}}")
             st.latex(rf"\Rightarrow RMSE = {rmse_prop:.4f}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    with tab_mom:
+        st.subheader(t["tmom_title"])
+        st.markdown(t["tmom_edu_focus"])
+        
+        st.markdown(t["math_results"])
+        
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+            st.markdown(t["tmom_f_lambda"])
+            st.latex(r"\lambda = \frac{s_w^2 - \sigma_u^2}{s_w^2}")
+            st.latex(rf"\Rightarrow \lambda = {lambda_ratio:.4f}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+            st.markdown(t["tmom_f_slope"])
+            st.latex(r"\hat{\beta}_1 = \frac{s_{wy}}{s_w^2 - \sigma_u^2}")
+            st.latex(rf"\Rightarrow \hat{{\beta}}_1 = {m_mom:.4f}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_f2:
+            st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+            st.markdown(t["tmom_f_intercept"])
+            st.latex(r"\hat{\beta}_0 = \bar{Y} - \hat{\beta}_1 \bar{W}")
+            st.latex(rf"\Rightarrow \hat{{\beta}}_0 = {b_mom:.4f}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+            st.markdown(t["tmom_f_se"])
+            st.latex(r"SE_{\hat{\beta}_1} = \frac{SE_{\hat{\beta}_1(OLS)}}{\lambda}")
+            st.latex(rf"\Rightarrow SE_{{\hat{{\beta}}_1}} = {se_m_mom:.4f}")
             st.markdown("</div>", unsafe_allow_html=True)
 
     with tab4:
@@ -3983,6 +4172,8 @@ if df is not None and len(df) >= 2:
             "Y_t (GOR)": "Y_t (GOR)",
             "Y_est (GOR Prop)": t["xls_details_y_est"].format(t["methods_names"]["GOR Prop"]),
             "Residuo (GOR Prop)": t["xls_details_residual"].format(t["methods_names"]["GOR Prop"]),
+            "Y_est (MoM)": t["xls_details_y_est"].format(t["methods_names"]["MoM"]),
+            "Residuo (MoM)": t["xls_details_residual"].format(t["methods_names"]["MoM"]),
         }
         if exp_asymp_valid:
             rename_cols["Y_est (No Lin. Exponencial Asintota)"] = t["xls_details_y_est"].format(t["methods_names"]["No Lin. Exponencial Asintota"])
@@ -4025,6 +4216,10 @@ if df is not None and len(df) >= 2:
         models_details_guide.append({
             "name": "GOR Prop",
             "pred": lambda r: f"= {m_prop:.6f} * B{r} + {b_prop:.6f}",
+        })
+        models_details_guide.append({
+            "name": "MoM",
+            "pred": lambda r: f"= {m_mom:.6f} * B{r} + {b_mom:.6f}",
         })
         if exp_asymp_valid:
             models_details_guide.append({
@@ -4141,6 +4336,7 @@ if df is not None and len(df) >= 2:
                     {"name": t["methods_names"]["SLR"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_slr, "r2": r2_slr},
                     {"name": t["methods_names"]["GOR Conv"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_gor, "r2": r2_gor},
                     {"name": t["methods_names"]["GOR Prop"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_prop, "r2": r2_prop},
+                    {"name": t["methods_names"]["MoM"], "math": "y = m*x + c", "formula": "= m * X + c", "valid": True, "rmse": rmse_mom, "r2": r2_mom},
                     {"name": t["methods_names"]["No Lin. Exponencial Asintota"], "math": "y = a + b*e^(cx)", "formula": "= a + b * EXP(c * X)", "valid": exp_asymp_valid, "rmse": rmse_nl_exp if exp_asymp_valid else np.nan, "r2": r2_nl_exp if exp_asymp_valid else np.nan},
                     {"name": t["methods_names"]["No Lin. Logarítmico"], "math": "y = a + b*ln(x)", "formula": "= a + b * LN(X)", "valid": log_valid, "rmse": rmse_nl_log if log_valid else np.nan, "r2": r2_nl_log if log_valid else np.nan},
                     {"name": t["methods_names"]["No Lin. Potencial / Power Law"], "math": "y = a*x^b", "formula": "= a * (X ^ b)", "valid": pot_valid, "rmse": rmse_nl_pot if pot_valid else np.nan, "r2": r2_nl_pot if pot_valid else np.nan},
@@ -4202,6 +4398,10 @@ if df is not None and len(df) >= 2:
                 models_details.append({
                     "name": "GOR Prop",
                     "pred": lambda r: f"= {m_prop:.12f} * B{r} + {b_prop:.12f}",
+                })
+                models_details.append({
+                    "name": "MoM",
+                    "pred": lambda r: f"= {m_mom:.12f} * B{r} + {b_mom:.12f}",
                 })
                 if exp_asymp_valid:
                     models_details.append({
@@ -4319,6 +4519,7 @@ if df is not None and len(df) >= 2:
                 coefs_data.append([t["methods_names"]["SLR"], t["xls_param_slope"], m_slr, t["xls_param_intercept"], c_slr, "", ""])
                 coefs_data.append([t["methods_names"]["GOR Conv"], t["xls_param_slope"], m_gor, t["xls_param_intercept"], b_gor, "", ""])
                 coefs_data.append([t["methods_names"]["GOR Prop"], t["xls_param_slope"], m_prop, t["xls_param_intercept"], b_prop, "", ""])
+                coefs_data.append([t["methods_names"]["MoM"], t["xls_param_slope"], m_mom, t["xls_param_intercept"], b_mom, "", ""])
                 if exp_asymp_valid:
                     coefs_data.append([t["methods_names"]["No Lin. Exponencial Asintota"], t["xls_param_asymptote"], a_val, t["xls_param_scale_b"], b_nl_exp, t["xls_param_rate_c"], c_nl_exp])
                 if log_valid:
@@ -4393,13 +4594,13 @@ if df is not None and len(df) >= 2:
                 
                 # Rebuild comparison dataframe for PDF using t_pdf to avoid language conflicts
                 comp_data_pdf = {
-                    t_pdf["table_col_method"]: [t_pdf["methods_names"]["SLR"], t_pdf["methods_names"]["GOR Conv"], t_pdf["methods_names"]["GOR Prop"]],
-                    t_pdf["table_col_slope"]: [m_slr, m_gor, m_prop],
-                    t_pdf["table_col_intercept"]: [c_slr, b_gor, b_prop],
-                    t_pdf["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop],
-                    t_pdf["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop],
-                    t_pdf["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop],
-                    t_pdf["table_col_r2"]: [r2_slr, r2_gor, r2_prop]
+                    t_pdf["table_col_method"]: [t_pdf["methods_names"]["SLR"], t_pdf["methods_names"]["GOR Conv"], t_pdf["methods_names"]["GOR Prop"], t_pdf["methods_names"]["MoM"]],
+                    t_pdf["table_col_slope"]: [m_slr, m_gor, m_prop, m_mom],
+                    t_pdf["table_col_intercept"]: [c_slr, b_gor, b_prop, b_mom],
+                    t_pdf["table_col_se_m"]: [se_m_slr, se_m_gor, se_m_prop, se_m_mom],
+                    t_pdf["table_col_se_c"]: [se_c_slr, se_b_gor, se_b_prop, se_b_mom],
+                    t_pdf["table_col_rmse"]: [rmse_slr, rmse_gor, rmse_prop, rmse_mom],
+                    t_pdf["table_col_r2"]: [r2_slr, r2_gor, r2_prop, r2_mom]
                 }
                 if exp_asymp_valid:
                     comp_data_pdf[t_pdf["table_col_method"]].append(t_pdf["methods_names"]["No Lin. Exponencial Asintota"])
@@ -4472,6 +4673,7 @@ if df is not None and len(df) >= 2:
                 ax_pdf.plot(x_vals, m_slr * x_vals + c_slr, color='blue', label=t_pdf["chart_slr"])
                 ax_pdf.plot(x_vals, m_gor * x_vals + b_gor, color='orange', label=t_pdf["chart_gor_conv"])
                 ax_pdf.plot(x_vals, m_prop * x_vals + b_prop, color='green', label=t_pdf["chart_gor_prop"])
+                ax_pdf.plot(x_vals, m_mom * x_vals + b_mom, color='magenta', linestyle=':', label=t_pdf["methods_names"]["MoM"])
                 
                 if nl_valid:
                     if selected_nl_key == "Exponential":
@@ -4532,6 +4734,8 @@ if df is not None and len(df) >= 2:
                         eq = f"y = {m_gor:.4f}x + {b_gor:.4f}"
                     elif method_name == t_pdf["methods_names"]["GOR Prop"]:
                         eq = f"y = {m_prop:.4f}x + {b_prop:.4f}"
+                    elif method_name == t_pdf["methods_names"]["MoM"]:
+                        eq = f"y = {m_mom:.4f}x + {b_mom:.4f}"
                     elif method_name == t_pdf["methods_names"]["No Lin. Exponencial Asintota"]:
                         eq = nl_equation_exp
                     elif method_name == t_pdf["methods_names"]["No Lin. Logarítmico"]:

@@ -19,6 +19,8 @@ TRANSLATIONS = {
         "sb_err_file": "Error al leer el archivo: {}",
         "sb_header_params": "2. Parámetros Globales",
         "sb_eta": "Valor de Eta (η) para GOR:",
+        "sb_sigma_u": "Error estándar de X (σ_u):",
+        "sb_sigma_e": "Error estándar de Y (σ_e):",
         "sb_header_nl": "3. Regresión No Lineal",
         "sb_select_nl": "Selecciona el modelo no lineal:",
         "sb_asymptote": "Valor de la asíntota 'a':",
@@ -56,6 +58,7 @@ TRANSLATIONS = {
             "SLR": "SLR",
             "GOR Conv": "GOR Conv.",
             "GOR Prop": "GOR Prop.",
+            "MoM": "MoM (Atenuación)",
             "No Lin. Exponencial Asintota": "No Lin. Exponencial Asintota",
             "No Lin. Logarítmico": "No Lin. Logarítmico",
             "No Lin. Potencial / Power Law": "No Lin. Potencial / Power Law",
@@ -74,10 +77,11 @@ TRANSLATIONS = {
             "1. SLR (Mínimos Cuadrados)", 
             "2. GOR Convencional", 
             "3. GOR Propuesto", 
-            "4. Regresión No Lineal", 
-            "5. Power Law Model",
-            "6. Función Potencia",
-            "7. Función Exponencial",
+            "4. MoM (Atenuación)",
+            "5. Regresión No Lineal", 
+            "6. Power Law Model",
+            "7. Función Potencia",
+            "8. Función Exponencial",
             "📥 Datos y Exportación"
         ],
         
@@ -115,6 +119,14 @@ TRANSLATIONS = {
         "t3_f_eq_calc": "**Ecuación calculada:** $Y = {:.4f}X + ({:.4f})$",
         "t3_f_intercept": "**Intersección Propuesta ($c_2$):**",
         "t3_f_rmse": "**RMSE (Ajuste final contra datos reales $Y_{obs}$):**",
+        
+        # Tab MoM
+        "tmom_title": "Módulo 4: Método de Momentos (MoM / Corregido por Atenuación)",
+        "tmom_edu_focus": "**Enfoque Educativo:**\nEl Método de Momentos (MoM) para errores en las variables corrige el sesgo de **atenuación** en la pendiente de OLS. Cuando la variable independiente $X$ tiene error de medición con varianza $\\sigma_u^2$, la varianza observada $s_w^2$ está inflada y la pendiente de OLS se sesga hacia cero. MoM divide la pendiente de OLS por el factor de confiabilidad $\\lambda = (s_w^2 - \\sigma_u^2) / s_w^2$ para recuperar la pendiente estructural verdadera.",
+        "tmom_f_lambda": "**Factor de Confiabilidad ($\\lambda$):**",
+        "tmom_f_slope": "**Pendiente Corregida ($\\hat{\\beta}_1$):**",
+        "tmom_f_intercept": "**Intersección Corregida ($\\hat{\\beta}_0$):**",
+        "tmom_f_se": "**Error Estándar Corregido de la Pendiente ($SE_{\\beta_1}$):**",
         
         # Tab 4
         "t4_title": "Módulo 4: Regresión No Lineal",
@@ -731,6 +743,8 @@ TRANSLATIONS = {
         "sb_err_file": "Error reading file: {}",
         "sb_header_params": "2. Global Parameters",
         "sb_eta": "Eta (η) value for GOR:",
+        "sb_sigma_u": "X standard error (σ_u):",
+        "sb_sigma_e": "Y standard error (σ_e):",
         "sb_header_nl": "3. Non-Linear Regression",
         "sb_select_nl": "Select non-linear model:",
         "sb_asymptote": "Asymptote 'a' value:",
@@ -768,6 +782,7 @@ TRANSLATIONS = {
             "SLR": "SLR",
             "GOR Conv": "Conventional GOR",
             "GOR Prop": "Proposed GOR",
+            "MoM": "MoM (Attenuation)",
             "No Lin. Exponencial Asintota": "Non-Lin. Exponential Asymptote",
             "No Lin. Logarítmico": "Non-Lin. Logarithmic",
             "No Lin. Potencial / Power Law": "Non-Lin. Power / Power Law",
@@ -786,10 +801,11 @@ TRANSLATIONS = {
             "1. SLR (Least Squares)", 
             "2. Conventional GOR", 
             "3. Proposed GOR", 
-            "4. Non-Linear Regression", 
-            "5. Power Law Model",
-            "6. Power Function",
-            "7. Exponential Function",
+            "4. MoM (Attenuation)",
+            "5. Non-Linear Regression", 
+            "6. Power Law Model",
+            "7. Power Function",
+            "8. Exponential Function",
             "📥 Data and Export"
         ],
         
@@ -827,6 +843,14 @@ TRANSLATIONS = {
         "t3_f_eq_calc": "**Calculated equation:** $Y = {:.4f}X + ({:.4f})$",
         "t3_f_intercept": "**Proposed Intercept ($c_2$):**",
         "t3_f_rmse": "**RMSE (Final fit against observed real data $Y_{obs}$):**",
+        
+        # Tab MoM
+        "tmom_title": "Module 4: Method of Moments (MoM / Corrected for Attenuation)",
+        "tmom_edu_focus": "**Educational Focus:**\nThe Method of Moments (MoM) for errors-in-variables corrects the **attenuation** bias in the OLS slope. When the independent variable $X$ has measurement error with variance $\\sigma_u^2$, the observed variance $s_w^2$ is inflated and the OLS slope is biased toward zero. MoM divides the OLS slope by the reliability ratio $\\lambda = (s_w^2 - \\sigma_u^2) / s_w^2$ to recover the true structural slope.",
+        "tmom_f_lambda": "**Reliability Ratio ($\\lambda$):**",
+        "tmom_f_slope": "**Corrected Slope ($\\hat{\\beta}_1$):**",
+        "tmom_f_intercept": "**Corrected Intercept ($\\hat{\\beta}_0$):**",
+        "tmom_f_se": "**Corrected Slope Standard Error ($SE_{\\beta_1}$):**",
         
         # Tab 4
         "t4_title": "Module 4: Non-Linear Regression",

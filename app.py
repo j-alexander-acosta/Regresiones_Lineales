@@ -13,6 +13,73 @@ import translations
 importlib.reload(translations)
 from translations import TRANSLATIONS
 
+# --- HELPER FUNCTIONS FOR STREAMLIT DATA EDITOR CALLBACKS ---
+def update_session_df(df_key, editor_key):
+    if editor_key not in st.session_state:
+        return
+    editor_state = st.session_state[editor_key]
+    df = st.session_state[df_key]
+    
+    # Apply edits
+    edited_rows = editor_state.get("edited_rows", {})
+    for row_idx_str, col_edits in edited_rows.items():
+        row_idx = int(row_idx_str)
+        for col_name, val in col_edits.items():
+            df.at[row_idx, col_name] = val
+            
+    # Apply additions
+    added_rows = editor_state.get("added_rows", [])
+    if added_rows:
+        added_df = pd.DataFrame(added_rows)
+        for col in df.columns:
+            if col not in added_df.columns:
+                added_df[col] = np.nan
+        added_df = added_df[df.columns]
+        df = pd.concat([df, added_df], ignore_index=True)
+        
+    # Apply deletions
+    deleted_rows = editor_state.get("deleted_rows", [])
+    if deleted_rows:
+        df = df.drop(deleted_rows).reset_index(drop=True)
+        
+    st.session_state[df_key] = df
+
+def update_mc_true_df():
+    if "mc_editor" not in st.session_state:
+        return
+    editor_state = st.session_state["mc_editor"]
+    df = st.session_state.mc_true_df
+    
+    # Apply edits
+    edited_rows = editor_state.get("edited_rows", {})
+    for row_idx_str, col_edits in edited_rows.items():
+        row_idx = int(row_idx_str)
+        for col_name, val in col_edits.items():
+            if col_name == "True mbm_bmb":
+                df.at[row_idx, "True X (mbm_bmb)"] = val
+            elif col_name == "True MwM_wMw":
+                df.at[row_idx, "True Y (MwM_wMw)"] = val
+                
+    # Apply additions
+    added_rows = editor_state.get("added_rows", [])
+    if added_rows:
+        added_records = []
+        for row in added_rows:
+            added_records.append({
+                "True X (mbm_bmb)": row.get("True mbm_bmb", np.nan),
+                "True Y (MwM_wMw)": row.get("True MwM_wMw", np.nan)
+            })
+        added_df = pd.DataFrame(added_records)
+        df = pd.concat([df, added_df], ignore_index=True)
+        
+    # Apply deletions
+    deleted_rows = editor_state.get("deleted_rows", [])
+    if deleted_rows:
+        df = df.drop(deleted_rows).reset_index(drop=True)
+        
+    st.session_state.mc_true_df = df
+
+
 # --- CLASE HELPER PARA ERRORES EN LAS VARIABLES (CARROLL & RUPPERT, 1996) ---
 class LinearErrorsInVariables:
     """
@@ -182,11 +249,926 @@ analysis_type = st.sidebar.selectbox(t["sb_analysis_type"], [
     t["sb_simple_regression"], 
     t["sb_multiple_regression"],
     t["sb_probability_distributions"],
-    t["sb_monte_carlo_regression"]
+    t["sb_monte_carlo_regression"],
+    t["sb_carroll_ruppert_table"],
+    t["sb_markov_chain"],
+    t["sb_seismic_bssa"]
 ])
 is_mlr = (analysis_type == t["sb_multiple_regression"])
 is_prob = (analysis_type == t["sb_probability_distributions"])
 is_mc_reg = (analysis_type == t["sb_monte_carlo_regression"])
+is_cr_table = (analysis_type == t["sb_carroll_ruppert_table"])
+is_markov_chain = (analysis_type == t["sb_markov_chain"])
+is_seismic_bssa = (analysis_type == t["sb_seismic_bssa"])
+
+if is_cr_table:
+    st.header(t["cr_title"])
+    st.markdown(t["cr_desc"])
+    
+    st.markdown("""
+    <style>
+    .latex-container {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 5px solid #1f77b4;
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<div class='latex-container'>", unsafe_allow_html=True)
+    st.markdown("<h4 style='margin-top:0;'>Fórmulas Matemáticas Utilizadas / Mathematical Formulas Used:</h4>", unsafe_allow_html=True)
+    
+    st.markdown("1. **Relación de Varianzas (Sin error de ecuación) / Variance Ratio (Without equation error):**")
+    st.latex(r"\eta_{\text{no\_eq}} = \left(\frac{\sigma_y}{\sigma_x}\right)^2")
+    
+    st.markdown("2. **Pendiente del Método de Momentos / Method of Moments (MoM) Slope:**")
+    st.latex(r"\beta_1^{\text{MoM}} = \frac{s_{wy}}{s_w^2 - \sigma_x^2}")
+    
+    st.markdown("3. **Varianza de Residuos MoM / MoM Residuals Variance:**")
+    st.latex(r"s_{\text{res},\text{MoM}}^2 = \frac{n-1}{n-2} \left[ s_y^2 - 2 \beta_1^{\text{MoM}} s_{wy} + (\beta_1^{\text{MoM}})^2 s_w^2 \right]")
+    
+    st.markdown("4. **Varianza del Error de Ecuación / Equation Error Variance ($\\sigma_q^2$):**")
+    st.latex(r"\sigma_q^2 = s_{\text{res},\text{MoM}}^2 - (\beta_1^{\text{MoM}})^2 \sigma_x^2 - \sigma_y^2")
+    
+    st.markdown("5. **Relación de Varianzas (Con error de ecuación) / Variance Ratio (With equation error):**")
+    st.latex(r"\eta_{\text{with\_eq}} = \frac{\sigma_q^2 + \sigma_y^2}{\sigma_x^2}")
+    
+    st.markdown("6. **Pendiente de Regresión Ortogonal (GOR) / Orthogonal Regression (GOR) Slope:**")
+    st.latex(r"\beta_{1,\text{OR}} = \frac{(s_y^2 - \eta s_w^2) + \sqrt{(s_y^2 - \eta s_w^2)^2 + 4 \eta s_{wy}^2}}{2 s_{wy}}")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.sidebar.markdown(f"### {t['sb_header_data']}")
+    cr_data_source = st.sidebar.radio(t["sb_data_source"], (t["sb_manual"], t["sb_upload"]), key="cr_ds")
+    
+    cr_df = None
+    if cr_data_source == t["sb_manual"]:
+        if "cr_manual_df_v2" not in st.session_state:
+            # Preload dataset exactly matching the covariance in the user's screenshot
+            desired_mean = np.array([5.0, 5.0])
+            desired_cov = np.array([[0.408359, 0.371890], [0.371890, 0.425499]])
+            np.random.seed(42)
+            Z = np.random.normal(0, 1, (100, 2))
+            Z = Z - np.mean(Z, axis=0)
+            S_Z = np.cov(Z, rowvar=False)
+            L_Z = np.linalg.cholesky(S_Z)
+            Z_white = np.dot(Z, np.linalg.inv(L_Z).T)
+            L = np.linalg.cholesky(desired_cov)
+            X_final = np.dot(Z_white, L.T) + desired_mean
+            st.session_state.cr_manual_df_v2 = pd.DataFrame({
+                "X": np.round(X_final[:, 0], 6),
+                "Y": np.round(X_final[:, 1], 6)
+            })
+        
+        st.markdown(f"### {t['cr_data_editor_title']}")
+        cr_df = st.data_editor(
+            st.session_state.cr_manual_df_v2,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "X": st.column_config.NumberColumn("X", format="%.6f"),
+                "Y": st.column_config.NumberColumn("Y", format="%.6f")
+            },
+            key="cr_manual_editor_v2",
+            on_change=update_session_df,
+            args=("cr_manual_df_v2", "cr_manual_editor_v2")
+        )
+    else:
+        uploaded_file = st.sidebar.file_uploader(t["sb_upload_desc"], type=["csv", "xlsx"], key="cr_uploader")
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df_raw = pd.read_csv(uploaded_file)
+                else:
+                    df_raw = pd.read_excel(uploaded_file)
+                
+                st.sidebar.markdown(t["sb_select_cols"])
+                x_col = st.sidebar.selectbox(t["sb_col_x"], df_raw.columns, key="cr_x_col")
+                y_col = st.sidebar.selectbox(t["sb_col_y"], df_raw.columns, key="cr_y_col")
+                
+                cr_df = df_raw[[x_col, y_col]].rename(columns={x_col: "X", y_col: "Y"}).dropna()
+            except Exception as e:
+                st.sidebar.error(t["sb_err_file"].format(e))
+        else:
+            st.info(t["info_data_points"] if "info_data_points" in t else "Por favor sube un archivo para comenzar.")
+            
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Parámetros de Incertidumbre")
+    
+    default_sig_x_str = "0.200000, 0.100000"
+    sig_x_input_str = st.sidebar.text_input(t["cr_sigma_x_list"], value=default_sig_x_str, key="cr_sig_x_list_v2")
+    
+    default_sig_y_str = "0.024000, 0.045000, 0.070000, 0.100000, 0.120000, 0.150000, 0.180000, 0.200000"
+    sig_y_input_str = st.sidebar.text_input(t["cr_sigma_y_list"], value=default_sig_y_str, key="cr_sig_y_list_v2")
+    
+    try:
+        sigma_x_list = [float(x.strip()) for x in sig_x_input_str.split(",") if x.strip()]
+    except Exception:
+        st.sidebar.error("Error al procesar sigma_x. Asegúrate de separar los números con comas.")
+        sigma_x_list = [0.2, 0.1]
+        
+    try:
+        sigma_y_list = [float(y.strip()) for y in sig_y_input_str.split(",") if y.strip()]
+    except Exception:
+        st.sidebar.error("Error al procesar sigma_y. Asegúrate de separar los números con comas.")
+        sigma_y_list = [0.024, 0.045, 0.07, 0.1, 0.12, 0.15, 0.18, 0.2]
+        
+    if cr_df is not None and len(cr_df) >= 3:
+        n_points = len(cr_df)
+        X_vals = cr_df["X"].values
+        Y_vals = cr_df["Y"].values
+        
+        sw2 = np.var(X_vals, ddof=1)
+        sy2 = np.var(Y_vals, ddof=1)
+        swy = np.cov(X_vals, Y_vals)[0, 1]
+        
+        st.markdown(f"### {t['cr_statistics_hdr']}")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(t["cr_n_points"], n_points)
+        with col2:
+            st.metric(t["cr_sw2"], f"{sw2:.6f}")
+        with col3:
+            st.metric(t["cr_sy2"], f"{sy2:.6f}")
+        with col4:
+            st.metric(t["cr_swy"], f"{swy:.6f}")
+            
+        ols_slope = swy / sw2 if sw2 != 0 else 0.0
+        
+        cr_rows = []
+        for sx in sigma_x_list:
+            for sy in sigma_y_list:
+                eta_no_eq = (sy / sx)**2 if sx != 0 else np.nan
+                
+                denom_mm = sw2 - sx**2
+                if denom_mm > 1e-6:
+                    slope_mm = swy / denom_mm
+                else:
+                    slope_mm = np.nan
+                    
+                if not np.isnan(slope_mm):
+                    s_res_mom_2 = ((n_points - 1) / (n_points - 2)) * (sy2 - 2 * slope_mm * swy + (slope_mm**2) * sw2)
+                    sigma_q2 = s_res_mom_2 - (slope_mm**2) * (sx**2) - sy**2
+                else:
+                    sigma_q2 = np.nan
+                    
+                if not np.isnan(sigma_q2) and sx != 0:
+                    eta_with_eq = (sigma_q2 + sy**2) / (sx**2)
+                else:
+                    eta_with_eq = np.nan
+                    
+                if not np.isnan(eta_no_eq) and swy != 0:
+                    num = (sy2 - eta_no_eq * sw2) + np.sqrt((sy2 - eta_no_eq * sw2)**2 + 4 * eta_no_eq * swy**2)
+                    slope_or_no_eq = num / (2 * swy)
+                else:
+                    slope_or_no_eq = np.nan
+                    
+                if not np.isnan(eta_with_eq) and eta_with_eq > 0 and swy != 0:
+                    num = (sy2 - eta_with_eq * sw2) + np.sqrt((sy2 - eta_with_eq * sw2)**2 + 4 * eta_with_eq * swy**2)
+                    slope_or_with_eq = num / (2 * swy)
+                else:
+                    slope_or_with_eq = np.nan
+                    
+                cr_rows.append({
+                    "sigma_x": sx,
+                    "sigma_y": sy,
+                    "eta_no_eq": eta_no_eq,
+                    "sigma_q^2": sigma_q2,
+                    "eta_with_eq": eta_with_eq,
+                    "slope_OLS": ols_slope,
+                    "slope_OR(no_eq)": slope_or_no_eq,
+                    "slope_MM": slope_mm,
+                    "slope_OR(with_eq)": slope_or_with_eq
+                })
+                
+        res_df = pd.DataFrame(cr_rows)
+        
+        st.markdown(f"### {t['cr_table_title']}")
+        st.dataframe(
+            res_df,
+            column_config={
+                "sigma_x": st.column_config.NumberColumn("sigma_x", format="%.6f"),
+                "sigma_y": st.column_config.NumberColumn("sigma_y", format="%.6f"),
+                "eta_no_eq": st.column_config.NumberColumn("eta_no_eq", format="%.6f"),
+                "sigma_q^2": st.column_config.NumberColumn("sigma_q^2", format="%.6f"),
+                "eta_with_eq": st.column_config.NumberColumn("eta_with_eq", format="%.6f"),
+                "slope_OLS": st.column_config.NumberColumn("slope_OLS", format="%.6f"),
+                "slope_OR(no_eq)": st.column_config.NumberColumn("slope_OR(no_eq)", format="%.6f"),
+                "slope_MM": st.column_config.NumberColumn("slope_MM", format="%.6f"),
+                "slope_OR(with_eq)": st.column_config.NumberColumn("slope_OR(with_eq)", format="%.6f"),
+            },
+            use_container_width=True
+        )
+        
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            csv_cr = res_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label=t["cr_download_csv"],
+                data=csv_cr,
+                file_name="carroll_ruppert_comparison.csv",
+                mime="text/csv",
+                key="cr_download_csv_btn"
+            )
+        with col_dl2:
+            output_excel = io.BytesIO()
+            with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
+                res_df.to_excel(writer, sheet_name="Comparison", index=False)
+            excel_data = output_excel.getvalue()
+            st.download_button(
+                label=t["cr_download_excel"],
+                data=excel_data,
+                file_name="carroll_ruppert_comparison.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="cr_download_xlsx_btn"
+            )
+        
+        # --- SECCIÓN DE GRÁFICO COMPARATIVO ---
+        st.markdown("---")
+        st.subheader(t["cr_plot_title"])
+        
+        # Select error combination to plot
+        combinations_labels = [f"σ_x = {row['sigma_x']:.4f}, σ_y = {row['sigma_y']:.4f}" for index, row in res_df.iterrows()]
+        selected_comb_label = st.selectbox(t["cr_plot_select"], combinations_labels, key="cr_comb_select")
+        selected_index = combinations_labels.index(selected_comb_label)
+        selected_row = res_df.iloc[selected_index]
+        
+        # Slopes
+        s_ols = selected_row["slope_OLS"]
+        s_or_no_eq = selected_row["slope_OR(no_eq)"]
+        s_mm = selected_row["slope_MM"]
+        s_or_with_eq = selected_row["slope_OR(with_eq)"]
+        
+        # Intercepts: beta0 = mean_y - beta1 * mean_x
+        mean_x = np.mean(X_vals)
+        mean_y = np.mean(Y_vals)
+        
+        c_ols = mean_y - s_ols * mean_x
+        c_or_no_eq = mean_y - s_or_no_eq * mean_x if not np.isnan(s_or_no_eq) else np.nan
+        c_mm = mean_y - s_mm * mean_x if not np.isnan(s_mm) else np.nan
+        c_or_with_eq = mean_y - s_or_with_eq * mean_x if not np.isnan(s_or_with_eq) else np.nan
+        
+        # Plotly Figure
+        fig_plotly = plgo.Figure()
+        
+        # Observed Data points
+        fig_plotly.add_trace(plgo.Scatter(
+            x=X_vals, y=Y_vals, mode='markers', name=t["chart_obs"],
+            marker=dict(color='black', size=8),
+            hovertemplate='X: %{x}<br>Y: %{y}<extra></extra>'
+        ))
+        
+        # X line span
+        x_line = np.linspace(min(X_vals), max(X_vals), 100)
+        
+        # 1. OLS Line
+        fig_plotly.add_trace(plgo.Scatter(
+            x=x_line, y=s_ols * x_line + c_ols, mode='lines', name=t["cr_plot_ols"],
+            line=dict(color='blue', width=2),
+            hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+        ))
+        
+        # 2. OR (no_eq) Line
+        if not np.isnan(s_or_no_eq):
+            fig_plotly.add_trace(plgo.Scatter(
+                x=x_line, y=s_or_no_eq * x_line + c_or_no_eq, mode='lines', name=t["cr_plot_or_no_eq"],
+                line=dict(color='orange', width=2, dash='dash'),
+                hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+            ))
+            
+        # 3. MM Line
+        if not np.isnan(s_mm):
+            fig_plotly.add_trace(plgo.Scatter(
+                x=x_line, y=s_mm * x_line + c_mm, mode='lines', name=t["cr_plot_mm"],
+                line=dict(color='magenta', width=2, dash='dashdot'),
+                hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+            ))
+            
+        # 4. OR (with_eq) Line
+        if not np.isnan(s_or_with_eq):
+            fig_plotly.add_trace(plgo.Scatter(
+                x=x_line, y=s_or_with_eq * x_line + c_or_with_eq, mode='lines', name=t["cr_plot_or_with_eq"],
+                line=dict(color='red', width=2.5, dash='dot'),
+                hovertemplate='X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>'
+            ))
+            
+        fig_plotly.update_layout(
+            title=t["cr_plot_title"],
+            xaxis_title=t["cr_plot_x"],
+            yaxis_title=t["cr_plot_y"],
+            hovermode='closest',
+            template='plotly_white',
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        )
+        
+        st.plotly_chart(fig_plotly, use_container_width=True)
+            
+    else:
+        st.warning("Se requieren al menos 3 puntos de datos para calcular la tabla de Carroll & Ruppert (debido al cálculo de varianza de residuos con n - 2 grados de libertad).")
+        
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: gray; font-size: 14px;'>"
+        "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+        "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+        "</p>", 
+        unsafe_allow_html=True
+    )
+    st.stop()
+
+if is_markov_chain:
+    st.header(t["mkv_title"])
+    st.markdown(t["mkv_desc"])
+    
+    st.sidebar.markdown(f"### {t['sb_header_data']}")
+    states_input = st.sidebar.text_input(t["mkv_states_input"], value="A, B, C", key="mkv_states_inp")
+    states = [s.strip() for s in states_input.split(",") if s.strip()]
+    
+    if len(states) < 2:
+        st.warning("Se requieren al menos 2 estados para modelar una cadena de Markov / At least 2 states are required.")
+        st.stop()
+        
+    if "mkv_tpm" not in st.session_state or st.session_state.get("mkv_prev_states") != states:
+        n_states = len(states)
+        if n_states == 3:
+            init_vals = [
+                [0.7, 0.2, 0.1],
+                [0.3, 0.4, 0.3],
+                [0.2, 0.3, 0.5]
+            ]
+        else:
+            init_vals = np.ones((n_states, n_states)) / n_states
+        st.session_state.mkv_tpm = pd.DataFrame(init_vals, index=states, columns=states)
+        st.session_state.mkv_prev_states = states
+        
+    if "mkv_init_probs" not in st.session_state or len(st.session_state.mkv_init_probs.columns) != len(states):
+        st.session_state.mkv_init_probs = pd.DataFrame(
+            [[1.0] + [0.0] * (len(states) - 1)],
+            columns=states,
+            index=["Probabilidad / Probability"]
+        )
+
+    st.subheader(t["mkv_tpm_title"])
+    tpm_df = st.data_editor(
+        st.session_state.mkv_tpm,
+        use_container_width=True,
+        key="mkv_tpm_editor",
+        on_change=update_session_df,
+        args=("mkv_tpm", "mkv_tpm_editor")
+    )
+    
+    row_sums = tpm_df.sum(axis=1)
+    invalid_rows = [r for r, s in zip(states, row_sums) if not np.isclose(s, 1.0, atol=1e-4)]
+    if invalid_rows:
+        st.warning(t["mkv_sum_warning"] + ", ".join(invalid_rows))
+        if st.button(t["mkv_normalize_btn"], key="mkv_norm_btn"):
+            normalized_vals = tpm_df.values.copy()
+            for idx in range(len(normalized_vals)):
+                row_sum = np.sum(normalized_vals[idx])
+                if row_sum > 0:
+                    normalized_vals[idx] = normalized_vals[idx] / row_sum
+                else:
+                    normalized_vals[idx] = np.ones(len(states)) / len(states)
+            st.session_state.mkv_tpm = pd.DataFrame(normalized_vals, index=states, columns=states)
+            st.success(t["mkv_normalize_success"])
+            st.rerun()
+            
+    P = tpm_df.values.copy()
+    for idx in range(len(P)):
+        row_sum = np.sum(P[idx])
+        if row_sum > 0:
+            P[idx] = P[idx] / row_sum
+        else:
+            P[idx] = np.ones(len(states)) / len(states)
+            
+    st.subheader(t["mkv_init_probs"])
+    init_probs_df = st.data_editor(
+        st.session_state.mkv_init_probs,
+        use_container_width=True,
+        key="mkv_init_editor",
+        on_change=update_session_df,
+        args=("mkv_init_probs", "mkv_init_editor")
+    )
+    
+    pi_0 = init_probs_df.values[0].copy()
+    pi_0_sum = np.sum(pi_0)
+    if pi_0_sum > 0:
+        pi_0 = pi_0 / pi_0_sum
+    else:
+        pi_0 = np.zeros(len(states))
+        pi_0[0] = 1.0
+
+    mkv_tabs = st.tabs([t["mkv_tab_evolution"], t["mkv_tab_steady"], t["mkv_tab_simulation"]])
+    
+    with mkv_tabs[0]:
+        st.subheader(t["mkv_evolution_chart_title"])
+        N_steps = st.slider(t["mkv_steps_slider"], min_value=1, max_value=50, value=20, key="mkv_steps_sl")
+        
+        history = [pi_0]
+        curr_pi = pi_0.copy()
+        for _ in range(N_steps):
+            curr_pi = np.dot(curr_pi, P)
+            history.append(curr_pi)
+            
+        history = np.array(history)
+        
+        fig_evo = plgo.Figure()
+        t_axis = np.arange(N_steps + 1)
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        
+        for idx, name in enumerate(states):
+            color = colors[idx % len(colors)]
+            fig_evo.add_trace(plgo.Scatter(
+                x=t_axis, y=history[:, idx], mode='lines+markers', name=name,
+                line=dict(color=color, width=2),
+                hovertemplate='Paso / Step %{x}<br>Prob: %{y:.4f}<extra></extra>'
+            ))
+            
+        fig_evo.update_layout(
+            title=t["mkv_evolution_chart_title"],
+            xaxis_title="Paso / Step (t)",
+            yaxis_title="Probabilidad / Probability",
+            hovermode='closest',
+            template='plotly_white',
+            legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99)
+        )
+        st.plotly_chart(fig_evo, use_container_width=True)
+        
+        st.subheader(t["mkv_tpm_power_title"].replace("$P^N$", f"$P^{{{N_steps}}}$"))
+        P_N = np.linalg.matrix_power(P, N_steps)
+        P_N_df = pd.DataFrame(P_N, index=states, columns=states)
+        st.dataframe(
+            P_N_df,
+            column_config={c: st.column_config.NumberColumn(c, format="%.6f") for c in states},
+            use_container_width=True
+        )
+        
+    with mkv_tabs[1]:
+        st.subheader(t["mkv_steady_title"])
+        st.markdown(t["mkv_steady_desc"])
+        
+        n_st = P.shape[0]
+        A_st = P.T - np.eye(n_st)
+        A_st[-1, :] = 1
+        b_st = np.zeros(n_st)
+        b_st[-1] = 1
+        
+        try:
+            steady_dist = np.linalg.solve(A_st, b_st)
+            steady_dist = np.clip(steady_dist, 0.0, 1.0)
+            steady_dist = steady_dist / np.sum(steady_dist)
+        except np.linalg.LinAlgError:
+            P_pow = np.linalg.matrix_power(P, 100)
+            steady_dist = P_pow[0, :]
+            
+        steady_df = pd.DataFrame({
+            "Estado / State": states,
+            "Probabilidad Estacionaria / Stationary Probability": steady_dist
+        })
+        
+        col_st1, col_st2 = st.columns([1, 1])
+        with col_st1:
+            st.dataframe(
+                steady_df,
+                column_config={
+                    "Estado / State": st.column_config.TextColumn("Estado / State"),
+                    "Probabilidad Estacionaria / Stationary Probability": st.column_config.NumberColumn("Probabilidad Estacionaria / Stationary Probability", format="%.6f")
+                },
+                use_container_width=True
+            )
+        with col_st2:
+            fig_steady = plgo.Figure()
+            fig_steady.add_trace(plgo.Bar(
+                x=states, y=steady_dist,
+                marker_color='#2ca02c',
+                hovertemplate='Estado: %{x}<br>Prob: %{y:.6f}<extra></extra>'
+            ))
+            fig_steady.update_layout(
+                title=t["mkv_steady_title"],
+                xaxis_title="Estado / State",
+                yaxis_title="Probabilidad / Probability",
+                template='plotly_white'
+            )
+            st.plotly_chart(fig_steady, use_container_width=True)
+            
+    with mkv_tabs[2]:
+        st.subheader(t["mkv_sim_title"])
+        st.markdown(t["mkv_sim_desc"])
+        
+        col_sim1, col_sim2 = st.columns(2)
+        with col_sim1:
+            sim_start = st.selectbox(t["mkv_sim_start_state"], states, key="mkv_sim_start")
+        with col_sim2:
+            sim_steps = st.slider(t["mkv_sim_steps"], min_value=10, max_value=1000, value=200, step=10, key="mkv_sim_steps_sl")
+            
+        if st.button(t["mkv_sim_run_btn"], key="mkv_run_btn"):
+            current_state_idx = states.index(sim_start)
+            visited_indices = [current_state_idx]
+            for _ in range(sim_steps):
+                next_idx = np.random.choice(len(states), p=P[current_state_idx])
+                visited_indices.append(next_idx)
+                current_state_idx = next_idx
+            visited_states = [states[idx] for idx in visited_indices]
+            
+            st.session_state.mkv_sim_path = visited_states
+            st.session_state.mkv_sim_indices = visited_indices
+            
+        if "mkv_sim_path" in st.session_state:
+            visited_states = st.session_state.mkv_sim_path
+            visited_indices = st.session_state.mkv_sim_indices
+            
+            st.markdown(f"**{t['mkv_sim_path_title']}**")
+            path_str = " ➔ ".join(visited_states[:60]) + (" ➔ ..." if len(visited_states) > 60 else "")
+            st.code(path_str, language="")
+            
+            counts = np.bincount(visited_indices, minlength=len(states))
+            empirical_dist = counts / len(visited_indices)
+            
+            fig_comp = plgo.Figure()
+            fig_comp.add_trace(plgo.Bar(
+                x=states, y=empirical_dist, name=t["mkv_sim_empirical"],
+                marker_color='#1f77b4',
+                hovertemplate='Estado: %{x}<br>Empírica: %{y:.4f}<extra></extra>'
+            ))
+            fig_comp.add_trace(plgo.Bar(
+                x=states, y=steady_dist, name=t["mkv_sim_theoretical"],
+                marker_color='#2ca02c',
+                hovertemplate='Estado: %{x}<br>Teórica: %{y:.4f}<extra></extra>'
+            ))
+            fig_comp.update_layout(
+                title=t["mkv_sim_dist_title"],
+                barmode='group',
+                xaxis_title="Estado / State",
+                yaxis_title="Proporción / Proportion",
+                template='plotly_white'
+            )
+            st.plotly_chart(fig_comp, use_container_width=True)
+            
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: gray; font-size: 14px;'>"
+        "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+        "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+        "</p>", 
+        unsafe_allow_html=True
+    )
+    st.stop()
+
+if is_seismic_bssa:
+    st.header(t["bssa_title"])
+    st.markdown(t["bssa_desc"])
+    
+    st.sidebar.markdown(f"### {t['sb_header_data']}")
+    preset = st.sidebar.selectbox(t["bssa_preset_select"], [
+        t["bssa_preset_chile"],
+        t["bssa_preset_nz77"],
+        t["bssa_preset_sc3"],
+        t["bssa_preset_iside"],
+        t["bssa_preset_manual"]
+    ], key="bssa_preset_sel")
+    
+    def generate_exact_cov_data(mean, cov, n, seed=42):
+        np.random.seed(seed)
+        Z = np.random.normal(0, 1, (n, 2))
+        Z = Z - np.mean(Z, axis=0)
+        S_Z = np.cov(Z, rowvar=False)
+        L_Z = np.linalg.cholesky(S_Z)
+        Z_white = np.dot(Z, np.linalg.inv(L_Z).T)
+        L = np.linalg.cholesky(cov)
+        X_final = np.dot(Z_white, L.T) + mean
+        return pd.DataFrame({
+            "X": np.round(X_final[:, 0], 6),
+            "Y": np.round(X_final[:, 1], 6)
+        })
+        
+    bssa_df = None
+    
+    if preset == t["bssa_preset_nz77"]:
+        cov_nz77 = [[0.109333, 0.123875], [0.123875, 0.170000]]
+        bssa_df = generate_exact_cov_data(np.array([5.0, 5.0]), np.array(cov_nz77), 200, seed=42)
+    elif preset == t["bssa_preset_sc3"]:
+        cov_sc3 = [[0.182967, 0.173819], [0.173819, 0.209757]]
+        bssa_df = generate_exact_cov_data(np.array([5.0, 5.0]), np.array(cov_sc3), 213, seed=42)
+    elif preset == t["bssa_preset_iside"]:
+        cov_iside = [[0.266100, 0.245344], [0.245344, 0.257344]]
+        bssa_df = generate_exact_cov_data(np.array([5.0, 5.0]), np.array(cov_iside), 599, seed=42)
+    elif preset == t["bssa_preset_chile"]:
+        cov_chile = [[0.135600, 0.118900], [0.118900, 0.145000]]
+        bssa_df = generate_exact_cov_data(np.array([5.0, 5.0]), np.array(cov_chile), 350, seed=42)
+    else:
+        if "bssa_manual_df" not in st.session_state:
+            cov_nz77 = [[0.109333, 0.123875], [0.123875, 0.170000]]
+            st.session_state.bssa_manual_df = generate_exact_cov_data(np.array([5.0, 5.0]), np.array(cov_nz77), 200, seed=42)
+        
+        st.markdown(f"### {t['bssa_data_editor_title']}")
+        bssa_df = st.data_editor(
+            st.session_state.bssa_manual_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "X": st.column_config.NumberColumn("X (ML)", format="%.4f"),
+                "Y": st.column_config.NumberColumn("Y (Mw)", format="%.4f")
+            },
+            key="bssa_manual_editor",
+            on_change=update_session_df,
+            args=("bssa_manual_df", "bssa_manual_editor")
+        )
+
+    if preset != t["bssa_preset_manual"] and bssa_df is not None:
+        st.markdown(f"### {t['bssa_data_editor_title']}")
+        st.dataframe(bssa_df, use_container_width=True, height=250)
+
+    if bssa_df is not None and len(bssa_df) >= 3:
+        n = len(bssa_df)
+        X_vals = bssa_df["X"].values
+        Y_vals = bssa_df["Y"].values
+        
+        sxx = np.var(X_vals, ddof=1)
+        syy = np.var(Y_vals, ddof=1)
+        sxy = np.cov(X_vals, Y_vals)[0, 1]
+        
+        st.markdown(f"### {t['cr_statistics_hdr']}")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(t["cr_n_points"], n)
+        with col2:
+            st.metric(t["cr_sw2"], f"{sxx:.6f}")
+        with col3:
+            st.metric(t["cr_sy2"], f"{syy:.6f}")
+        with col4:
+            st.metric(t["cr_swy"], f"{sxy:.6f}")
+            
+        ols_slope = sxy / sxx if sxx != 0 else 0.0
+        ols_se = np.sqrt((syy - (sxy**2)/sxx)/((n - 2)*sxx)) if sxx != 0 and n > 2 else 0.0
+        
+        st.markdown(f"### {t['bssa_plot_title']}")
+        
+        ref_sx = 0.07
+        ref_sy = 0.1
+        ref_eta = (ref_sy / ref_sx)**2
+        
+        mean_x = np.mean(X_vals)
+        mean_y = np.mean(Y_vals)
+        c_ols = mean_y - ols_slope * mean_x
+        
+        denom_mm = sxx - ref_sx**2
+        if denom_mm > 1e-6:
+            ref_slope_mm = sxy / denom_mm
+            c_mm = mean_y - ref_slope_mm * mean_x
+        else:
+            ref_slope_mm = np.nan
+            c_mm = np.nan
+            
+        num_eiv = syy - ref_eta * sxx + np.sqrt((syy - ref_eta * sxx)**2 + 4 * ref_eta * sxy**2)
+        ref_slope_eiv = num_eiv / (2 * sxy) if sxy != 0 else np.nan
+        c_eiv = mean_y - ref_slope_eiv * mean_x if not np.isnan(ref_slope_eiv) else np.nan
+        
+        fig_scatter = plgo.Figure()
+        fig_scatter.add_trace(plgo.Scatter(
+            x=X_vals, y=Y_vals, mode='markers', name=t["chart_obs"],
+            marker=dict(color='black', size=6),
+            hovertemplate='ML (X): %{x}<br>Mw (Y): %{y}<extra></extra>'
+        ))
+        
+        x_line = np.linspace(min(X_vals), max(X_vals), 100)
+        fig_scatter.add_trace(plgo.Scatter(
+            x=x_line, y=ols_slope * x_line + c_ols, mode='lines',
+            name=f"OLS (Slope: {ols_slope:.3f})",
+            line=dict(color='green', width=2),
+            hovertemplate='X: %{x:.2f}<br>Y: %{y:.2f}<extra></extra>'
+        ))
+        
+        if not np.isnan(ref_slope_mm):
+            fig_scatter.add_trace(plgo.Scatter(
+                x=x_line, y=ref_slope_mm * x_line + c_mm, mode='lines',
+                name=f"MM (σx={ref_sx}, Slope: {ref_slope_mm:.3f})",
+                line=dict(color='gray', width=2, dash='dash'),
+                hovertemplate='X: %{x:.2f}<br>Y: %{y:.2f}<extra></extra>'
+            ))
+            
+        if not np.isnan(ref_slope_eiv):
+            fig_scatter.add_trace(plgo.Scatter(
+                x=x_line, y=ref_slope_eiv * x_line + c_eiv, mode='lines',
+                name=f"EIV (σx={ref_sx}, σy={ref_sy}, Slope: {ref_slope_eiv:.3f})",
+                line=dict(color='blue', width=2, dash='dot'),
+                hovertemplate='X: %{x:.2f}<br>Y: %{y:.2f}<extra></extra>'
+            ))
+            
+        fig_scatter.update_layout(
+            xaxis_title=t["bssa_plot_x"],
+            yaxis_title=t["bssa_plot_y"],
+            template='plotly_white',
+            hovermode='closest'
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+        st.markdown(f"### {t['bssa_slope_vs_error_title']}")
+        
+        grid_sx = np.linspace(0.01, 0.20, 50)
+        ols_curve = np.full(len(grid_sx), ols_slope)
+        mm_curve = []
+        eiv_01_curve = []
+        eiv_02_curve = []
+        
+        for sx in grid_sx:
+            denom = sxx - sx**2
+            if denom > 1e-6:
+                mm_val = sxy / denom
+            else:
+                mm_val = np.nan
+            mm_curve.append(mm_val)
+            
+            eta_01 = (0.1**2) / (sx**2)
+            num_01 = syy - eta_01 * sxx + np.sqrt((syy - eta_01 * sxx)**2 + 4 * eta_01 * sxy**2)
+            eiv_01 = num_01 / (2 * sxy) if sxy != 0 else np.nan
+            eiv_01_curve.append(eiv_01)
+            
+            eta_02 = (0.2**2) / (sx**2)
+            num_02 = syy - eta_02 * sxx + np.sqrt((syy - eta_02 * sxx)**2 + 4 * eta_02 * sxy**2)
+            eiv_02 = num_02 / (2 * sxy) if sxy != 0 else np.nan
+            eiv_02_curve.append(eiv_02)
+            
+        fig_slope_vs_err = plgo.Figure()
+        
+        fig_slope_vs_err.add_trace(plgo.Scatter(
+            x=grid_sx, y=ols_curve, mode='lines',
+            name="β₁ (OLS)",
+            line=dict(color='green', width=2),
+            hovertemplate='σ_x: %{x:.4f}<br>β₁ (OLS): %{y:.4f}<extra></extra>'
+        ))
+        
+        fig_slope_vs_err.add_trace(plgo.Scatter(
+            x=grid_sx, y=mm_curve, mode='lines',
+            name="β₁ (MM)",
+            line=dict(color='gray', width=2),
+            hovertemplate='σ_x: %{x:.4f}<br>β₁ (MM): %{y:.4f}<extra></extra>'
+        ))
+        
+        fig_slope_vs_err.add_trace(plgo.Scatter(
+            x=grid_sx, y=eiv_01_curve, mode='lines',
+            name="β₁ (EIV, σ_y = 0.1)",
+            line=dict(color='red', width=2),
+            hovertemplate='σ_x: %{x:.4f}<br>β₁ (EIV σy=0.1): %{y:.4f}<extra></extra>'
+        ))
+        
+        fig_slope_vs_err.add_trace(plgo.Scatter(
+            x=grid_sx, y=eiv_02_curve, mode='lines',
+            name="β₁ (EIV, σ_y = 0.2)",
+            line=dict(color='blue', width=2),
+            hovertemplate='σ_x: %{x:.4f}<br>β₁ (EIV σy=0.2): %{y:.4f}<extra></extra>'
+        ))
+        
+        fig_slope_vs_err.update_layout(
+            xaxis_title="σ_ML (σ_x)",
+            yaxis_title="Slope (β₁)",
+            template='plotly_white',
+            hovermode='closest'
+        )
+        st.plotly_chart(fig_slope_vs_err, use_container_width=True)
+        
+        st.markdown(f"### {t['bssa_table_title']}")
+        
+        tbl_sx_list = [0.024, 0.045, 0.07, 0.10, 0.12, 0.15, 0.18, 0.20]
+        tbl_sy_list = [0.2, 0.1]
+        
+        rows = []
+        for sy in tbl_sy_list:
+            for sx in tbl_sx_list:
+                ols_slope_val = ols_slope
+                ols_se_val = ols_se
+                
+                denom_mm = sxx - sx**2
+                if denom_mm > 1e-6:
+                    mm_slope_val = sxy / denom_mm
+                    s_res_mom_2 = ((n - 1) / (n - 2)) * (syy - 2 * mm_slope_val * sxy + (mm_slope_val**2) * sxx)
+                    mm_se_val = np.sqrt((sxx * s_res_mom_2 + (mm_slope_val**2) * (sx**4)) / (((sxx - sx**2)**2) * (n - 1)))
+                else:
+                    mm_slope_val = np.nan
+                    mm_se_val = np.nan
+                    s_res_mom_2 = np.nan
+                    
+                eta = (sy**2) / (sx**2)
+                num_eiv = syy - eta * sxx + np.sqrt((syy - eta * sxx)**2 + 4 * eta * sxy**2)
+                eiv_slope_val = num_eiv / (2 * sxy) if sxy != 0 else np.nan
+                
+                if not np.isnan(eiv_slope_val):
+                    sxx_val = (np.sqrt((syy - eta * sxx)**2 + 4 * eta * sxy**2) - (syy - eta * sxx)) / (2 * eta)
+                    suu_val = (syy + eta * sxx - np.sqrt((syy - eta * sxx)**2 + 4 * eta * sxy**2)) / (2 * eta)
+                    s_res_eiv_2 = ((n - 1) * (eta + eiv_slope_val**2) * suu_val) / (n - 2)
+                    
+                    denom_se_eiv = sxx_val**2 * (n - 1)
+                    if denom_se_eiv > 0:
+                        val_under_sqrt = sxx * s_res_eiv_2 - (eiv_slope_val**2) * suu_val
+                        if val_under_sqrt > 0:
+                            eiv_se_val = np.sqrt(val_under_sqrt / denom_se_eiv)
+                        else:
+                            eiv_se_val = 0.0
+                    else:
+                        eiv_se_val = np.nan
+                else:
+                    eiv_se_val = np.nan
+                    
+                if not np.isnan(mm_slope_val) and not np.isnan(s_res_mom_2):
+                    sigma_q2 = s_res_mom_2 - sy**2 - (mm_slope_val**2) * (sx**2)
+                else:
+                    sigma_q2 = np.nan
+                    
+                if not np.isnan(sigma_q2) and sigma_q2 > 0:
+                    eta_corr = (sigma_q2 + sy**2) / (sx**2)
+                    num_eiv_corr = syy - eta_corr * sxx + np.sqrt((syy - eta_corr * sxx)**2 + 4 * eta_corr * sxy**2)
+                    eiv_corr_slope = num_eiv_corr / (2 * sxy) if sxy != 0 else np.nan
+                    
+                    if not np.isnan(eiv_corr_slope):
+                        sxx_corr = (np.sqrt((syy - eta_corr * sxx)**2 + 4 * eta_corr * sxx)**2 - (syy - eta_corr * sxx)) / (2 * eta_corr)
+                        suu_corr = (syy + eta_corr * sxx - np.sqrt((syy - eta_corr * sxx)**2 + 4 * eta_corr * sxy**2)) / (2 * eta_corr)
+                        s_res_eiv_corr = ((n - 1) * (eta_corr + eiv_corr_slope**2) * suu_corr) / (n - 2)
+                        denom_se_corr = sxx_corr**2 * (n - 1)
+                        if denom_se_corr > 0:
+                            val_under_sqrt_corr = sxx * s_res_eiv_corr - (eiv_corr_slope**2) * suu_corr
+                            if val_under_sqrt_corr > 0:
+                                eiv_corr_se = np.sqrt(val_under_sqrt_corr / denom_se_corr)
+                            else:
+                                eiv_corr_se = 0.0
+                        else:
+                            eiv_corr_se = np.nan
+                    else:
+                        eiv_corr_slope = np.nan
+                        eiv_corr_se = np.nan
+                else:
+                    eiv_corr_slope = np.nan
+                    eiv_corr_se = np.nan
+                    
+                rows.append({
+                    "sigma_y": sy,
+                    "sigma_x": sx,
+                    "beta_OLS": ols_slope_val,
+                    "se_OLS": ols_se_val,
+                    "beta_MM": mm_slope_val,
+                    "se_MM": mm_se_val,
+                    "beta_EIV": eiv_slope_val,
+                    "se_EIV": eiv_se_val,
+                    "sigma_q^2": sigma_q2,
+                    "beta_EIVcorr": eiv_corr_slope,
+                    "se_EIVcorr": eiv_corr_se
+                })
+                
+        tbl_df = pd.DataFrame(rows)
+        st.dataframe(
+            tbl_df,
+            column_config={
+                "sigma_y": st.column_config.NumberColumn("σ_y (Mw)", format="%.4f"),
+                "sigma_x": st.column_config.NumberColumn("σ_x (ML)", format="%.4f"),
+                "beta_OLS": st.column_config.NumberColumn("β₁ OLS", format="%.3f"),
+                "se_OLS": st.column_config.NumberColumn("SE OLS", format="%.3f"),
+                "beta_MM": st.column_config.NumberColumn("β₁ MM", format="%.3f"),
+                "se_MM": st.column_config.NumberColumn("SE MM", format="%.3f"),
+                "beta_EIV": st.column_config.NumberColumn("β₁ EIV", format="%.3f"),
+                "se_EIV": st.column_config.NumberColumn("SE EIV", format="%.3f"),
+                "sigma_q^2": st.column_config.NumberColumn("σ_q²", format="%.3f"),
+                "beta_EIVcorr": st.column_config.NumberColumn("β₁ EIVcorr", format="%.3f"),
+                "se_EIVcorr": st.column_config.NumberColumn("SE EIVcorr", format="%.3f"),
+            },
+            use_container_width=True
+
+        )
+        
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            csv_bssa = tbl_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label=t["cr_download_csv"],
+                data=csv_bssa,
+                file_name="bssa_slopes_comparison.csv",
+                mime="text/csv",
+                key="bssa_download_csv_btn"
+            )
+        with col_dl2:
+            output_excel = io.BytesIO()
+            with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
+                tbl_df.to_excel(writer, sheet_name="BSSA Table", index=False)
+            excel_data = output_excel.getvalue()
+            st.download_button(
+                label=t["cr_download_excel"],
+                data=excel_data,
+                file_name="bssa_slopes_comparison.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="bssa_download_xlsx_btn"
+            )
+            
+    else:
+        st.warning("Se requieren al menos 3 puntos de datos para este análisis.")
+        
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: gray; font-size: 14px;'>"
+        "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+        "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+        "</p>", 
+        unsafe_allow_html=True
+    )
+    st.stop()
 
 if is_mc_reg:
     st.header(t["mc_reg_title"])
@@ -269,13 +1251,9 @@ if is_mc_reg:
             "OBSERVED MB": st.column_config.NumberColumn(disabled=True, format="%.6f"),
             "OBSERVED MW": st.column_config.NumberColumn(disabled=True, format="%.6f"),
         },
-        key="mc_editor"
+        key="mc_editor",
+        on_change=update_mc_true_df
     )
-    
-    st.session_state.mc_true_df = pd.DataFrame({
-        "True X (mbm_bmb)": edited_df["True mbm_bmb"],
-        "True Y (MwM_wMw)": edited_df["True MwM_wMw"]
-    })
     
     X = edited_df["OBSERVED MB"].values
     Y = edited_df["OBSERVED MW"].values
@@ -2549,9 +3527,10 @@ if df is not None and len(df) >= 2:
                 st.session_state.db_df_points,
                 num_rows="dynamic",
                 key="db_data_editor",
-                use_container_width=True
+                use_container_width=True,
+                on_change=update_session_df,
+                args=("db_df_points", "db_data_editor")
             )
-            st.session_state.db_df_points = edited_db_df
             
             points_clean = edited_db_df.dropna(subset=["X", "Y"])
             

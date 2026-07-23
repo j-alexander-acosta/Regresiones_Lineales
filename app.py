@@ -579,23 +579,453 @@ if is_cr_table:
     st.stop()
 
 if is_markov_chain:
-    st.header(t["mkv_title"])
-    st.markdown(t["mkv_desc"])
-    
     st.sidebar.markdown(f"### {t['sb_header_data']}")
-    states_input = st.sidebar.text_input(t["mkv_states_input"], value="A, B, C", key="mkv_states_inp")
+    
+    model_type = st.sidebar.radio(
+        t["mkv_model_mode_label"],
+        [t["mkv_mode_standard"], t["mkv_mode_hmm"]],
+        key="mkv_model_mode"
+    )
+    
+    states_input = st.sidebar.text_input(t["mkv_states_input"], value=t["mkv_default_states"], key="mkv_states_inp")
     states = [s.strip() for s in states_input.split(",") if s.strip()]
     
     if len(states) < 2:
-        st.warning("Se requieren al menos 2 estados para modelar una cadena de Markov / At least 2 states are required.")
+        st.warning("Se requieren al menos 2 estados / At least 2 states are required.")
         st.stop()
+        
+    if model_type == t["mkv_mode_hmm"]:
+        st.header(t["hmm_title"])
+        st.markdown(t["hmm_desc"])
+        
+        # Observations input
+        obs_input = st.sidebar.text_input(t["hmm_obs_input"], value=t["hmm_default_obs"], key="hmm_obs_inp")
+        observations = [o.strip() for o in obs_input.split(",") if o.strip()]
+        if len(observations) < 2:
+            st.warning("Se requieren al menos 2 observaciones / At least 2 observations are required.")
+            st.stop()
+            
+        # HMM matrices initialization
+        if ("hmm_tpm" not in st.session_state 
+                or st.session_state.get("hmm_prev_states") != states 
+                or st.session_state.get("hmm_prev_obs") != observations):
+            n_states = len(states)
+            n_obs = len(observations)
+            
+            # Transition Matrix (TPM)
+            if n_states == 3:
+                init_vals_tpm = [
+                    [0.4, 0.4, 0.2],
+                    [0.2, 0.5, 0.3],
+                    [0.2, 0.3, 0.5]
+                ]
+            else:
+                init_vals_tpm = np.ones((n_states, n_states)) / n_states
+                
+            # Emission Matrix (EPM)
+            if n_states == 3 and n_obs == 3:
+                init_vals_epm = [
+                    [0.3, 0.6, 0.1],  # Soleado -> Paraguas, Normal, Impermeable
+                    [0.7, 0.2, 0.1],  # Nublado -> Paraguas, Normal, Impermeable
+                    [0.5, 0.1, 0.4]   # Lluvioso -> Paraguas, Normal, Impermeable
+                ]
+            else:
+                init_vals_epm = np.ones((n_states, n_obs)) / n_obs
+                
+            st.session_state.hmm_tpm = pd.DataFrame(init_vals_tpm, index=states, columns=states)
+            st.session_state.hmm_epm = pd.DataFrame(init_vals_epm, index=states, columns=observations)
+            st.session_state.hmm_prev_states = states
+            st.session_state.hmm_prev_obs = observations
+            
+        if "hmm_init_probs" not in st.session_state or len(st.session_state.hmm_init_probs.columns) != len(states):
+            if len(states) == 3:
+                init_p_vals = [[0.4, 0.4, 0.2]]
+            else:
+                init_p_vals = [[1.0] + [0.0] * (len(states) - 1)]
+            st.session_state.hmm_init_probs = pd.DataFrame(
+                init_p_vals,
+                columns=states,
+                index=["Probabilidad / Probability"]
+            )
+            
+        # Editors and tabs
+        hmm_tabs = st.tabs([t["hmm_tab_params"], t["hmm_tab_evolution"], t["hmm_tab_path"]])
+        
+        with hmm_tabs[0]:
+            st.subheader(t["mkv_tpm_title"])
+            tpm_df = st.data_editor(
+                st.session_state.hmm_tpm,
+                use_container_width=True,
+                key="hmm_tpm_editor",
+                on_change=update_session_df,
+                args=("hmm_tpm", "hmm_tpm_editor")
+            )
+            
+            row_sums = tpm_df.sum(axis=1)
+            invalid_rows = [r for r, s in zip(states, row_sums) if not np.isclose(s, 1.0, atol=1e-4)]
+            if invalid_rows:
+                st.warning(t["mkv_sum_warning"] + ", ".join(invalid_rows))
+                if st.button(t["mkv_normalize_btn"], key="hmm_norm_tpm_btn"):
+                    normalized_vals = tpm_df.values.copy()
+                    for idx in range(len(normalized_vals)):
+                        r_sum = np.sum(normalized_vals[idx])
+                        if r_sum > 0:
+                            normalized_vals[idx] /= r_sum
+                        else:
+                            normalized_vals[idx] = np.ones(len(states)) / len(states)
+                    st.session_state.hmm_tpm = pd.DataFrame(normalized_vals, index=states, columns=states)
+                    st.success(t["mkv_normalize_success"])
+                    st.rerun()
+                    
+            st.subheader(t["hmm_epm_title"])
+            epm_df = st.data_editor(
+                st.session_state.hmm_epm,
+                use_container_width=True,
+                key="hmm_epm_editor",
+                on_change=update_session_df,
+                args=("hmm_epm", "hmm_epm_editor")
+            )
+            
+            epm_row_sums = epm_df.sum(axis=1)
+            invalid_epm_rows = [r for r, s in zip(states, epm_row_sums) if not np.isclose(s, 1.0, atol=1e-4)]
+            if invalid_epm_rows:
+                st.warning(t["mkv_sum_warning"] + ", ".join(invalid_epm_rows))
+                if st.button(t["mkv_normalize_btn"], key="hmm_norm_epm_btn"):
+                    normalized_vals = epm_df.values.copy()
+                    for idx in range(len(normalized_vals)):
+                        r_sum = np.sum(normalized_vals[idx])
+                        if r_sum > 0:
+                            normalized_vals[idx] /= r_sum
+                        else:
+                            normalized_vals[idx] = np.ones(len(observations)) / len(observations)
+                    st.session_state.hmm_epm = pd.DataFrame(normalized_vals, index=states, columns=observations)
+                    st.success(t["mkv_normalize_success"])
+                    st.rerun()
+                    
+            st.subheader(t["mkv_init_probs"])
+            init_probs_df = st.data_editor(
+                st.session_state.hmm_init_probs,
+                use_container_width=True,
+                key="hmm_init_editor",
+                on_change=update_session_df,
+                args=("hmm_init_probs", "hmm_init_editor")
+            )
+            
+            pi_0 = init_probs_df.values[0].copy()
+            pi_0_sum = np.sum(pi_0)
+            if pi_0_sum > 0:
+                pi_0 = pi_0 / pi_0_sum
+            else:
+                pi_0 = np.zeros(len(states))
+                pi_0[0] = 1.0
+                
+        with hmm_tabs[1]:
+            st.subheader(t["mkv_evolution_chart_title"])
+            N_steps = st.slider(t["mkv_steps_slider"], min_value=1, max_value=50, value=20, key="hmm_steps_sl")
+            
+            P = tpm_df.values.copy()
+            for idx in range(len(P)):
+                r_sum = np.sum(P[idx])
+                if r_sum > 0: P[idx] /= r_sum
+                else: P[idx] = np.ones(len(states)) / len(states)
+                
+            E = epm_df.values.copy()
+            for idx in range(len(E)):
+                r_sum = np.sum(E[idx])
+                if r_sum > 0: E[idx] /= r_sum
+                else: E[idx] = np.ones(len(observations)) / len(observations)
+                
+            hidden_history = [pi_0]
+            obs_history = [np.dot(pi_0, E)]
+            curr_pi = pi_0.copy()
+            for _ in range(N_steps):
+                curr_pi = np.dot(curr_pi, P)
+                hidden_history.append(curr_pi)
+                obs_history.append(np.dot(curr_pi, E))
+                
+            hidden_history = np.array(hidden_history)
+            obs_history = np.array(obs_history)
+            t_axis = np.arange(N_steps + 1)
+            
+            col_evo1, col_evo2 = st.columns(2)
+            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+            
+            with col_evo1:
+                st.markdown("**Estados Ocultos (Hidden States)**")
+                fig_hid = plgo.Figure()
+                for idx, name in enumerate(states):
+                    color = colors[idx % len(colors)]
+                    fig_hid.add_trace(plgo.Scatter(
+                        x=t_axis, y=hidden_history[:, idx], mode='lines+markers', name=name,
+                        line=dict(color=color, width=2),
+                        hovertemplate='Paso %{x}<br>Prob: %{y:.4f}<extra></extra>'
+                    ))
+                fig_hid.update_layout(
+                    xaxis_title="Paso / Step (t)",
+                    yaxis_title="Probabilidad / Probability",
+                    template='plotly_white',
+                    legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99)
+                )
+                st.plotly_chart(fig_hid, use_container_width=True)
+                
+            with col_evo2:
+                st.markdown("**Observaciones (Observations)**")
+                fig_obs = plgo.Figure()
+                for idx, name in enumerate(observations):
+                    color = colors[(idx + len(states)) % len(colors)]
+                    fig_obs.add_trace(plgo.Scatter(
+                        x=t_axis, y=obs_history[:, idx], mode='lines+markers', name=name,
+                        line=dict(color=color, width=2),
+                        hovertemplate='Paso %{x}<br>Prob: %{y:.4f}<extra></extra>'
+                    ))
+                fig_obs.update_layout(
+                    xaxis_title="Paso / Step (t)",
+                    yaxis_title="Probabilidad / Probability",
+                    template='plotly_white',
+                    legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99)
+                )
+                st.plotly_chart(fig_obs, use_container_width=True)
+                
+        with hmm_tabs[2]:
+            st.subheader(t["hmm_path_title"])
+            st.markdown(t["hmm_path_desc"])
+            
+            path_len = st.slider(t["mkv_seq_length"], min_value=2, max_value=10, value=4, key="hmm_path_len_sl")
+            
+            st.markdown(f"**{t['hmm_path_hidden_seq']}**")
+            cols_states = st.columns(path_len)
+            selected_states = []
+            
+            default_states_es = ["Nublado", "Soleado", "Lluvioso", "Nublado"]
+            default_states_en = ["Cloudy", "Sunny", "Rainy", "Cloudy"]
+            default_obs_es = ["Paraguas", "Normal", "Paraguas", "Impermeable"]
+            default_obs_en = ["Umbrella", "Normal", "Umbrella", "Raincoat"]
+            
+            for i in range(path_len):
+                default_state_index = 0
+                if path_len == 4 and len(states) >= 3:
+                    target_state = default_states_es[i] if st.session_state.lang == 'es' else default_states_en[i]
+                    matching = [idx for idx, s in enumerate(states) if target_state.lower() in s.lower()]
+                    if matching:
+                        default_state_index = matching[0]
+                    else:
+                        default_state_index = min(i % len(states), len(states) - 1)
+                else:
+                    default_state_index = min(i % len(states), len(states) - 1)
+                    
+                st_val = cols_states[i].selectbox(
+                    f"{t['mkv_seq_step'].format(i+1)} (E{i+1})",
+                    states,
+                    index=default_state_index,
+                    key=f"hmm_state_{i}"
+                )
+                selected_states.append(st_val)
+                
+            st.markdown(f"**{t['hmm_path_obs_seq']}**")
+            cols_obs = st.columns(path_len)
+            selected_obs = []
+            for i in range(path_len):
+                default_obs_index = 0
+                if path_len == 4 and len(observations) >= 3:
+                    target_obs = default_obs_es[i] if st.session_state.lang == 'es' else default_obs_en[i]
+                    matching_obs = [idx for idx, o in enumerate(observations) if target_obs.lower() in o.lower()]
+                    if matching_obs:
+                        default_obs_index = matching_obs[0]
+                    else:
+                        default_obs_index = min(i % len(observations), len(observations) - 1)
+                else:
+                    default_obs_index = min(i % len(observations), len(observations) - 1)
+                    
+                ob_val = cols_obs[i].selectbox(
+                    f"{t['mkv_seq_step'].format(i+1)} (O{i+1})",
+                    observations,
+                    index=default_obs_index,
+                    key=f"hmm_obs_{i}"
+                )
+                selected_obs.append(ob_val)
+                
+            P_trans = tpm_df.values.copy()
+            P_em = epm_df.values.copy()
+            
+            for idx in range(len(P_trans)):
+                r_sum = np.sum(P_trans[idx])
+                if r_sum > 0: P_trans[idx] /= r_sum
+                else: P_trans[idx] = np.ones(len(states)) / len(states)
+            for idx in range(len(P_em)):
+                r_sum = np.sum(P_em[idx])
+                if r_sum > 0: P_em[idx] /= r_sum
+                else: P_em[idx] = np.ones(len(observations)) / len(observations)
+                
+            first_state = selected_states[0]
+            first_state_idx = states.index(first_state)
+            init_p = pi_0[first_state_idx]
+            
+            trans_steps = []
+            trans_probs = []
+            for i in range(path_len - 1):
+                from_s = selected_states[i]
+                to_s = selected_states[i+1]
+                from_idx = states.index(from_s)
+                to_idx = states.index(to_s)
+                prob = P_trans[from_idx, to_idx]
+                trans_steps.append((from_s, to_s))
+                trans_probs.append(prob)
+                
+            total_trans_prob = init_p * np.prod(trans_probs) if trans_probs else init_p
+            
+            em_steps = []
+            em_probs = []
+            for i in range(path_len):
+                st_val = selected_states[i]
+                ob_val = selected_obs[i]
+                st_idx = states.index(st_val)
+                ob_idx = observations.index(ob_val)
+                prob = P_em[st_idx, ob_idx]
+                em_steps.append((st_val, ob_val))
+                em_probs.append(prob)
+                
+            total_em_prob = np.prod(em_probs) if em_probs else 1.0
+            joint_prob = total_trans_prob * total_em_prob
+            
+            def get_state_emoji(state_name):
+                name = state_name.lower()
+                if "soleado" in name or "sunny" in name:
+                    return "☀️"
+                elif "nublado" in name or "cloudy" in name:
+                    return "☁️"
+                elif "lluvioso" in name or "rainy" in name:
+                    return "🌧️"
+                return "🔮"
+
+            def get_obs_emoji(obs_name):
+                name = obs_name.lower()
+                if "paraguas" in name or "umbrella" in name:
+                    return "☔"
+                elif "normal" in name:
+                    return "👕"
+                elif "impermeable" in name or "raincoat" in name:
+                    return "🧥"
+                return "📦"
+                
+            def get_state_color(state_name):
+                name = state_name.lower()
+                if "soleado" in name or "sunny" in name:
+                    return "linear-gradient(135deg, #ffb300, #ff6f00)"
+                elif "nublado" in name or "cloudy" in name:
+                    return "linear-gradient(135deg, #90a4ae, #455a64)"
+                elif "lluvioso" in name or "rainy" in name:
+                    return "linear-gradient(135deg, #4fc3f7, #0288d1)"
+                else:
+                    colors = [
+                        "linear-gradient(135deg, #26a69a, #00695c)",
+                        "linear-gradient(135deg, #ab47bc, #6a1b9a)",
+                        "linear-gradient(135deg, #ec407a, #ad1457)",
+                        "linear-gradient(135deg, #78909c, #37474f)",
+                        "linear-gradient(135deg, #5c6bc0, #283593)"
+                    ]
+                    idx = sum(ord(c) for c in state_name) % len(colors)
+                    return colors[idx]
+                    
+            st.markdown("### 🗺️ " + t["hmm_diagram_title"])
+            
+            html_content = """
+            <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 15px; padding: 25px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; margin-bottom: 25px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
+            """
+            
+            for idx in range(path_len):
+                st_val = selected_states[idx]
+                ob_val = selected_obs[idx]
+                st_emoji = get_state_emoji(st_val)
+                ob_emoji = get_obs_emoji(ob_val)
+                st_color = get_state_color(st_val)
+                em_prob = em_probs[idx]
+                
+                html_content += f"""
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <!-- Observation Box (Top) -->
+                    <div style="background: linear-gradient(135deg, #17a2b8, #117a8b); color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 100px;">
+                        <span style="font-size: 1.25em; display: block;">{ob_emoji}</span>
+                        <span style="font-size: 0.95em; display: block; margin-top: 2px;">{ob_val}</span>
+                        <span style="font-size: 0.7em; font-weight: normal; opacity: 0.85; display: block; margin-top: 2px;">O{idx+1}</span>
+                    </div>
+                    
+                    <!-- Vertical Emission Arrow -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 4px 0;">
+                        <span style="font-weight: 800; color: #dc3545; font-size: 0.85em; background-color: #f8d7da; padding: 1px 5px; border-radius: 8px; border: 1px dashed #f5c6cb; margin-bottom: 2px;">{em_prob:.4f}</span>
+                        <span style="color: #dc3545; font-size: 1.3em; line-height: 1;">▲</span>
+                    </div>
+                    
+                    <!-- Hidden State Box (Bottom) -->
+                    <div style="background: {st_color}; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 100px;">
+                        <span style="font-size: 1.25em; display: block;">{st_emoji}</span>
+                        <span style="font-size: 0.95em; display: block; margin-top: 2px;">{st_val}</span>
+                        <span style="font-size: 0.7em; font-weight: normal; opacity: 0.85; display: block; margin-top: 2px;">E{idx+1}</span>
+                """
+                
+                if idx == 0:
+                    html_content += f"""
+                        <div style="border-top: 1px solid rgba(255,255,255,0.3); font-size: 0.7em; font-weight: normal; margin-top: 6px; padding-top: 4px;">P(init) = {init_p:.4f}</div>
+                    """
+                html_content += "</div></div>"
+                
+                if idx < path_len - 1:
+                    trans_prob = trans_probs[idx]
+                    html_content += f"""
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 50px; align-self: flex-end; margin-bottom: 20px;">
+                        <span style="font-weight: 800; color: #1f77b4; font-size: 0.85em; background-color: #e3f2fd; padding: 1px 5px; border-radius: 8px; border: 1px dashed #90caf9; margin-bottom: 2px;">{trans_prob:.4f}</span>
+                        <span style="font-size: 1.4em; color: #90a4ae; line-height: 1;">➔</span>
+                    </div>
+                    """
+                    
+            html_content += "</div>"
+            st.html(html_content)
+            
+            col_calc1, col_calc2 = st.columns(2)
+            
+            with col_calc1:
+                st.markdown(f"### 🧮 {t['hmm_path_calc']}")
+                
+                st.markdown(f"#### **{t['hmm_path_emission_formula']}**")
+                em_terms_latex = " \\cdot ".join([f"P(O_{{{i+1}}} \\mid E_{{{i+1}}})" for i in range(path_len)])
+                em_vals_latex = " \\cdot ".join([f"{prob:.4f}" for prob in em_probs])
+                
+                st.markdown(f"$$\\text{{Emisiones}} = {em_terms_latex}$$")
+                st.markdown(f"$$\\text{{Emisiones}} = {em_vals_latex} = \\mathbf{{{total_em_prob:.6f}}}$$")
+                
+                st.markdown(f"#### **{t['hmm_path_transition_formula']}**")
+                tr_terms_latex = "P(E_1) " + "".join([f" \\cdot P(E_{{{i+2}}} \\mid E_{{{i+1}}})" for i in range(path_len - 1)])
+                tr_vals_latex = f"{init_p:.4f}" + "".join([f" \\cdot {prob:.4f}" for prob in trans_probs])
+                
+                st.markdown(f"$$\\text{{Transiciones}} = {tr_terms_latex}$$")
+                st.markdown(f"$$\\text{{Transiciones}} = {tr_vals_latex} = \\mathbf{{{total_trans_prob:.6f}}}$$")
+                
+            with col_calc2:
+                st.markdown(f"### 📊 {t['hmm_path_joint_formula']}")
+                st.markdown("$$\\text{Probabilidad Conjunta } P(O, E) = \\text{Emisiones} \\times \\text{Transiciones}$$")
+                st.markdown(f"$$P(O, E) = {total_em_prob:.6f} \\times {total_trans_prob:.6f}$$")
+                st.markdown(f"$$P(O, E) = \\mathbf{{{joint_prob:.8f}}}$$")
+                
+                st.success(f"**{t['hmm_path_result']}**\n### {joint_prob:.8f}")
+                
+        st.markdown("---")
+        st.markdown(
+            "<p style='text-align: center; color: gray; font-size: 14px;'>"
+            "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+            "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+            "</p>", 
+            unsafe_allow_html=True
+        )
+        st.stop()
+        
+    st.header(t["mkv_title"])
+    st.markdown(t["mkv_desc"])
         
     if "mkv_tpm" not in st.session_state or st.session_state.get("mkv_prev_states") != states:
         n_states = len(states)
         if n_states == 3:
             init_vals = [
-                [0.7, 0.2, 0.1],
-                [0.3, 0.4, 0.3],
+                [0.4, 0.4, 0.2],
+                [0.2, 0.5, 0.3],
                 [0.2, 0.3, 0.5]
             ]
         else:
@@ -604,8 +1034,12 @@ if is_markov_chain:
         st.session_state.mkv_prev_states = states
         
     if "mkv_init_probs" not in st.session_state or len(st.session_state.mkv_init_probs.columns) != len(states):
+        if len(states) == 3:
+            init_p_vals = [[0.4, 0.4, 0.2]]
+        else:
+            init_p_vals = [[1.0] + [0.0] * (len(states) - 1)]
         st.session_state.mkv_init_probs = pd.DataFrame(
-            [[1.0] + [0.0] * (len(states) - 1)],
+            init_p_vals,
             columns=states,
             index=["Probabilidad / Probability"]
         )
@@ -660,7 +1094,7 @@ if is_markov_chain:
         pi_0 = np.zeros(len(states))
         pi_0[0] = 1.0
 
-    mkv_tabs = st.tabs([t["mkv_tab_evolution"], t["mkv_tab_steady"], t["mkv_tab_simulation"]])
+    mkv_tabs = st.tabs([t["mkv_tab_evolution"], t["mkv_tab_steady"], t["mkv_tab_simulation"], t["mkv_tab_sequence"]])
     
     with mkv_tabs[0]:
         st.subheader(t["mkv_evolution_chart_title"])
@@ -805,6 +1239,161 @@ if is_markov_chain:
                 template='plotly_white'
             )
             st.plotly_chart(fig_comp, use_container_width=True)
+            
+    with mkv_tabs[3]:
+        st.subheader(t["mkv_seq_title"])
+        st.markdown(t["mkv_seq_desc"])
+        
+        # Sequence length slider
+        seq_len = st.slider(t["mkv_seq_length"], min_value=2, max_value=10, value=4, key="mkv_seq_len_sl")
+        
+        # Display selectboxes in columns to choose the state at each step
+        st.write("")
+        cols = st.columns(seq_len)
+        selected_seq = []
+        for i in range(seq_len):
+            # Try to select default states matching the slide if available
+            default_index = 0
+            if seq_len == 4 and len(states) >= 3:
+                # Slide sequence: Cloudy (Nublado), Sunny (Soleado), Cloudy (Nublado), Rainy (Lluvioso)
+                slide_seq_es = ["Nublado", "Soleado", "Nublado", "Lluvioso"]
+                slide_seq_en = ["Cloudy", "Sunny", "Cloudy", "Rainy"]
+                
+                target_state = slide_seq_es[i] if st.session_state.lang == 'es' else slide_seq_en[i]
+                # Find if target_state is in states
+                matching_indices = [idx for idx, s in enumerate(states) if target_state.lower() in s.lower()]
+                if matching_indices:
+                    default_index = matching_indices[0]
+                else:
+                    default_index = min(i % len(states), len(states) - 1)
+            else:
+                default_index = min(i % len(states), len(states) - 1)
+                
+            state_val = cols[i].selectbox(
+                f"{t['mkv_seq_step'].format(i+1)} (E{i+1})",
+                states,
+                index=default_index,
+                key=f"mkv_seq_step_val_{i}"
+            )
+            selected_seq.append(state_val)
+            
+        # Perform calculations
+        # 1. Initial Probability P(E1)
+        first_state = selected_seq[0]
+        first_state_idx = states.index(first_state)
+        # get initial probability from the vector
+        p_init = pi_0[first_state_idx]
+        
+        # 2. Transition Probabilities
+        transitions = []
+        trans_probs = []
+        for i in range(seq_len - 1):
+            from_state = selected_seq[i]
+            to_state = selected_seq[i+1]
+            from_idx = states.index(from_state)
+            to_idx = states.index(to_state)
+            prob = P[from_idx, to_idx]
+            transitions.append((from_state, to_state))
+            trans_probs.append(prob)
+            
+        # 3. Total Probabilities
+        # Conditional probability: P(E2, E3, ... | E1) = product of transitions
+        cond_prob = np.prod(trans_probs) if trans_probs else 1.0
+        # Joint probability: P(E1, E2, E3, ...) = P(E1) * P(E2 | E1) * ...
+        joint_prob = p_init * cond_prob
+        
+        def get_state_color(state_name):
+            name = state_name.lower()
+            if "soleado" in name or "sunny" in name:
+                return "linear-gradient(135deg, #ffb300, #ff6f00)"  # Warm amber/orange
+            elif "nublado" in name or "cloudy" in name:
+                return "linear-gradient(135deg, #90a4ae, #455a64)"  # Cool blue-grey
+            elif "lluvioso" in name or "rainy" in name:
+                return "linear-gradient(135deg, #4fc3f7, #0288d1)"  # Rainy blue
+            else:
+                colors = [
+                    "linear-gradient(135deg, #26a69a, #00695c)", # Teal
+                    "linear-gradient(135deg, #ab47bc, #6a1b9a)", # Purple
+                    "linear-gradient(135deg, #ec407a, #ad1457)", # Pink
+                    "linear-gradient(135deg, #78909c, #37474f)", # Grey
+                    "linear-gradient(135deg, #5c6bc0, #283593)"  # Indigo
+                ]
+                idx = sum(ord(c) for c in state_name) % len(colors)
+                return colors[idx]
+                
+        # Visual Sequence Diagram
+        st.markdown("### 🗺️ " + t["mkv_seq_diagram_title"])
+        
+        # Build HTML for sequence diagram
+        html_content = """
+        <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 15px; padding: 25px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; margin-bottom: 25px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
+        """
+        
+        for idx, state in enumerate(selected_seq):
+            color = get_state_color(state)
+            # Add state box
+            html_content += f"""
+            <div style="background: {color}; color: white; padding: 12px 20px; border-radius: 10px; font-weight: bold; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); min-width: 100px;">
+                <span style="font-size: 1.1em; display: block;">{state}</span>
+                <span style="font-size: 0.8em; font-weight: normal; opacity: 0.9; margin-top: 4px; display: block;">E{idx+1}</span>
+            """
+            if idx == 0:
+                html_content += f"""
+                <div style="border-top: 1px solid rgba(255,255,255,0.3); font-size: 0.75em; font-weight: normal; margin-top: 6px; padding-top: 4px;">P(E1) = {p_init:.4f}</div>
+                """
+            html_content += "</div>"
+            
+            # Add transition arrow if not the last state
+            if idx < seq_len - 1:
+                prob_val = trans_probs[idx]
+                html_content += f"""
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px;">
+                    <span style="font-weight: 800; color: #1f77b4; font-size: 1.05em; background-color: #e3f2fd; padding: 2px 8px; border-radius: 12px; border: 1px dashed #90caf9; margin-bottom: 2px;">{prob_val:.4f}</span>
+                    <span style="font-size: 1.8em; color: #90a4ae; line-height: 1;">➔</span>
+                </div>
+                """
+                
+        html_content += "</div>"
+        st.html(html_content)
+        
+        # Details and formulas
+        col_calc1, col_calc2 = st.columns(2)
+        
+        with col_calc1:
+            st.markdown(f"### 🧮 {t['mkv_seq_calc']}")
+            
+            # Step by step details in a nice list
+            st.markdown(f"1. **{t['mkv_seq_init_prob']} $E_1$ ({first_state}):**")
+            st.markdown(f"   $$P(E_1) = {p_init:.4f}$$")
+            
+            st.markdown(f"2. **{t['mkv_seq_trans_prob']}s:**")
+            for idx, (from_s, to_s) in enumerate(transitions):
+                st.markdown(f"   *   Paso {idx+1} ➔ {idx+2} ($E_{idx+1} \\rightarrow E_{idx+2}$):")
+                st.markdown(f"       $$P(E_{idx+2} \\mid E_{idx+1}) = P(\\text{{{to_s}}} \\mid \\text{{{from_s}}}) = {trans_probs[idx]:.4f}$$")
+                
+        with col_calc2:
+            st.markdown("### 📊 Fórmulas y Resultados")
+            
+            # Conditional Probability LaTeX and Value
+            st.markdown(f"#### 1. {t['mkv_seq_formula_cond']}")
+            # Formula term: P(E2|E1) * P(E3|E2) * ...
+            cond_terms_latex = " \\cdot ".join([f"P(E_{{{i+2}}} \\mid E_{{{i+1}}})" for i in range(seq_len - 1)])
+            cond_vals_latex = " \\cdot ".join([f"{val:.4f}" for val in trans_probs])
+            
+            st.markdown(f"$$P(E_2, \\dots, E_{{{seq_len}}} \\mid E_1) = {cond_terms_latex}$$")
+            st.markdown(f"$$P(E_2, \\dots, E_{{{seq_len}}} \\mid E_1) = {cond_vals_latex} = \\mathbf{{{cond_prob:.6f}}}$$")
+            
+            # Joint Probability LaTeX and Value
+            st.markdown(f"#### 2. {t['mkv_seq_formula_joint']}")
+            joint_terms_latex = f"P(E_1) \\cdot {cond_terms_latex}"
+            joint_vals_latex = f"{p_init:.4f} \\cdot {cond_vals_latex}"
+            
+            st.markdown(f"$$P(E_1, \\dots, E_{{{seq_len}}}) = {joint_terms_latex}$$")
+            st.markdown(f"$$P(E_1, \\dots, E_{{{seq_len}}}) = {joint_vals_latex} = \\mathbf{{{joint_prob:.6f}}}$$")
+            
+            # Highlighted result cards
+            st.info(f"**{t['mkv_seq_result_cond']}:**\n### {cond_prob:.6f}")
+            st.success(f"**{t['mkv_seq_result_joint']}:**\n### {joint_prob:.6f}")
             
     st.markdown("---")
     st.markdown(

@@ -41,10 +41,11 @@ Esta es una herramienta educativa y profesional construida con Python y [Streaml
         *   Evalúa el efecto de los errores de medición agregando ruido gaussiano configurable a magnitudes sísmicas reales, comparando visualmente los ajustes OLS y GOR sobre los datos sintéticos contaminados.
     5.  **Comparación Carroll & Ruppert (GOR con Error de Ecuación)**:
         *   Implementación de las ecuaciones de Carroll & Ruppert (1996) y Ranjit Das para analizar el comportamiento de las pendientes de regresión bajo heterocedasticidad y diversas incertidumbres asociadas a variables con error de medición y error de ecuación.
-    6.  **Cadenas de Markov (Modelos Estocásticos) 🎲**:
-        *   Modelado y simulación de procesos estocásticos en tiempo discreto.
-        *   Configuración dinámica de los estados y la Matriz de Probabilidades de Transición (TPM) con opción de normalización rápida de filas.
-        *   Pestañas para visualización de la **Evolución Temporal**, cálculo exacto del **Estado Estacionario** ($\pi P = \pi$) y **Simulación Monte Carlo de Caminata Aleatoria** (Random Walk) comparando la distribución empírica vs. la teórica.
+    6.  **Cadenas de Markov y Modelos Ocultos de Markov (HMM) 🎲**:
+        *   Modelado y simulación de procesos estocásticos en tiempo discreto, utilizando por defecto un planteamiento basado en estados del clima (Soleado, Nublado, Lluvioso).
+        *   **Cadena de Markov Estándar:** Configuración de estados y Matriz de Transición (TPM), con visualización de la Evolución Temporal, Estado Estacionario ($\pi P = \pi$), Simulación de Estados (Monte Carlo) y Calculador de Secuencias.
+        *   **Modelo Oculto de Markov (HMM):** Integración completa para modelar estados ocultos (clima) y emisiones/observaciones visibles (accesorios/ropa). Configuración de la Matriz de Transición (TPM), Matriz de Emisión (EPM) y Vector de Probabilidades Iniciales.
+        *   **Calculador de Trayectorias HMM:** Calcula y desglosa paso a paso la probabilidad conjunta $P(\text{Observaciones}, \text{Estados Ocultos})$ de cualquier secuencia, renderizando un diagrama de flujo dinámico con emojis representativos (Paraguas, Normal, Impermeable) y desgloses de fórmulas exactas en LaTeX.
     7.  **Regresión Sísmica y el Rol del 'Error de Ecuación' (BSSA 2025/2026) 📊**:
         *   Réplica exacta de los análisis y figuras del artículo científico *'The Role of "Equation Error" in Empirical Regressions for Seismic Magnitude Conversions'* (Gasperini et al., 2025/2026).
         *   Compara la pendiente ajustada ($\beta_1$) en función del error supuesto de la variable independiente ($\sigma_x$) usando métodos OLS, MM y EIV.

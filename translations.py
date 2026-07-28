@@ -804,6 +804,10 @@ TRANSLATIONS = {
         "game_brand_a": "Marca A",
         "game_brand_b": "Marca B",
         "game_brand_c": "Marca C",
+        "game_multistep_title": "🔍 Calculador de Transición en 2 Pasos",
+        "game_multistep_desc": "La probabilidad de transitar entre dos marcas en 2 pasos es el producto punto de la fila del estado inicial y la columna del estado final de la matriz P.",
+        "game_multistep_from": "Desde (Estado Inicial):",
+        "game_multistep_to": "Hacia (Estado Final):",
         
         # Markov Business Model translations
         "mkv_mode_business": "Modelo de Negocios (Participación de Mercado)",
@@ -1661,6 +1665,10 @@ TRANSLATIONS = {
         "game_brand_a": "Brand A",
         "game_brand_b": "Brand B",
         "game_brand_c": "Brand C",
+        "game_multistep_title": "🔍 2-Step Transition Calculator",
+        "game_multistep_desc": "The probability of transitioning between two brands in 2 steps is the dot product of the row of the initial state and the column of the final state of matrix P.",
+        "game_multistep_from": "From (Initial State):",
+        "game_multistep_to": "To (Final State):",
         
         # Markov Business Model translations
         "mkv_mode_business": "Business Model (Market Share)",

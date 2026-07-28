@@ -606,7 +606,11 @@ if is_markov_chain:
             "success_msg": t["game_success_msg"],
             "steady_state_title": t["game_steady_state_title"],
             "load_example": t["game_load_example"],
-            "clear_matrix": t["game_clear_matrix"]
+            "clear_matrix": t["game_clear_matrix"],
+            "multistep_title": t["game_multistep_title"],
+            "multistep_desc": t["game_multistep_desc"],
+            "multistep_from": t["game_multistep_from"],
+            "multistep_to": t["game_multistep_to"]
         }
         
         try:

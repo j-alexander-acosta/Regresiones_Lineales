@@ -805,6 +805,18 @@ TRANSLATIONS = {
         "game_brand_b": "Marca B",
         "game_brand_c": "Marca C",
         
+        # Markov Business Model translations
+        "mkv_mode_business": "Modelo de Negocios (Participación de Mercado)",
+        "biz_title": "💼 Modelo de Negocios: Participación de Mercado",
+        "biz_desc": "Este modelo simula cómo se distribuyen y estabilizan los clientes entre diferentes marcas o competidores a lo largo del tiempo. Configura el estado inicial del mercado (número de clientes por marca) y la matriz de transición para observar la evolución paso a paso.",
+        "biz_init_vector": "Estado Inicial del Mercado (Número de Clientes / Participación Inicial):",
+        "biz_tpm": "Matriz de Transición del Mercado (M₁):",
+        "biz_col_time": "Tiempo (t)",
+        "biz_matrix_powers": "Evolución de la Matriz de Transición (Potencias Mᵏ)",
+        "biz_chart_title": "Evolución y Estabilización de Clientes por Marca",
+        "biz_chart_yaxis": "Número de Clientes",
+        "biz_chart_xaxis": "Paso de Tiempo (t)",
+        
         # Hidden Markov Model (HMM) translations
         "mkv_model_mode_label": "Tipo de Modelo:",
         "mkv_mode_standard": "Cadena de Markov Estándar",
@@ -1649,6 +1661,18 @@ TRANSLATIONS = {
         "game_brand_a": "Brand A",
         "game_brand_b": "Brand B",
         "game_brand_c": "Brand C",
+        
+        # Markov Business Model translations
+        "mkv_mode_business": "Business Model (Market Share)",
+        "biz_title": "💼 Business Model: Market Share Stabilization",
+        "biz_desc": "This model simulates how clients are distributed and stabilized among different brands or competitors over time. Configure the initial market state (number of clients per brand) and the transition matrix to observe step-by-step evolution.",
+        "biz_init_vector": "Initial Market State (Number of Clients / Initial Share):",
+        "biz_tpm": "Market Transition Matrix (M₁):",
+        "biz_col_time": "Time (t)",
+        "biz_matrix_powers": "Transition Matrix Evolution (Mk Powers)",
+        "biz_chart_title": "Evolution and Stabilization of Clients by Brand",
+        "biz_chart_yaxis": "Number of Clients",
+        "biz_chart_xaxis": "Time Step (t)",
         
         # Hidden Markov Model (HMM) translations
         "mkv_model_mode_label": "Model Type:",

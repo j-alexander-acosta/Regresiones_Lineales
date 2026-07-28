@@ -583,7 +583,7 @@ if is_markov_chain:
     
     model_type = st.sidebar.radio(
         t["mkv_model_mode_label"],
-        [t["mkv_mode_standard"], t["mkv_mode_hmm"], t["mkv_mode_game"]],
+        [t["mkv_mode_standard"], t["mkv_mode_hmm"], t["mkv_mode_game"], t["mkv_mode_business"]],
         key="mkv_model_mode"
     )
     
@@ -616,6 +616,195 @@ if is_markov_chain:
             components.html(html_content, height=880, scrolling=True)
         except Exception as e:
             st.error(f"Error cargando el juego / Error loading game: {e}")
+            
+        st.markdown("---")
+        st.markdown(
+            "<p style='text-align: center; color: gray; font-size: 14px;'>"
+            "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+            "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+            "</p>", 
+            unsafe_allow_html=True
+        )
+        st.stop()
+        
+    if model_type == t["mkv_mode_business"]:
+        st.header(t["biz_title"])
+        st.markdown(t["biz_desc"])
+        
+        # --- CONFIGURACIÓN INICIAL ---
+        biz_states = [t["game_brand_a"], t["game_brand_b"], t["game_brand_c"]]
+        
+        # Inicializar sesión para matriz de transición de negocios
+        if "biz_tpm" not in st.session_state:
+            init_vals = [
+                [0.6, 0.3, 0.1],
+                [0.3, 0.5, 0.2],
+                [0.4, 0.3, 0.3]
+            ]
+            st.session_state.biz_tpm = pd.DataFrame(init_vals, index=biz_states, columns=biz_states)
+            
+        # 1. Panel de Entradas (Inputs)
+        st.subheader(t["biz_init_vector"])
+        col_v1, col_v2, col_v3 = st.columns(3)
+        with col_v1:
+            init_a = st.number_input(t["game_brand_a"], min_value=0, value=200, step=10, key="biz_v0_a")
+        with col_v2:
+            init_b = st.number_input(t["game_brand_b"], min_value=0, value=300, step=10, key="biz_v0_b")
+        with col_v3:
+            init_c = st.number_input(t["game_brand_c"], min_value=0, value=500, step=10, key="biz_v0_c")
+            
+        V0 = np.array([init_a, init_b, init_c], dtype=float)
+        
+        st.subheader(t["biz_tpm"])
+        tpm_df = st.data_editor(
+            st.session_state.biz_tpm,
+            use_container_width=True,
+            key="biz_tpm_editor",
+            on_change=update_session_df,
+            args=("biz_tpm", "biz_tpm_editor")
+        )
+        
+        # Validación
+        row_sums = tpm_df.sum(axis=1)
+        invalid_rows = [r for r, s in zip(biz_states, row_sums) if not np.isclose(s, 1.0, atol=1e-4)]
+        if invalid_rows:
+            st.warning(t["mkv_sum_warning"] + ", ".join(invalid_rows))
+            if st.button(t["mkv_normalize_btn"], key="biz_norm_btn"):
+                normalized_vals = tpm_df.values.copy()
+                for idx in range(len(normalized_vals)):
+                    row_sum = np.sum(normalized_vals[idx])
+                    if row_sum > 0:
+                        normalized_vals[idx] = normalized_vals[idx] / row_sum
+                    else:
+                        normalized_vals[idx] = np.ones(3) / 3
+                st.session_state.biz_tpm = pd.DataFrame(normalized_vals, index=biz_states, columns=biz_states)
+                st.success(t["mkv_normalize_success"])
+                st.rerun()
+                
+        P = tpm_df.values.copy()
+        for idx in range(len(P)):
+            r_sum = np.sum(P[idx])
+            if r_sum > 0:
+                P[idx] = P[idx] / r_sum
+            else:
+                P[idx] = np.ones(3) / 3
+                
+        # --- CÁLCULOS ---
+        history_V = [V0]
+        curr_V = V0.copy()
+        for t_step in range(1, 11):
+            curr_V = np.dot(curr_V, P)
+            history_V.append(curr_V)
+        history_V = np.array(history_V)
+        
+        M_powers = [P]
+        curr_M = P.copy()
+        for _ in range(2, 7):
+            curr_M = np.dot(curr_M, P)
+            M_powers.append(curr_M)
+            
+        # --- RENDER PANELS (Layout de 2 Columnas) ---
+        col_left, col_right = st.columns([1, 1.2])
+        
+        # Columna Izquierda: Potencias de Matriz (Mk)
+        with col_left:
+            st.markdown(f"### 🔀 {t['biz_matrix_powers']}")
+            for k in range(1, 7):
+                k_mat = M_powers[k-1]
+                st.markdown(f"**Matriz $M_{k}$**" + (f" (Matriz Original $M_1$)" if k == 1 else f" ($M_{k} = M_1^{k}$)"))
+                
+                # Tabla HTML compacta estilizada
+                html_table = "<table style='width:100%; border-collapse: collapse; margin-bottom: 20px; font-size:13px; text-align:center; border: 1px solid rgba(128,128,128,0.2);'>"
+                html_table += "<tr style='background-color:rgba(128,128,128,0.08); font-weight:bold;'>"
+                html_table += "<th style='padding:6px; border:1px solid rgba(128,128,128,0.2);'></th>"
+                for s in biz_states:
+                    html_table += f"<th style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>{s.split(' ')[1] if ' ' in s else s}</th>"
+                html_table += "</tr>"
+                
+                for idx, row_name in enumerate(biz_states):
+                    html_table += f"<tr>"
+                    html_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2); font-weight:bold; background-color:rgba(128,128,128,0.02);'>{row_name}</td>"
+                    for val in k_mat[idx]:
+                        html_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>{val:.3f}</td>"
+                    html_table += "</tr>"
+                html_table += "</table>"
+                st.html(html_table)
+                
+        # Columna Derecha: Evolución y Estabilización (Vt)
+        with col_right:
+            st.markdown(f"### 📈 {t['biz_chart_title']}")
+            
+            # DataFrame para evolución
+            evo_data = []
+            for t_idx in range(11):
+                vt = history_V[t_idx]
+                evo_data.append({
+                    t["biz_col_time"]: t_idx,
+                    t["game_brand_a"]: round(vt[0]),
+                    t["game_brand_b"]: round(vt[1]),
+                    t["game_brand_c"]: round(vt[2])
+                })
+            
+            evo_df = pd.DataFrame(evo_data)
+            
+            # Gráfico interactivo Plotly
+            import plotly.graph_objects as plgo
+            fig_evo = plgo.Figure()
+            colors = ['#ef4444', '#3b82f6', '#f59e0b']
+            brands = [t["game_brand_a"], t["game_brand_b"], t["game_brand_c"]]
+            
+            for idx, b_name in enumerate(brands):
+                fig_evo.add_trace(plgo.Scatter(
+                    x=evo_df[t["biz_col_time"]],
+                    y=evo_df[b_name],
+                    mode='lines+markers',
+                    name=b_name,
+                    line=dict(color=colors[idx], width=3),
+                    marker=dict(size=8),
+                    hovertemplate='Paso %{x}<br>' + b_name + ': %{y:.0f}<extra></extra>'
+                ))
+                
+            fig_evo.update_layout(
+                xaxis=dict(tickmode='linear', tick0=0, dtick=1),
+                xaxis_title=t["biz_chart_xaxis"],
+                yaxis_title=t["biz_chart_yaxis"],
+                template='plotly_white',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(l=40, r=40, t=20, b=40)
+            )
+            st.plotly_chart(fig_evo, use_container_width=True)
+            
+            # Tabla de evolución Vt con fórmulas explicativas
+            st.markdown("**Tabla de Evolución Temporal ($V_t$)**")
+            
+            html_v_table = "<table style='width:100%; border-collapse: collapse; font-size:13px; text-align:center; border: 1px solid rgba(128,128,128,0.2);'>"
+            html_v_table += "<tr style='background-color:rgba(128,128,128,0.08); font-weight:bold;'>"
+            html_v_table += f"<th style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>{t['biz_col_time']}</th>"
+            html_v_table += f"<th style='padding:6px; border:1px solid rgba(128,128,128,0.2); color:#ef4444;'>{t['game_brand_a']}</th>"
+            html_v_table += f"<th style='padding:6px; border:1px solid rgba(128,128,128,0.2); color:#3b82f6;'>{t['game_brand_b']}</th>"
+            html_v_table += f"<th style='padding:6px; border:1px solid rgba(128,128,128,0.2); color:#f59e0b;'>{t['game_brand_c']}</th>"
+            html_v_table += f"<th style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>Ecuación / Equation</th>"
+            html_v_table += "</tr>"
+            
+            for t_idx in range(11):
+                vt = history_V[t_idx]
+                formula_lbl = ""
+                if t_idx == 0:
+                    formula_lbl = "V₀"
+                elif t_idx == 1:
+                    formula_lbl = "V₁ = V₀ * M₁"
+                else:
+                    formula_lbl = f"V_{t_idx} = V_{t_idx-1} * M₁"
+                    
+                html_v_table += f"<tr>"
+                html_v_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2); font-weight:bold;'>{t_idx}</td>"
+                html_v_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>{vt[0]:.0f}</td>"
+                html_v_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>{vt[1]:.0f}</td>"
+                html_v_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2);'>{vt[2]:.0f}</td>"
+                html_v_table += f"<td style='padding:6px; border:1px solid rgba(128,128,128,0.2); font-style:italic; font-family:monospace;'>{formula_lbl}</td>"
+                html_v_table += "</tr>"
+            html_v_table += "</table>"
+            st.html(html_v_table)
             
         st.markdown("---")
         st.markdown(

@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Desafío del Diagrama de Transición Markov</title>
+  <!-- Google Font: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #1e293b;
+      --text-muted: #64748b;
+      --card-bg: rgba(255, 255, 255, 0.8);
+      --card-border: rgba(226, 232, 240, 0.8);
+      --border-color: #cbd5e1;
+      --input-bg: #ffffff;
+      --accent-a: #ef4444;
+      --accent-b: #3b82f6;
+      --accent-c: #f59e0b;
+      --success-color: #10b981;
+      --warning-color: #f97316;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      --glow-a: rgba(239, 68, 68, 0.15);
+      --glow-b: rgba(59, 130, 246, 0.15);
+      --glow-c: rgba(245, 158, 11, 0.15);
+      --btn-bg: #1f77b4;
+      --btn-hover: #175d8f;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #0e1117;
+        --text-color: #f8fafc;
+        --text-muted: #94a3b8;
+        --card-bg: rgba(22, 28, 45, 0.8);
+        --card-border: rgba(45, 55, 72, 0.6);
+        --border-color: #334155;
+        --input-bg: #0f172a;
+        --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        --glow-a: rgba(239, 68, 68, 0.25);
+        --glow-b: rgba(59, 130, 246, 0.25);
+        --glow-c: rgba(245, 158, 11, 0.25);
+        --btn-bg: #3b82f6;
+        --btn-hover: #2563eb;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: transparent;
+      color: var(--text-color);
+      overflow-x: hidden;
+      padding: 10px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .header-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .game-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text-color) 30%, var(--btn-bg));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .game-desc {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background-color: var(--btn-bg);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(31, 119, 180, 0.25);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--btn-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(31, 119, 180, 0.35);
+    }
+
+    .btn-secondary {
+      background-color: rgba(100, 116, 139, 0.1);
+      color: var(--text-color);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background-color: rgba(100, 116, 139, 0.18);
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .game-arena {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .game-arena {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Diagram / Graph Styles */
+    .diagram-container {
+      position: relative;
+      width: 100%;
+      max-width: 540px;
+      aspect-ratio: 540/460;
+      margin: 0 auto;
+      background: rgba(100, 116, 139, 0.02);
+      border-radius: 12px;
+      border: 1px dashed var(--card-border);
+      padding: 10px;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Absolute positioning for arrow inputs overlay */
+    .arrow-input {
+      position: absolute;
+      width: 48px;
+      height: 28px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      border-radius: 8px;
+      border: 2px solid var(--border-color);
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      outline: none;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      z-index: 10;
+    }
+
+    /* Glow boundaries by state origin */
+    .arrow-input[data-from="A"]:focus {
+      border-color: var(--accent-a);
+      box-shadow: 0 0 0 3px var(--glow-a);
+    }
+    .arrow-input[data-from="B"]:focus {
+      border-color: var(--accent-b);
+      box-shadow: 0 0 0 3px var(--glow-b);
+    }
+    .arrow-input[data-from="C"]:focus {
+      border-color: var(--accent-c);
+      box-shadow: 0 0 0 3px var(--glow-c);
+    }
+
+    /* Matrix Board Styles */
+    .board-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .matrix-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+
+    .matrix-table th, .matrix-table td {
+      padding: 8px;
+      text-align: center;
+    }
+
+    .matrix-table th {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .matrix-table td.row-header {
+      font-weight: 700;
+      text-align: left;
+      font-size: 0.95rem;
+      width: 90px;
+    }
+
+    .matrix-cell-input {
+      width: 60px;
+      height: 32px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      border-radius: 8px;
+      border: 1.5px solid var(--border-color);
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .matrix-cell-input:focus {
+      border-color: var(--btn-bg);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Gamified Feedback & Progress Bars */
+    .feedback-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .row-status {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: rgba(100, 116, 139, 0.02);
+      transition: all 0.3s ease;
+    }
+
+    .row-status.invalid {
+      border-left: 4px solid var(--warning-color);
+      background: rgba(249, 115, 22, 0.03);
+    }
+
+    .row-status.valid {
+      border-left: 4px solid var(--success-color);
+      background: rgba(16, 185, 129, 0.03);
+    }
+
+    .row-status-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .row-status-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .indicator-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .indicator-dot.warning {
+      background-color: var(--warning-color);
+      box-shadow: 0 0 8px var(--warning-color);
+    }
+
+    .indicator-dot.success {
+      background-color: var(--success-color);
+      box-shadow: 0 0 8px var(--success-color);
+    }
+
+    .row-status-message {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background-color: rgba(100, 116, 139, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 4px;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+    }
+
+    .progress-bar-fill.warning {
+      background-color: var(--warning-color);
+    }
+
+    .progress-bar-fill.success {
+      background-color: var(--success-color);
+    }
+
+    /* Steady State Section */
+    .steady-state-card {
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+      display: none;
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .steady-state-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      display: block;
+    }
+
+    .results-layout {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .results-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 250px;
+    }
+
+    .pi-formula-card {
+      background: rgba(100, 116, 139, 0.03);
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .formula-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .vector-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .vector-label {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--btn-bg);
+    }
+
+    .vector-box {
+      border-left: 2px solid var(--text-color);
+      border-right: 2px solid var(--text-color);
+      padding: 4px 10px;
+      display: flex;
+      gap: 15px;
+      font-weight: 800;
+      font-size: 1.3rem;
+      border-radius: 4px;
+    }
+
+    .vector-element {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .vector-element-val {
+      color: var(--text-color);
+      transition: all 0.3s ease;
+    }
+
+    .vector-element-lbl {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .victory-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+      border: 2px solid var(--success-color);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      font-weight: 700;
+      color: var(--success-color);
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      animation: pulse 2s infinite ease-in-out;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    /* Node Label Styling inside SVG */
+    .node-label-bg {
+      fill: var(--input-bg);
+      stroke: var(--card-border);
+      stroke-width: 1px;
+      rx: 8px;
+      ry: 8px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
+    }
+
+    .node-label-txt {
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      fill: var(--text-color);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header Card -->
+  <div class="card header-card">
+    <h1 class="game-title" id="game-title">🎮 Desafío del Diagrama de Transición</h1>
+    <p class="game-desc" id="game-desc">Cargando...</p>
+    <div class="btn-group">
+      <button class="btn-secondary" id="btn-load-example">
+        ⚡ Cargar Valores por Defecto
+      </button>
+      <button class="btn-secondary" id="btn-clear-matrix">
+        🗑️ Limpiar Matriz
+      </button>
+      <button class="btn-primary" id="btn-validate">
+        🎯 Validar Matriz
+      </button>
+    </div>
+  </div>
+
+  <!-- Game Arena -->
+  <div class="game-arena">
+    <!-- Graph Column -->
+    <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+      <div class="diagram-container">
+        <!-- SVG diagram -->
+        <svg viewBox="0 0 540 460">
+          <defs>
+            <!-- Arrow markers -->
+            <marker id="arrow-red" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#ef4444" />
+            </marker>
+            <marker id="arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#3b82f6" />
+            </marker>
+            <marker id="arrow-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#f59e0b" />
+            </marker>
+            
+            <!-- Radial gradients for nodes -->
+            <radialGradient id="grad-red" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(239, 68, 68, 0.15)" />
+              <stop offset="100%" stop-color="rgba(239, 68, 68, 0.35)" />
+            </radialGradient>
+            <radialGradient id="grad-blue" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(59, 130, 246, 0.15)" />
+              <stop offset="100%" stop-color="rgba(59, 130, 246, 0.35)" />
+            </radialGradient>
+            <radialGradient id="grad-amber" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(245, 158, 11, 0.15)" />
+              <stop offset="100%" stop-color="rgba(245, 158, 11, 0.35)" />
+            </radialGradient>
+          </defs>
+
+          <!-- Paths / Connections -->
+          <!-- loops -->
+          <!-- A -> A (Red) -->
+          <path d="M 250 55 C 220 5, 320 5, 290 55" fill="none" stroke="#ef4444" stroke-width="2.5" marker-end="url(#arrow-red)" />
+          <!-- B -> B (Blue) -->
+          <path d="M 85 310 C 35 270, 35 390, 85 350" fill="none" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+          <!-- C -> C (Amber) -->
+          <path d="M 455 310 C 505 270, 505 390, 455 350" fill="none" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arrow-amber)" />
+
+          <!-- Curves between nodes -->
+          <!-- A -> B (Red) -->
+          <path d="M 235 115 Q 150 180 135 295" fill="none" stroke="#ef4444" stroke-dasharray="1 1" stroke-width="2.5" marker-end="url(#arrow-red)" />
+          <!-- B -> A (Blue) -->
+          <path d="M 145 300 Q 220 240 255 125" fill="none" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+          
+          <!-- A -> C (Red) -->
+          <path d="M 305 115 Q 390 180 405 295" fill="none" stroke="#ef4444" stroke-dasharray="1 1" stroke-width="2.5" marker-end="url(#arrow-red)" />
+          <!-- C -> A (Amber) -->
+          <path d="M 395 300 Q 320 240 285 125" fill="none" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arrow-amber)" />
+          
+          <!-- B -> C (Blue) -->
+          <path d="M 160 345 Q 270 395 380 345" fill="none" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+          <!-- C -> B (Amber) -->
+          <path d="M 380 315 Q 270 265 160 315" fill="none" stroke="#f59e0b" stroke-dasharray="1 1" stroke-width="2.5" marker-end="url(#arrow-amber)" />
+
+          <!-- Nodes / Circles -->
+          <!-- Node A -->
+          <circle cx="270" cy="90" r="40" fill="url(#grad-red)" stroke="#ef4444" stroke-width="3" style="filter: drop-shadow(0 4px 10px rgba(239, 68, 68, 0.25));" />
+          <rect x="220" y="76" width="100" height="28" class="node-label-bg" />
+          <text x="270" y="91" class="node-label-txt" id="lbl-brand-a">Marca A</text>
+
+          <!-- Node B -->
+          <circle cx="120" cy="330" r="40" fill="url(#grad-blue)" stroke="#3b82f6" stroke-width="3" style="filter: drop-shadow(0 4px 10px rgba(59, 130, 246, 0.25));" />
+          <rect x="70" y="316" width="100" height="28" class="node-label-bg" />
+          <text x="120" y="331" class="node-label-txt" id="lbl-brand-b">Marca B</text>
+
+          <!-- Node C -->
+          <circle cx="420" cy="330" r="40" fill="url(#grad-amber)" stroke="#f59e0b" stroke-width="3" style="filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.25));" />
+          <rect x="370" y="316" width="100" height="28" class="node-label-bg" />
+          <text x="420" y="331" class="node-label-txt" id="lbl-brand-c">Marca C</text>
+        </svg>
+
+        <!-- Absolute positioned overlay inputs -->
+        <!-- Loops -->
+        <input type="text" class="arrow-input" id="inp-A-A" data-from="A" style="left: 246px; top: 10px;" value="0.50">
+        <input type="text" class="arrow-input" id="inp-B-B" data-from="B" style="left: 15px; top: 316px;" value="0.40">
+        <input type="text" class="arrow-input" id="inp-C-C" data-from="C" style="left: 477px; top: 316px;" value="0.20">
+
+        <!-- Outer & Inner curves -->
+        <!-- A -> B -->
+        <input type="text" class="arrow-input" id="inp-A-B" data-from="A" style="left: 135px; top: 180px;" value="0.30">
+        <!-- B -> A -->
+        <input type="text" class="arrow-input" id="inp-B-A" data-from="B" style="left: 195px; top: 220px;" value="0.30">
+        <!-- A -> C -->
+        <input type="text" class="arrow-input" id="inp-A-C" data-from="A" style="left: 357px; top: 180px;" value="0.20">
+        <!-- C -> A -->
+        <input type="text" class="arrow-input" id="inp-C-A" data-from="C" style="left: 297px; top: 220px;" value="0.40">
+        <!-- B -> C -->
+        <input type="text" class="arrow-input" id="inp-B-C" data-from="B" style="left: 246px; top: 380px;" value="0.30">
+        <!-- C -> B -->
+        <input type="text" class="arrow-input" id="inp-C-B" data-from="C" style="left: 246px; top: 260px;" value="0.40">
+      </div>
+    </div>
+
+    <!-- Matrix & Status Column -->
+    <div class="card board-container">
+      <div>
+        <h2 class="matrix-title">
+          <span>📊</span>
+          <span id="matrix-title-text">Matriz de Transición (P)</span>
+        </h2>
+      </div>
+
+      <!-- Table Editor -->
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th id="hdr-to-a">A</th>
+            <th id="hdr-to-b">B</th>
+            <th id="hdr-to-c">C</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-header" style="color: var(--accent-a);" id="row-hdr-a">Marca A</td>
+            <td><input type="text" class="matrix-cell-input" id="mat-0-0" value="0.50"></td>
+            <td><input type="text" class="matrix-cell-input" id="mat-0-1" value="0.30"></td>
+            <td><input type="text" class="matrix-cell-input" id="mat-0-2" value="0.20"></td>
+          </tr>
+          <tr>
+            <td class="row-header" style="color: var(--accent-b);" id="row-hdr-b">Marca B</td>
+            <td><input type="text" class="matrix-cell-input" id="mat-1-0" value="0.30"></td>
+            <td><input type="text" class="matrix-cell-input" id="mat-1-1" value="0.40"></td>
+            <td><input type="text" class="matrix-cell-input" id="mat-1-2" value="0.30"></td>
+          </tr>
+          <tr>
+            <td class="row-header" style="color: var(--accent-c);" id="row-hdr-c">Marca C</td>
+            <td><input type="text" class="matrix-cell-input" id="mat-2-0" value="0.40"></td>
+            <td><input type="text" class="matrix-cell-input" id="mat-2-1" value="0.40"></td>
+            <td><input type="text" class="matrix-cell-input" id="mat-2-2" value="0.20"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Status Bars / Progress -->
+      <div class="feedback-panel">
+        <!-- Row A Status -->
+        <div class="row-status invalid" id="status-row-0">
+          <div class="row-status-header">
+            <span class="row-status-label">
+              <span class="indicator-dot warning" id="dot-row-0"></span>
+              <strong id="status-label-a">Marca A</strong>
+            </span>
+            <span id="sum-row-0">0.00</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill warning" id="bar-row-0" style="width: 0%"></div>
+          </div>
+          <span class="row-status-message" id="msg-row-0">La fila de Marca A suma 1.0.</span>
+        </div>
+
+        <!-- Row B Status -->
+        <div class="row-status invalid" id="status-row-1">
+          <div class="row-status-header">
+            <span class="row-status-label">
+              <span class="indicator-dot warning" id="dot-row-1"></span>
+              <strong id="status-label-b">Marca B</strong>
+            </span>
+            <span id="sum-row-1">0.00</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill warning" id="bar-row-1" style="width: 0%"></div>
+          </div>
+          <span class="row-status-message" id="msg-row-1">La fila de Marca B suma 1.0.</span>
+        </div>
+
+        <!-- Row C Status -->
+        <div class="row-status invalid" id="status-row-2">
+          <div class="row-status-header">
+            <span class="row-status-label">
+              <span class="indicator-dot warning" id="dot-row-2"></span>
+              <strong id="status-label-c">Marca C</strong>
+            </span>
+            <span id="sum-row-2">0.00</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill warning" id="bar-row-2" style="width: 0%"></div>
+          </div>
+          <span class="row-status-message" id="msg-row-2">La fila de Marca C suma 1.0.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory & Steady State Card -->
+  <div class="card steady-state-card" id="steady-state-section">
+    <div class="victory-banner" id="victory-banner">
+      🎉 ¡Matriz Markov Cumplida! 🎉
+    </div>
+    
+    <div class="results-layout">
+      <!-- Analytical Vector Display -->
+      <div class="pi-formula-card">
+        <div class="formula-title" id="lbl-steady-state-title">Distribución Estacionaria de Equilibrio (π)</div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">
+          Representa las probabilidades a largo plazo a las que converge el mercado para cada marca, sin importar la distribución inicial, según la ecuación de equilibrio:
+          <code style="background-color: rgba(100, 116, 139, 0.08); padding: 2px 6px; border-radius: 4px; font-weight: bold;">π P = π</code>
+        </p>
+        
+        <div class="vector-display">
+          <div class="vector-label">π =</div>
+          <div class="vector-box">
+            <div class="vector-element">
+              <span class="vector-element-val" id="val-pi-a" style="color: var(--accent-a);">0.0000</span>
+              <span class="vector-element-lbl" id="lbl-pi-a">Marca A</span>
+            </div>
+            <div class="vector-element">
+              <span class="vector-element-val" id="val-pi-b" style="color: var(--accent-b);">0.0000</span>
+              <span class="vector-element-lbl" id="lbl-pi-b">Marca B</span>
+            </div>
+            <div class="vector-element">
+              <span class="vector-element-val" id="val-pi-c" style="color: var(--accent-c);">0.0000</span>
+              <span class="vector-element-lbl" id="lbl-pi-c">Marca C</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart JS Container -->
+      <div class="chart-container">
+        <canvas id="steadyChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Default values dictionary for translations
+  // Python will replace /* TRANSLATIONS_PLACEHOLDER */ with const t = {...};
+  /* TRANSLATIONS_PLACEHOLDER */
+  
+  // Fallback defaults if translations not loaded properly
+  const defaults = {
+    brand_a: "Marca A",
+    brand_b: "Marca B",
+    brand_c: "Marca C",
+    row_warning: "La fila de {0} suma {1}. ¡Ajusta los valores para llegar a 1.0!",
+    row_success: "¡La fila de {0} es correcta! (Suma 1.0)",
+    validate_btn: "Validar Matriz",
+    success_msg: "¡Matriz Markov Cumplida! 🎉",
+    steady_state_title: "Distribución Estacionaria de Equilibrio (π P = π)",
+    load_example: "Cargar Valores por Defecto",
+    clear_matrix: "Limpiar Matriz"
+  };
+
+  const texts = (typeof t !== 'undefined') ? { ...defaults, ...t } : defaults;
+
+  // Set initial texts based on active language
+  document.getElementById("game-title").innerText = "🎮 " + (texts.game_title || "Desafío del Diagrama de Transición");
+  document.getElementById("game-desc").innerText = texts.game_desc || "Acepta el desafío...";
+  document.getElementById("btn-load-example").innerText = "⚡ " + texts.load_example;
+  document.getElementById("btn-clear-matrix").innerText = "🗑️ " + texts.clear_matrix;
+  document.getElementById("btn-validate").innerText = "🎯 " + texts.validate_btn;
+  document.getElementById("victory-banner").innerText = "🎉 " + texts.success_msg;
+  document.getElementById("lbl-steady-state-title").innerText = texts.steady_state_title;
+  
+  // Set element labels
+  document.getElementById("lbl-brand-a").textContent = texts.brand_a;
+  document.getElementById("lbl-brand-b").textContent = texts.brand_b;
+  document.getElementById("lbl-brand-c").textContent = texts.brand_c;
+  
+  document.getElementById("row-hdr-a").textContent = texts.brand_a;
+  document.getElementById("row-hdr-b").textContent = texts.brand_b;
+  document.getElementById("row-hdr-c").textContent = texts.brand_c;
+  
+  document.getElementById("status-label-a").textContent = texts.brand_a;
+  document.getElementById("status-label-b").textContent = texts.brand_b;
+  document.getElementById("status-label-c").textContent = texts.brand_c;
+  
+  document.getElementById("lbl-pi-a").textContent = texts.brand_a;
+  document.getElementById("lbl-pi-b").textContent = texts.brand_b;
+  document.getElementById("lbl-pi-c").textContent = texts.brand_c;
+
+  document.getElementById("hdr-to-a").textContent = texts.brand_a.split(" ")[1] || texts.brand_a;
+  document.getElementById("hdr-to-b").textContent = texts.brand_b.split(" ")[1] || texts.brand_b;
+  document.getElementById("hdr-to-c").textContent = texts.brand_c.split(" ")[1] || texts.brand_c;
+
+  // Input mapping definition
+  const ids = [
+    { from: "A", to: "A", diagram: "inp-A-A", matrix: "mat-0-0", row: 0, col: 0 },
+    { from: "A", to: "B", diagram: "inp-A-B", matrix: "mat-0-1", row: 0, col: 1 },
+    { from: "A", to: "C", diagram: "inp-A-C", matrix: "mat-0-2", row: 0, col: 2 },
+    { from: "B", to: "A", diagram: "inp-B-A", matrix: "mat-1-0", row: 1, col: 0 },
+    { from: "B", to: "B", diagram: "inp-B-B", matrix: "mat-1-1", row: 1, col: 1 },
+    { from: "B", to: "C", diagram: "inp-B-C", matrix: "mat-1-2", row: 1, col: 2 },
+    { from: "C", to: "A", diagram: "inp-C-A", matrix: "mat-2-0", row: 2, col: 0 },
+    { from: "C", to: "B", diagram: "inp-C-B", matrix: "mat-2-1", row: 2, col: 1 },
+    { from: "C", to: "C", diagram: "inp-C-C", matrix: "mat-2-2", row: 2, col: 2 },
+  ];
+
+  let chartInstance = null;
+
+  // Initialize event listeners
+  ids.forEach(item => {
+    const diagInput = document.getElementById(item.diagram);
+    const matInput = document.getElementById(item.matrix);
+
+    // Sync diagram input to matrix input
+    diagInput.addEventListener("input", (e) => {
+      const val = cleanNumberInput(e.target.value);
+      matInput.value = val;
+      validateAndSync();
+    });
+
+    diagInput.addEventListener("blur", (e) => {
+      e.target.value = formatValue(e.target.value);
+      validateAndSync();
+    });
+
+    // Sync matrix input to diagram input
+    matInput.addEventListener("input", (e) => {
+      const val = cleanNumberInput(e.target.value);
+      diagInput.value = val;
+      validateAndSync();
+    });
+
+    matInput.addEventListener("blur", (e) => {
+      e.target.value = formatValue(e.target.value);
+      validateAndSync();
+    });
+  });
+
+  document.getElementById("btn-load-example").addEventListener("click", () => {
+    loadValues({
+      "inp-A-A": "0.60", "inp-A-B": "0.30", "inp-A-C": "0.10",
+      "inp-B-A": "0.30", "inp-B-B": "0.50", "inp-B-C": "0.20",
+      "inp-C-A": "0.40", "inp-C-B": "0.30", "inp-C-C": "0.30"
+    });
+  });
+
+  document.getElementById("btn-clear-matrix").addEventListener("click", () => {
+    loadValues({
+      "inp-A-A": "", "inp-A-B": "", "inp-A-C": "",
+      "inp-B-A": "", "inp-B-B": "", "inp-B-C": "",
+      "inp-C-A": "", "inp-C-B": "", "inp-C-C": ""
+    });
+  });
+
+  document.getElementById("btn-validate").addEventListener("click", () => {
+    const isValid = validateAndSync(true);
+    if (isValid) {
+      triggerVictory();
+    }
+  });
+
+  // Load specific values
+  function loadValues(values) {
+    Object.keys(values).forEach(diagId => {
+      const val = values[diagId];
+      document.getElementById(diagId).value = val;
+      const item = ids.find(x => x.diagram === diagId);
+      if (item) {
+        document.getElementById(item.matrix).value = val;
+      }
+    });
+    validateAndSync();
+  }
+
+  // Clean value entered
+  function cleanNumberInput(val) {
+    let clean = val.replace(/[^0-9.]/g, '');
+    const parts = clean.split('.');
+    if (parts.length > 2) {
+      clean = parts[0] + '.' + parts.slice(1).join('');
+    }
+    return clean;
+  }
+
+  // Format value to 2 decimals if valid float
+  function formatValue(val) {
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? "0.00" : parsed.toFixed(2);
+  }
+
+  // Parse input helper
+  function getValueOf(id) {
+    const val = parseFloat(document.getElementById(id).value);
+    return isNaN(val) ? 0.0 : val;
+  }
+
+  // Validate matrix and synchronize progress displays
+  function validateAndSync(silent = false) {
+    let allValid = true;
+    const rowSums = [0, 0, 0];
+
+    // Compute row sums
+    ids.forEach(item => {
+      if (item.row === 0) rowSums[0] += getValueOf(item.diagram);
+      if (item.row === 1) rowSums[1] += getValueOf(item.diagram);
+      if (item.row === 2) rowSums[2] += getValueOf(item.diagram);
+    });
+
+    const stateNames = [texts.brand_a, texts.brand_b, texts.brand_c];
+
+    // Update displays for each row
+    for (let r = 0; r < 3; r++) {
+      const sum = rowSums[r];
+      const sumStr = sum.toFixed(2);
+      const isRowValid = Math.abs(sum - 1.0) < 1e-4;
+
+      const sumDisplay = document.getElementById(`sum-row-${r}`);
+      const barFill = document.getElementById(`bar-row-${r}`);
+      const statusCard = document.getElementById(`status-row-${r}`);
+      const indicatorDot = document.getElementById(`dot-row-${r}`);
+      const msgDisplay = document.getElementById(`msg-row-${r}`);
+
+      sumDisplay.textContent = sumStr;
+      
+      // Update progress bar length (capped at 1.0 = 100%)
+      const percentage = Math.min(sum * 100, 100);
+      barFill.style.width = `${percentage}%`;
+
+      if (isRowValid) {
+        statusCard.className = "row-status valid";
+        indicatorDot.className = "indicator-dot success";
+        barFill.className = "progress-bar-fill success";
+        msgDisplay.textContent = texts.row_success.replace("{0}", stateNames[r]);
+      } else {
+        allValid = false;
+        statusCard.className = "row-status invalid";
+        indicatorDot.className = "indicator-dot warning";
+        barFill.className = "progress-bar-fill warning";
+        msgDisplay.textContent = texts.row_warning.replace("{0}", stateNames[r]).replace("{1}", sumStr);
+      }
+    }
+
+    // Enable / disable validation button
+    const valBtn = document.getElementById("btn-validate");
+    if (allValid) {
+      valBtn.disabled = false;
+      valBtn.style.animation = "pulse 1.5s infinite ease-in-out";
+    } else {
+      valBtn.disabled = true;
+      valBtn.style.animation = "none";
+      // Hide steady state section if it was visible and user edits matrix to make it invalid
+      if (!silent) {
+        document.getElementById("steady-state-section").classList.remove("visible");
+      }
+    }
+
+    return allValid;
+  }
+
+  // Trigger Victory Celebrations
+  function triggerVictory() {
+    // Show Steady State Card
+    const section = document.getElementById("steady-state-section");
+    section.classList.add("visible");
+    
+    // Smooth scroll down to stationary distribution
+    setTimeout(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 150);
+
+    // Confetti!
+    const count = 200;
+    const defaults = {
+      origin: { y: 0.7 }
+    };
+
+    function fire(particleRatio, opts) {
+      confetti({
+        ...defaults,
+        ...opts,
+        particleCount: Math.floor(count * particleRatio)
+      });
+    }
+
+    fire(0.25, {
+      spread: 26,
+      startVelocity: 55,
+    });
+    fire(0.2, {
+      spread: 60,
+    });
+    fire(0.35, {
+      spread: 100,
+      decay: 0.91,
+      scalar: 0.8
+    });
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 25,
+      decay: 0.92,
+      scalar: 1.2
+    });
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 45,
+    });
+
+    // Compute steady state
+    computeAndPlotSteadyState();
+  }
+
+  // Calculate long-term stationary distribution using Power Iteration
+  function computeAndPlotSteadyState() {
+    const P = [
+      [getValueOf("inp-A-A"), getValueOf("inp-A-B"), getValueOf("inp-A-C")],
+      [getValueOf("inp-B-A"), getValueOf("inp-B-B"), getValueOf("inp-B-C")],
+      [getValueOf("inp-C-A"), getValueOf("inp-C-B"), getValueOf("inp-C-C")]
+    ];
+
+    // Simple Power Iteration
+    let pi = [1/3, 1/3, 1/3];
+    const maxIter = 1000;
+    const tol = 1e-8;
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      let next_pi = [0, 0, 0];
+      for (let col = 0; col < 3; col++) {
+        for (let row = 0; row < 3; row++) {
+          next_pi[col] += pi[row] * P[row][col];
+        }
+      }
+      
+      let diff = 0;
+      for (let i = 0; i < 3; i++) {
+        diff += Math.abs(next_pi[i] - pi[i]);
+      }
+      pi = next_pi;
+      
+      if (diff < tol) break;
+    }
+
+    // Double check sum is exactly 1
+    const piSum = pi.reduce((a, b) => a + b, 0);
+    if (piSum > 0) {
+      pi = pi.map(val => val / piSum);
+    }
+
+    // Set numbers in UI
+    document.getElementById("val-pi-a").textContent = pi[0].toFixed(4);
+    document.getElementById("val-pi-b").textContent = pi[1].toFixed(4);
+    document.getElementById("val-pi-c").textContent = pi[2].toFixed(4);
+
+    // Draw Chart
+    plotChart(pi);
+  }
+
+  // Draw or update Chart.js bar chart
+  function plotChart(piValues) {
+    const ctx = document.getElementById('steadyChart').getContext('2d');
+    
+    // Check system style mode to pick grid/label color
+    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+
+    const data = {
+      labels: [texts.brand_a, texts.brand_b, texts.brand_c],
+      datasets: [{
+        label: 'π',
+        data: piValues,
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.85)',  // Marca A (Red)
+          'rgba(59, 130, 246, 0.85)',  // Marca B (Blue)
+          'rgba(245, 158, 11, 0.85)'   // Marca C (Amber)
+        ],
+        borderColor: [
+          '#ef4444',
+          '#3b82f6',
+          '#f59e0b'
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+        barPercentage: 0.55
+      }]
+    };
+
+    const config = {
+      type: 'bar',
+      data: data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart'
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+            titleColor: isDark ? '#f8fafc' : '#1e293b',
+            bodyColor: isDark ? '#f8fafc' : '#1e293b',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            borderWidth: 1,
+            titleFont: {
+              family: 'Outfit',
+              weight: 'bold'
+            },
+            bodyFont: {
+              family: 'Outfit'
+            },
+            callbacks: {
+              label: function(context) {
+                return ` ${context.dataset.label} = ${context.parsed.y.toFixed(4)} (${(context.parsed.y * 100).toFixed(2)}%)`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 1.0,
+            grid: {
+              color: gridColor
+            },
+            ticks: {
+              color: textColor,
+              font: {
+                family: 'Outfit',
+                size: 11
+              },
+              callback: function(value) {
+                return (value * 100) + '%';
+              }
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: textColor,
+              font: {
+                family: 'Outfit',
+                weight: 'bold',
+                size: 12
+              }
+            }
+          }
+        }
+      }
+    };
+
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+    chartInstance = new Chart(ctx, config);
+  }
+
+  // Pre-validate initial values (invalid state initially)
+  validateAndSync();
+
+  // Listen to theme preferences changes to reload chart colors
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (document.getElementById("steady-state-section").classList.contains("visible")) {
+      computeAndPlotSteadyState();
+    }
+  });
+</script>
+
+</body>
+</html>

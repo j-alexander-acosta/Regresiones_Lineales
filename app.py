@@ -583,10 +583,50 @@ if is_markov_chain:
     
     model_type = st.sidebar.radio(
         t["mkv_model_mode_label"],
-        [t["mkv_mode_standard"], t["mkv_mode_hmm"]],
+        [t["mkv_mode_standard"], t["mkv_mode_hmm"], t["mkv_mode_game"]],
         key="mkv_model_mode"
     )
     
+    if model_type == t["mkv_mode_game"]:
+        import json
+        import streamlit.components.v1 as components
+        
+        st.header(t["game_title"])
+        st.markdown(t["game_desc"])
+        
+        js_translations = {
+            "game_title": t["game_title"],
+            "game_desc": t["game_desc"],
+            "brand_a": t["game_brand_a"],
+            "brand_b": t["game_brand_b"],
+            "brand_c": t["game_brand_c"],
+            "row_warning": t["game_row_warning"],
+            "row_success": t["game_row_success"],
+            "validate_btn": t["game_validate_btn"],
+            "success_msg": t["game_success_msg"],
+            "steady_state_title": t["game_steady_state_title"],
+            "load_example": t["game_load_example"],
+            "clear_matrix": t["game_clear_matrix"]
+        }
+        
+        try:
+            with open("markov_game.html", "r", encoding="utf-8") as f:
+                html_template = f.read()
+            html_content = html_template.replace("/* TRANSLATIONS_PLACEHOLDER */", f"const t = {json.dumps(js_translations)};")
+            components.html(html_content, height=880, scrolling=True)
+        except Exception as e:
+            st.error(f"Error cargando el juego / Error loading game: {e}")
+            
+        st.markdown("---")
+        st.markdown(
+            "<p style='text-align: center; color: gray; font-size: 14px;'>"
+            "Desarrollado y mantenido por <b>Alexander Acosta</b> "
+            "(<a href='https://github.com/j-alexander-acosta' target='_blank' style='color: #1f77b4; text-decoration: none;'>@j-alexander-acosta</a>)"
+            "</p>", 
+            unsafe_allow_html=True
+        )
+        st.stop()
+        
     states_input = st.sidebar.text_input(t["mkv_states_input"], value=t["mkv_default_states"], key="mkv_states_inp")
     states = [s.strip() for s in states_input.split(",") if s.strip()]
     

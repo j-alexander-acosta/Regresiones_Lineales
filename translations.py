@@ -791,10 +791,25 @@ TRANSLATIONS = {
         "mkv_seq_result_cond": "Probabilidad Condicional Total",
         "mkv_seq_diagram_title": "Diagrama de la Trayectoria",
         
+        # Markov Game translations
+        "game_title": "🎮 Desafío del Diagrama de Transición",
+        "game_desc": "¡Acepta el desafío! Completa las probabilidades de transición en el diagrama interactivo o en la matriz para que cada fila sume exactamente 1.0 (matriz estocástica). Una vez resuelto, se activará una animación de victoria y se calculará la distribución estacionaria a largo plazo.",
+        "game_load_example": "Cargar Valores por Defecto",
+        "game_clear_matrix": "Limpiar Matriz",
+        "game_validate_btn": "Validar Matriz",
+        "game_success_msg": "¡Matriz Markov Cumplida! 🎉",
+        "game_row_warning": "La fila de {0} suma {1}. ¡Ajusta los valores para llegar a 1.0!",
+        "game_row_success": "¡La fila de {0} es correcta! (Suma 1.0)",
+        "game_steady_state_title": "Distribución Estacionaria de Equilibrio (π P = π)",
+        "game_brand_a": "Marca A",
+        "game_brand_b": "Marca B",
+        "game_brand_c": "Marca C",
+        
         # Hidden Markov Model (HMM) translations
         "mkv_model_mode_label": "Tipo de Modelo:",
         "mkv_mode_standard": "Cadena de Markov Estándar",
         "mkv_mode_hmm": "Modelo Oculto de Markov (HMM)",
+        "mkv_mode_game": "Juego: Desafío de Transición",
         "hmm_obs_input": "Nombres de las Observaciones (separados por comas):",
         "hmm_default_obs": "Paraguas, Normal, Impermeable",
         "hmm_title": "👁️ Modelo Oculto de Markov (HMM): Simulación y Probabilidades",
@@ -1621,10 +1636,25 @@ TRANSLATIONS = {
         "mkv_seq_result_cond": "Total Conditional Probability",
         "mkv_seq_diagram_title": "Path Diagram",
         
+        # Markov Game translations
+        "game_title": "🎮 Transition Diagram Challenge",
+        "game_desc": "Take the challenge! Complete the transition probabilities in the interactive diagram or the matrix so that each row sums to exactly 1.0 (stochastic matrix). Once solved, a victory animation will trigger and the long-term steady-state distribution will be computed.",
+        "game_load_example": "Load Default Values",
+        "game_clear_matrix": "Clear Matrix",
+        "game_validate_btn": "Validate Matrix",
+        "game_success_msg": "Markov Matrix Satisfied! 🎉",
+        "game_row_warning": "Row {0} sums to {1}. Adjust values to reach 1.0!",
+        "game_row_success": "Row {0} is correct! (Sums to 1.0)",
+        "game_steady_state_title": "Stationary Distribution at Equilibrium (π P = π)",
+        "game_brand_a": "Brand A",
+        "game_brand_b": "Brand B",
+        "game_brand_c": "Brand C",
+        
         # Hidden Markov Model (HMM) translations
         "mkv_model_mode_label": "Model Type:",
         "mkv_mode_standard": "Standard Markov Chain",
         "mkv_mode_hmm": "Hidden Markov Model (HMM)",
+        "mkv_mode_game": "Game: Transition Challenge",
         "hmm_obs_input": "Observation Names (comma-separated):",
         "hmm_default_obs": "Umbrella, Normal, Raincoat",
         "hmm_title": "👁️ Hidden Markov Model (HMM): Simulation and Probabilities",
